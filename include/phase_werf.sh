@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["werf"]="98"
+
+function phase_werf_run() {
+    if [[ "${DISABLE_WERF-no}" == "true" ]]; then
+        echo_yellow "Skip install werf!"
+        return 0
+    fi
+
+    echo_green "Install werf..."
+
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
+
+    if command -v werf &> /dev/null; then
+        echo_green "Werf already installed!"
+        return 0
+    fi
+
+    local url="https://werf.io/install.sh"
+
+    if ! download_script_and_run "$url" "$not_ask" "--ci"; then
+        return 1
+    fi
+
+    echo_green "Werf installed!"
+}
+
+function phase_werf_help() {
+    echo "Install Werf
+  Options:
+    $(not_ask_arg_help)
+  For disable use DISABLE_WERF=true
+"
+}
