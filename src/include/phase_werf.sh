@@ -37,3 +37,7 @@ function phase_werf_help() {
   For disable use DISABLE_WERF=true
 "
 }
+
+function phase_werf_disable_env() {
+    echo -n "DISABLE_WERF"
+}

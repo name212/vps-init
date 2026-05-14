@@ -2,15 +2,6 @@
 
 set -Eeuo pipefail
 
-function delete_file() {
-    if ! rm "$1"; then
-        echo_red "$1 not deleted!"
-        return 1
-    fi
-
-    echo_green "$1 deleted"
-}
-
 function download_url(){
     local url="$1"
     local dest="$2"

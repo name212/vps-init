@@ -23,3 +23,7 @@ function aliases_help() {
 "
 }
 
+function phase_aliases_disable_env() {
+    echo -n "DISABLE_ALIASES"
+}
+

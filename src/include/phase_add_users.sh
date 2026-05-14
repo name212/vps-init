@@ -7,6 +7,11 @@ PHASES_WITH_INDEX["users"]="02"
 
 
 function phase_users_run() {
+    if [[ "${DISABLE_USERS-no}" == "true" ]]; then
+        echo_yellow "Skip install werf!"
+        return 0
+    fi
+
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
@@ -54,7 +59,7 @@ function phase_users_run() {
             return 1
         fi
 
-        if [[ "$sudo_env" == "true" ]]; then
+        if [[ "$should_sudo" == "true" ]]; then
             if ! add_user_to_group "$username" "sudo"; then
                 return 1
             fi
@@ -65,22 +70,14 @@ function phase_users_run() {
         fi
 
         if [ -n "$ssh_key" ]; then
-            
+            if ! add_pubkey_for_user "$username" "$ssh_key" "$not_ask"; then
+                return 1
+            fi
         fi
 
+        echo_green "User $username added!"
+
     done
-
-    if check_packages_installed "${packages[@]}"; then
-        echo_green "Base packages already installed!"
-        return 0
-    fi
-    
-    if ! install_packages "${packages[@]}"; then
-        echo_red "Base packages not installed!"
-        return 1
-    fi
-
-    echo_green "Base packages installed!"
 }
 
 function phase_users_help() {
@@ -108,4 +105,8 @@ function phase_users_help() {
       ADD_USER_\${INDEX}_NO_PASSWORD - if has true value - remove password
       ADD_USER_\${INDEX}_SSH_KEY     - path to ssh pub key
 "
+}
+
+function phase_users_disable_env() {
+    echo -n "DISABLE_USERS"
 }

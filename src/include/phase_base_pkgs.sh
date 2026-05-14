@@ -23,6 +23,7 @@ function phase_base_pkgs_run() {
         "jq" 
         "yq"
         "libc-bin"
+        "diffutils"
         # "git"
         "procps"
     )
@@ -44,4 +45,8 @@ function phase_base_pkgs_help() {
     echo "Install base packages
   No options.
 "
+}
+
+function phase_base_pkgs_disable_env() {
+    echo -n ""
 }

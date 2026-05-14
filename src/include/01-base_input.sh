@@ -15,13 +15,13 @@ function parse_not_ask() {
     local not_ask=""
     
     for arg in "$@"; do
-        if [[ "$arg" == "-f" || "$arg" == "--force" ]]; then
+        if [[ "$arg" == "--force" ]]; then
             echo -n "$CONST_NOT_ASK_VAL"
             return 0
         fi
     done
 
-    echo -n ""
+    echo -n "${NO_ASK-}"
     return 0
 }
 

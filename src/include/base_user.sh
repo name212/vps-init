@@ -129,18 +129,7 @@ function add_user_to_sudoers() {
         return 1
     fi
 
-    echo_green "--- New sudoers from $tmp_file ---"
-    cat "$tmp_file"
-    echo_green "--- End file ---"
-
-    if ! ask_user "You can replace $sudoers_path with $tmp_file ?" "$not_ask"; then
-        delete_file "$tmp_file" || true
-        echo_red "Disallow replace $sudoers_path"
-        return 1
-    fi
-
-    if ! cp "$tmp_file" "$sudoers_path"; then
-        echo_red "sudoers not replaced for $name . Tmp file $tmp_file not deleted"
+    if ! replace_file "$tmp_file" "$sudoers_path" "Add sudo for user $name" "true" "$not_ask"; then
         return 1
     fi
 
@@ -150,7 +139,7 @@ function add_user_to_sudoers() {
  function add_pubkey_for_user() { 
     local name="$1"
     local ssh_key_file="$2"
-    local not_ask="${2-no}"
+    local not_ask="${3-no}"
 
     if [ -z "$name" ]; then
         echo_red "user name did not pass"
@@ -181,4 +170,36 @@ function add_user_to_sudoers() {
         echo_red "cannot extract home for $name"
         return 1
     fi
+
+    local ssh_dir="${user_home}/.ssh"
+
+    if ! mkdir -p "$ssh_dir"; then
+        echo_red "cannot create $ssh_dir dir for $name"
+        return 1
+    fi
+
+    local auth_keys_file="${ssh_dir}/authorized_keys"
+
+    # shellcheck disable=SC2155
+    local tmp_file="$(mktemp)"
+
+    if [ -f "$auth_keys_file" ]; then
+        if ! cp "$auth_keys_file" "$tmp_file"; then
+            delete_file "$tmp_file" || true
+            echo_red "cannot copy $auth_keys_file to $tmp_file for add key for $name"
+            return 1
+        fi
+        echo "" >> "$tmp_file"
+    fi
+
+    {
+        echo "$ssh_key"
+        echo ""
+    } >> "$tmp_file"
+
+    if ! replace_file "$tmp_file" "$auth_keys_file" "Add public key from $ssh_key_file for $name" "true" "$not_ask"; then
+        return 1
+    fi
+
+    return 0
  }

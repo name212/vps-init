@@ -59,3 +59,7 @@ function phase_docker_help() {
   For disable use DISABLE_DOCKER=true
 "
  }
+
+function phase_docker_disable_env() {
+    echo -n "DISABLE_DOCKER"
+}
