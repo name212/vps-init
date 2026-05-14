@@ -5,8 +5,6 @@ set -Eeuo pipefail
 bin_name="$0"
 
 declare -A PHASES_WITH_INDEX=()
-declare -A PHASES_HELP=()
-declare -A PHASES_ACTION=()
 
 function install_runner_and_deps() {
     local not_ask="$1"
@@ -109,7 +107,7 @@ function main() {
         exit 1
     fi
 
-    if [ -z "$only_register" ]]; then
+    if [ -z "$only_register" ]; then
         if ! install_runner_and_deps "$not_ask"; then
             echo_red "Runner and deps not installed!"
             exit 1
@@ -123,3 +121,4 @@ function main() {
 }
 
 main "$@"
+exit $?
