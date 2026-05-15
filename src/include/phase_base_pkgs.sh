@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["base_pkgs"]="01"
 
-
+# shellcheck disable=SC2329
 function phase_base_pkgs_run() {
     echo_green "Install base packages..."
 
@@ -41,6 +41,7 @@ function phase_base_pkgs_run() {
     echo_green "Base packages installed!"
 }
 
+# shellcheck disable=SC2329
 function phase_base_pkgs_help() {
     echo -n "
     Install base packages
@@ -48,6 +49,7 @@ function phase_base_pkgs_help() {
 "
 }
 
+# shellcheck disable=SC2329
 function phase_base_pkgs_disable_env() {
     echo -n ""
 }

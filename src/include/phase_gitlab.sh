@@ -92,6 +92,7 @@ function prepare_gitlab_runner_service() {
     echo_green "Gitlab service reinstalled with new user!"
 }
 
+# shellcheck disable=SC2329
 function install_gitlab_runner() {
     local not_ask="$1"
 
@@ -151,6 +152,7 @@ function install_gitlab_runner() {
     echo_green "gitlab runner installed!"
 }
 
+# shellcheck disable=SC2329
 function register_gitlab_runner() {
     local runner_config="$1"
 
@@ -159,6 +161,7 @@ function register_gitlab_runner() {
         return 1
     fi
 
+    # shellcheck disable=SC2046
     export $(grep -v '^#' "$runner_config" | xargs -d '\n')
 
     local errors=""

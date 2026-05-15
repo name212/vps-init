@@ -5,6 +5,7 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["hostname"]="10"
 
+# shellcheck disable=SC2329
 function phase_hostname_run() {
     if [[ "${DISABLE_HOSTNAME-no}" == "true" ]]; then
         echo_yellow "Skip change sshd!"
@@ -52,6 +53,7 @@ function phase_hostname_run() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function phase_hostname_help() {
     echo "
     Change hostname
@@ -62,6 +64,7 @@ function phase_hostname_help() {
 "
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }

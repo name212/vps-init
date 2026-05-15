@@ -5,6 +5,7 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["docker"]="03"
 
+# shellcheck disable=SC2329
 function phase_docker_run() {
     if [[ "${DISABLE_DOCKER-no}" == "true" ]]; then
         echo_yellow "Skip install docker!"
@@ -53,6 +54,7 @@ EOF
     echo_green "Docker installed!"
 }
 
+# shellcheck disable=SC2329
 function phase_docker_help() {
     echo -n "
     Install docker
@@ -60,6 +62,7 @@ function phase_docker_help() {
 "
  }
 
+# shellcheck disable=SC2329
 function phase_docker_disable_env() {
     echo -n "DISABLE_DOCKER"
 }

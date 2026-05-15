@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["users"]="02"
 
-
+# shellcheck disable=SC2329
 function phase_users_run() {
     if [[ "${DISABLE_USERS-no}" == "true" ]]; then
         echo_yellow "Skip add users!"
@@ -79,6 +79,7 @@ function phase_users_run() {
     done
 }
 
+# shellcheck disable=SC2329
 function phase_users_help() {
     echo -n "
     Add users
@@ -106,6 +107,7 @@ function phase_users_help() {
 "
 }
 
+# shellcheck disable=SC2329
 function phase_users_disable_env() {
     echo -n "DISABLE_USERS"
 }

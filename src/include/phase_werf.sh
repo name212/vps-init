@@ -5,6 +5,7 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["werf"]="98"
 
+# shellcheck disable=SC2329
 function phase_werf_run() {
     if [[ "${DISABLE_WERF-no}" == "true" ]]; then
         echo_yellow "Skip install werf!"
@@ -30,6 +31,7 @@ function phase_werf_run() {
     echo_green "Werf installed!"
 }
 
+# shellcheck disable=SC2329
 function phase_werf_help() {
     echo -n "
     Install Werf
@@ -37,6 +39,7 @@ function phase_werf_help() {
 "
 }
 
+# shellcheck disable=SC2329
 function phase_werf_disable_env() {
     echo -n "DISABLE_WERF"
 }

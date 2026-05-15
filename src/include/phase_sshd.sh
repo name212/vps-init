@@ -5,6 +5,7 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["sshd"]="03"
 
+# shellcheck disable=SC2329
 function sshd_verify_and_restart() {
     local setting="${1,,}"
 
@@ -34,6 +35,7 @@ function sshd_verify_and_restart() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function sshd_apply_setting() {
     local setting="${1}"
     local conf_file="${2}"
@@ -71,6 +73,7 @@ function sshd_apply_setting() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_run() {
     if [[ "${DISABLE_PREPARE_SSHD-no}" == "true" ]]; then
         echo_yellow "prepare sshd!"
@@ -180,6 +183,7 @@ function phase_sshd_run() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_help() {
     echo -n "
     Change sshd port remove pass auth and root login
@@ -190,6 +194,7 @@ function phase_sshd_help() {
 "
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_disable_env() {
     echo -n "DISABLE_PREPARE_SSHD"
 }
