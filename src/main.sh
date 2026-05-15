@@ -8,7 +8,7 @@ function phase_run_func() {
     local phase_func="phase_${phase}_run"
 
     if ! declare -F "$phase_func" > /dev/null; then
-        echo_red -n "Internal error: '$phase_func' func not declared for phase $phase!"
+        echo_red "Internal error: '$phase_func' func not declared for phase $phase!"
         return 1
     fi
 
@@ -70,7 +70,7 @@ function main() {
 
     local -a phases=()
     for p in "${phases_sorted[@]}"; do
-        local phase_to_add="${p#*:}}"
+        local phase_to_add="${p#*:}"
         local func_err=""
         if ! func_err="$(phase_run_func "$phase_to_add")"; then
             echo_red "$func_err"

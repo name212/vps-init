@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 function echo_red(){
-    echo_green -e "\033[1;31m$1\033[0m"
+    echo -e "\033[1;31m$1\033[0m"
 }
 
 function echo_green (){

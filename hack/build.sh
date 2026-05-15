@@ -2,7 +2,13 @@
 
 destination="init.sh"
 
-shopt -s extglob
+function remove_begin_spaces() {
+    local content="$1"
+    while [[ "$content" == [[:space:]]* ]]; do
+        content="${content#[[:space:]]}"
+    done
+    echo "$content"
+}
 
 function write_file() {
     local fl="$1"
@@ -15,7 +21,7 @@ function write_file() {
 
     echo "Write $fl to $dest"
     content="$(sed 's/#!\/usr\/bin\/env bash//g' "$fl" | sed 's/set -Eeuo pipefail//g')"
-    content="${content##*([[:space:]])}"
+    content="$(remove_begin_spaces "$content")"
     {
         echo "# Start $fl"
         echo ""

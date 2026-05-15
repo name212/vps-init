@@ -65,6 +65,6 @@ function phase_hostname_help() {
 }
 
 # shellcheck disable=SC2329
-function phase_sshd_disable_env() {
+function phase_hostname_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }

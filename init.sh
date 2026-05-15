@@ -9,7 +9,7 @@ declare -A PHASES_WITH_INDEX=()
 # Start src/include/01-base_echo.sh
 
 function echo_red(){
-    echo_green -e "\033[1;31m$1\033[0m"
+    echo -e "\033[1;31m$1\033[0m"
 }
 
 function echo_green (){
@@ -127,13 +127,13 @@ function extract_argument() {
     fi
 
     if ! declare -F "$validator" > /dev/null; then
-        echo_red -n "Internal error: '$validator' func not declared!"
+        echo_red "Internal error: '$validator' func not declared!"
         return 1
     fi
 
     local prepared
     if ! prepared="$($validator "$val" "$arg_passed")"; then
-        echo_red -n "Incorrect: $prepared"
+        echo_red "Incorrect: $prepared"
         return 1
     fi
 
@@ -709,7 +709,7 @@ function phase_users_disable_env() {
 PHASES_WITH_INDEX["aliases"]="99"
 
 # shellcheck disable=SC2329
-function aliases_run() {
+function phase_aliases_run() {
     if [[ "${DISABLE_ALIASES-no}" == "true" ]]; then
         echo_yellow "Skip add aliases!"
         return 0
@@ -856,7 +856,7 @@ function phase_hostname_help() {
 }
 
 # shellcheck disable=SC2329
-function phase_sshd_disable_env() {
+function phase_hostname_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }
 
@@ -1411,7 +1411,7 @@ function phase_run_func() {
     local phase_func="phase_${phase}_run"
 
     if ! declare -F "$phase_func" > /dev/null; then
-        echo_red -n "Internal error: '$phase_func' func not declared for phase $phase!"
+        echo_red "Internal error: '$phase_func' func not declared for phase $phase!"
         return 1
     fi
 
@@ -1473,7 +1473,7 @@ function main() {
 
     local -a phases=()
     for p in "${phases_sorted[@]}"; do
-        local phase_to_add="${p#*:}}"
+        local phase_to_add="${p#*:}"
         local func_err=""
         if ! func_err="$(phase_run_func "$phase_to_add")"; then
             echo_red "$func_err"
