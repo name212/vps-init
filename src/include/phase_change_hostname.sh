@@ -7,7 +7,7 @@ PHASES_WITH_INDEX["hostname"]="10"
 
 function phase_hostname_run() {
     if [[ "${DISABLE_HOSTNAME-no}" == "true" ]]; then
-        echo_yellow "prepare sshd!"
+        echo_yellow "Skip change sshd!"
         return 0
     fi
 
@@ -53,13 +53,12 @@ function phase_hostname_run() {
 }
 
 function phase_hostname_help() {
-    echo "Change hostname
-  Options:
-    $(not_ask_arg_help)
-    --hostname hostaname
-       Set new hostname.
-       Can be provided with env SET_HOSTNAME
-  Can be disabled with env DISABLE_HOSTNAME=true
+    echo "
+    Change hostname
+    Options:
+      --hostname hostaname
+        Set new hostname.
+        Can be provided with env SET_HOSTNAME
 "
 }
 

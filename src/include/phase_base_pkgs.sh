@@ -42,8 +42,9 @@ function phase_base_pkgs_run() {
 }
 
 function phase_base_pkgs_help() {
-    echo "Install base packages
-  No options.
+    echo -n "
+    Install base packages
+    No options.
 "
 }
 

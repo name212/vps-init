@@ -181,13 +181,12 @@ function phase_sshd_run() {
 }
 
 function phase_sshd_help() {
-    echo "Change sshd port remove pass auth and root login
-  Options:
-    $(not_ask_arg_help)
-    --sshd-port PORT
-       Replace to new port.
-       Can be provided with env SSHD_PORT
-  Can be disabled with env DISABLE_PREPARE_SSHD
+    echo -n "
+    Change sshd port remove pass auth and root login
+    Options:
+      --sshd-port PORT
+         Replace to new port.
+         Can be provided with env SSHD_PORT
 "
 }
 

@@ -8,7 +8,7 @@ PHASES_WITH_INDEX["users"]="02"
 
 function phase_users_run() {
     if [[ "${DISABLE_USERS-no}" == "true" ]]; then
-        echo_yellow "Skip install werf!"
+        echo_yellow "Skip add users!"
         return 0
     fi
 
@@ -76,25 +76,24 @@ function phase_users_run() {
         fi
 
         echo_green "User $username added!"
-
     done
 }
 
 function phase_users_help() {
-    echo "Add users
-  Options:
-    $(not_ask_arg_help)
-    --add-user -- --name 'name' [-- --sudo | -- --password 'PASSWORD' | -- --remove-password -- | --ssh-pub-key PATH]
-       Provide user settings.
-       Can be multiple time.
-       Script parse every own sub arguments while get -- argument
-       Sub args:
-        --name     - name of user. required
-        --sudo     - if passed add user to sudo group and sudoers. Default no add to sudo.
-        --password - if passed use PASSWORD as password. If not passed 
-                     and not use --remove-password ask run passwd as not interactive
-        --remove-password - if passed remove password for user.
-        --ssh-pub-key - path to ssh public key to add for user
+    echo -n "
+    Add users
+    Options:
+      --add-user -- --name 'name' [-- --sudo | -- --password 'PASSWORD' | -- --remove-password -- | --ssh-pub-key PATH]
+        Provide user settings.
+        Can be multiple time.
+        Script parse every own sub arguments while get -- argument
+        Sub args:
+          --name     - name of user. required
+          --sudo     - if passed add user to sudo group and sudoers. Default no add to sudo.
+          --password - if passed use PASSWORD as password. If not passed 
+                       and not use --remove-password ask run passwd as not interactive
+          --remove-password - if passed remove password for user.
+          --ssh-pub-key - path to ssh public key to add for user
     You can use next envs for add users.
     every env should has prefix ADD_USER_\${INDEX}_ when INDEX index for user started from 0 
     Script can try to get env ADD_USER_\${INDEX}_NAME and if next index env is not found stop adding

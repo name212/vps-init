@@ -17,9 +17,9 @@ EOF
 }
 
 function aliases_help() {
-    echo "Add aditional aliases
-  No Options.
-  For disable use DISABLE_ALIASES=true
+    echo -n "
+    Add aditional aliases
+    No Options.
 "
 }
 

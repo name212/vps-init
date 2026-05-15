@@ -31,10 +31,9 @@ function phase_werf_run() {
 }
 
 function phase_werf_help() {
-    echo "Install Werf
-  Options:
-    $(not_ask_arg_help)
-  For disable use DISABLE_WERF=true
+    echo -n "
+    Install Werf
+      No options.
 "
 }
 

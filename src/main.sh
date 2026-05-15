@@ -2,122 +2,157 @@
 
 set -Eeuo pipefail
 
-bin_name="$0"
+function phase_run_func() {
+    local phase="$1"
 
-declare -A PHASES_WITH_INDEX=()
+    local phase_func="phase_${phase}_run"
 
-function install_runner_and_deps() {
-    local not_ask="$1"
-
-    echo "Install runner and deps..."
-
-    if ! install_base_packages; then 
-        return 1
-    fi    
-    
-    if ! install_docker; then 
+    if ! declare -F "$phase_func" > /dev/null; then
+        echo_red -n "Internal error: '$phase_func' func not declared for phase $phase!"
         return 1
     fi
 
-    if ! install_gitlab_runner "$not_ask"; then 
-        return 1
-    fi
-
-    if ! install_werf "$not_ask"; then 
-        return 1
-    fi
-
-    if ! install_flint "$not_ask"; then 
-        return 1
-    fi
-
-    if ! add_aliases ; then 
-        echo_red "Aliases not installed!"
-        return 1
-    fi
-
-    echo "Runner and deps installed!"
+    echo -n "$phase_func"
+    return 0
 }
 
+# shellcheck disable=SC2120
 function usage() {
-     printf "
-Usage: %s [optional-args...] -c|config PATH
-Install gitlab runner and/or register gitlab runner
-
-    -c|--config 'path to runner register config'
-      Path to runner config. Required.
-
-      Config should be .env format with next variables:
-        GITLAB_RUNNER_URL   - url for runner
-        GITLAB_RUNNER_TOKEN - runner token
-        GITLAB_RUNNER_DESC  - runner description/name
-        GITLAB_RUNNER_TAGS  - comma separated string with runner tags
-
-
-    -o|--only-register
-      If passed will not attempt to install runner and deps only register runner.
-
-
-    -f|--not-ask
+     echo "
+Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
+  Init server.
+  Global parameters
+    --not-ask
       If passed will not ask user about actions.
-" "$bin_name"
+      Env NOT_ASK=true for set.
+
+    --config 'PATH'
+      Path to config with envs to settings.
+      Should be .env format
+      Env CONFIG_PATH 
+    
+    -h|--help
+      Show this message.
+  
+  If passed --phase only run only one phase.
+  Otherwise, run all phases. For disable some phase 
+  you can use disable env variable (see phase params).  
+  
+  Phases for run in order:
+"
+
+    for p in "$@"; do
+        local help_fun="phase_${p}_help"
+        if ! declare -F "$help_fun" > /dev/null; then
+            echo_red "Help function not found for $p"
+            exit 1
+        fi
+        echo ""
+        echo "  Phase $p"
+        "$help_fun"
+        echo "    $(disable_help "$p")"
+    done
 }
 
 function main() {
-    local only_register=""
-    local not_ask="false"
-    local runner_config=""
+    local -a not_ordered_phases=()
 
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -c|--config)
-                runner_config="$2"
-                shift
-                shift
-                ;;
-            -f|--not-ask)
-                not_ask="$CONST_NOT_ASK_VAL"
-                shift # past argument
-                ;;
-            -o|--only-register)
-                only_register="true"
-                shift # past argument
-                ;;
-            -h|--help)
-                usage
-                exit 0
-            ;;
-        *)
-            usage
-            echo_red "Illegal option $1"
-            exit 1
-            ;;
-        esac
-    done
-
-    if [ -z "$runner_config" ]; then
-        usage
-        echo_red "Runner config did not pass!"
-        exit 1
-    fi
-
-    if [ ! -f "$runner_config" ]; then
-        usage
-        echo_red "Runner config $runner_config is not file!"
-        exit 1
-    fi
-
-    if [ -z "$only_register" ]; then
-        if ! install_runner_and_deps "$not_ask"; then
-            echo_red "Runner and deps not installed!"
+    for p in "${!PHASES_WITH_INDEX[@]}"; do
+        if [ -z "$p" ]; then
+            echo_red "Got empty phase name!"
             exit 1
         fi
+        not_ordered_phases+=("${PHASES_WITH_INDEX[$p]}:${p}")
+    done
+
+    local -a phases_sorted=()
+    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort)
+
+    local -a phases=()
+    for p in "${phases_sorted[@]}"; do
+        local phase_to_add="${p#*:}}"
+        local func_err=""
+        if ! func_err="$(phase_run_func "$phase_to_add")"; then
+            echo_red "$func_err"
+            exit 1
+        fi 
+        phases+=("$phase_to_add")
+    done
+
+    local -a help_flags=("-h" "--help")
+
+    for ha in "${help_flags[@]}"; do 
+        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+            usage "${phases[@]}"
+            exit 0
+        fi
+    done
+
+    local phase_to_run=""
+
+    if [[ "$1" == "phase" ]]; then
+        phase_to_run="$2"
+        if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
+            usage "${phases[@]}"
+            echo_red "Not found phase $phase_to_run"
+            exit 1
+        fi
+
+        shift
+        shift
     fi
 
-    if ! register_gitlab_runner "$runner_config"; then
-        echo_red "Runner not registered!"
+    local config=""
+
+    if ! config="$(arg_flag_is_set "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+        echo_red "Passed config is incorrect: $config"
         exit 1
     fi
+
+    if [ -n "$config" ]; then
+        echo_green "Load config $config"
+        # shellcheck disable=SC1090
+        set -a && source "$config" && set +a
+    fi
+
+    local -a phases_to_run=()
+
+    if [ -z "$phase_to_run" ]; then
+        for p in "${phases[@]}"; do
+            if phase_is_not_disabled "$p"; then
+                phases_to_run+=("$p")
+            else
+                echo_yellow "Phase $p is skipped!"
+            fi
+        done
+    else
+        phases_to_run=("$phase_to_run")
+    fi
+
+    if [[ "${#phases_to_run[@]}" == "0" ]]; then
+        echo_red "No one phase to run found!"
+        exit 1
+    fi
+
+    for p in "${phases[@]}"; do
+        local phase_run=""
+
+        if ! phase_run="$(phase_run_func "$phase_to_add")"; then
+            echo_red "$phase_run"
+            exit 1
+        fi 
+
+        echo_green "Run phase ${p}..."
+
+        if ! "$phase_run" "$@"; then
+            echo_red "Phase $p failed! Exit"
+            exit 1
+        fi
+        
+        echo_green "Phase ${p} successed!"
+    done
+
+    return 0
 }
 
 main "$@"

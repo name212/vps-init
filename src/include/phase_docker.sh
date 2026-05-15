@@ -54,9 +54,9 @@ EOF
 }
 
 function phase_docker_help() {
-    echo "Install docker
-  No options. 
-  For disable use DISABLE_DOCKER=true
+    echo -n "
+    Install docker
+    No options. 
 "
  }
 
