@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
 function download_url(){
     local url="$1"
     local dest="$2"
@@ -9,6 +10,7 @@ function download_url(){
     curl -fsSL "$url" -o "$dest"
 }
 
+# shellcheck disable=SC2329
 function download_script_and_run() {
     local url="$1"
     local not_ask="$2"

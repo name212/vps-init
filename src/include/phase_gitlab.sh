@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
 function prepare_gitlab_runner_service() {
     local service_name="$1"
     local username="$2"

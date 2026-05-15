@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
 function install_packages() {
     echo_green "Install apt packages $* ..."
     if ! apt update; then 
@@ -17,6 +18,7 @@ function install_packages() {
     echo_green "Packages $* installed!"
 }
 
+# shellcheck disable=SC2329
 function check_packages_installed() {
     local all="true"
     while [[ $# -gt 0 ]]; do

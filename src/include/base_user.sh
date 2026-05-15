@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
 function run_passwd_for_user() {
     local name="$1"
     local password="${2-}"
@@ -27,6 +28,7 @@ function run_passwd_for_user() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function add_user() {
     local name="$1"
     local remove_password="${2-false}"
@@ -64,6 +66,7 @@ function add_user() {
     echo_green "User ${name} added or updated!"
 }
 
+# shellcheck disable=SC2329
 function add_user_to_group() {
     local user_name="$1"
     local group_name="$2"
@@ -83,6 +86,7 @@ function add_user_to_group() {
     echo_green "User $user_name added to group ${group_name}!"
 }
 
+# shellcheck disable=SC2329
 function add_user_to_sudoers() {
     local name="$1"
     local not_ask="${2-no}"
@@ -136,7 +140,8 @@ function add_user_to_sudoers() {
     return 0
  }
 
- function add_pubkey_for_user() { 
+# shellcheck disable=SC2329
+function add_pubkey_for_user() { 
     local name="$1"
     local ssh_key_file="$2"
     local not_ask="${3-no}"
@@ -202,4 +207,4 @@ function add_user_to_sudoers() {
     fi
 
     return 0
- }
+}

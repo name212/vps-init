@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-
+# shellcheck disable=SC2329
 function delete_file() {
     if ! rm "$1"; then
         echo_red "$1 not deleted!"
@@ -12,6 +12,7 @@ function delete_file() {
     echo_green "$1 deleted"
 }
 
+# shellcheck disable=SC2329
 function replace_file() {
     local src="$1"
     local dest="$2"

@@ -129,11 +129,13 @@ function arg_flag_is_set() {
     return 1
 }
 
+# shellcheck disable=SC2329
 function parse_not_ask() {
     arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"
     return $?
 }
 
+# shellcheck disable=SC2329
 function validate_arg_not_empty_file() {
     local val="$1"
     local passed="$2"

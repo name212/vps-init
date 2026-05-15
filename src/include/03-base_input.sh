@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
 function ask_user() {
     local prompt="$1"
     local not_ask="${2-no}"
