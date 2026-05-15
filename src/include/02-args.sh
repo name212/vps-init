@@ -153,18 +153,18 @@ function validate_arg_not_empty_file() {
     local real=""
 
     if ! real="$(realpath "$val")"; then
-         echo "cannot extract real path for $val"
-        return 0
+        echo "cannot extract real path for $val"
+        return 1
     fi
 
     if [ ! -f "$real" ]; then
         echo "$val is not file!"
-        return 0
+        return 1
     fi
 
     if [ ! -s "$real" ]; then
         echo "$val is empty file!"
-        return 0
+        return 1
     fi
 
     echo -n "$real"

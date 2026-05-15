@@ -91,7 +91,7 @@ function main() {
     local phase_to_run=""
 
     if [[ "$1" == "phase" ]]; then
-        phase_to_run="$2"
+        phase_to_run="${2-}"
         if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
             usage "${phases[@]}"
             echo_red "Not found phase $phase_to_run"
@@ -102,9 +102,12 @@ function main() {
         shift
     fi
 
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")" || true
+
     local config=""
 
-    if ! config="$(arg_flag_is_set "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
         echo_red "Passed config is incorrect: $config"
         exit 1
     fi
@@ -131,6 +134,12 @@ function main() {
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then
         echo_red "No one phase to run found!"
+        exit 1
+    fi
+
+    echo_green "Have next phases for run: ${phases_to_run[*]}"
+    if ! ask_user "Start init?" "$not_ask"; then
+        echo_red "Disallow start!"
         exit 1
     fi
 
