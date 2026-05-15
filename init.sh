@@ -6,36 +6,203 @@ bin_name="$0"
 
 declare -A PHASES_WITH_INDEX=()
 
-# Start src/include/01-base_input.sh
+# Start src/include/01-base_echo.sh
 
-export CONST_NOT_ASK_VAL="true"
-
-function not_ask_arg_help() {
-    echo "
--f|--force - not ask user for approve operation
-    Also you can use NO_ASK=true env for set
-"
+function echo_red(){
+    echo_green -e "\033[1;31m$1\033[0m"
 }
 
-function parse_not_ask() {
-    local not_ask=""
-    
-    for arg in "$@"; do
-        if [[ "$arg" == "--force" ]]; then
-            echo -n "$CONST_NOT_ASK_VAL"
-            return 0
-        fi
-    done
+function echo_green (){
+    echo -e "\033[1;32m$1\033[0m"
+}
 
-    echo -n "${NO_ASK-}"
+function echo_yellow (){
+    echo -e "\033[1;33m$1\033[0m"
+}
+
+# End src/include/01-base_echo.sh
+
+# Start src/include/02-args.sh
+
+export CONST_FLAG_SET="true"
+export CONST_NO_VALIDATE="no_validate"
+export CONST_IS_FLAG="true"
+export CONST_NOT_FLAG="false"
+export CONST_ARG_NOT_PASSED="false"
+export CONST_ARG_PASSED="true"
+
+function disable_env() {
+    local phase="$1"
+
+    local env_name=""
+
+    local env_fun="phase_${phase}_disable_env"
+    if declare -F "$env_fun" > /dev/null; then
+        env_name="$("$env_fun")"
+    fi
+
+    echo -n "$env_name"
+}
+
+function phase_is_not_disabled() {
+    local phase="$1"
+
+     # shellcheck disable=SC2155
+    local env_name="$(disable_env "$phase")"
+
+    if [ -z "$env_name" ]; then
+        return 0
+    fi
+
+    if [ -v "$env_name" ]; then
+        if [[ "${!env_name:-}" == "$CONST_FLAG_SET" ]]; then
+            return 1
+        fi
+    fi
+
     return 0
 }
 
+function disable_help() {
+    local phase="$1"
+
+    # shellcheck disable=SC2155
+    local env_name="$(disable_env "$phase")"
+
+    if [ -n "$env_name" ]; then
+        echo "Can be desabled with set env ${env_name}=true"
+        return 0
+    fi
+
+    echo "This phase is required and not be disabled!"
+}
+
+function extract_argument() {
+    local arg_name="$1"
+    local env_name="$2"
+    local is_flag="$3"
+    local validator="$4"
+
+    shift
+    shift
+    shift
+    shift
+
+    local val=""
+
+    local arg_passed="$CONST_ARG_NOT_PASSED"
+
+    local extract_and_break=""
+    for arg in "$@"; do
+        if [[ "$extract_and_break" == "true" ]]; then
+            val="$arg"
+            break
+        fi
+
+        if [[ "$arg" == "$arg_name" ]]; then
+            arg_passed="$CONST_ARG_PASSED"
+            if [[ "$is_flag" == "$CONST_IS_FLAG" ]]; then
+                val="$CONST_FLAG_SET"
+            else
+                extract_and_break="true"
+            fi
+        fi
+    done
+
+    if [ -n "$env_name" ]; then
+        if [ -v "$env_name" ]; then
+            val="${!env_name:-}"
+            arg_passed="$CONST_ARG_PASSED"
+        fi
+    fi
+
+    if [[ "$is_flag" == "$CONST_IS_FLAG" ]]; then
+        echo -n "$val"
+        return 0
+    fi
+
+    if [[ "$validator" == "" || "$validator" == "$CONST_NO_VALIDATE" ]]; then
+        echo -n "$val"
+        return 0
+    fi
+
+    if ! declare -F "$validator" > /dev/null; then
+        echo_red -n "Internal error: '$validator' func not declared!"
+        return 1
+    fi
+
+    local prepared
+    if ! prepared="$($validator "$val" "$arg_passed")"; then
+        echo_red -n "Incorrect: $prepared"
+        return 1
+    fi
+
+    echo -n "$prepared"
+    return 0
+}
+
+function arg_flag_is_set() {
+    # shellcheck disable=SC2155
+    local res="$(extract_argument "$@")"
+    if [[ "$res" == "$CONST_FLAG_SET" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function parse_not_ask() {
+    arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_not_empty_file() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo -n ""
+        return 0
+    fi
+
+    if [ -z "$val" ]; then
+        echo "Empty file path"
+        return 1 
+    fi
+
+    local real=""
+
+    if ! real="$(realpath "$val")"; then
+         echo "cannot extract real path for $val"
+        return 0
+    fi
+
+    if [ ! -f "$real" ]; then
+        echo "$val is not file!"
+        return 0
+    fi
+
+    if [ ! -s "$real" ]; then
+        echo "$val is empty file!"
+        return 0
+    fi
+
+    echo -n "$real"
+    return 0
+}
+
+# End src/include/02-args.sh
+
+# Start src/include/03-base_input.sh
+
+# shellcheck disable=SC2329
 function ask_user() {
     local prompt="$1"
     local not_ask="${2-no}"
 
-    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
+    if [[ "$not_ask" == "$CONST_FLAG_SET" ]]; then
         return 0
     fi
 
@@ -50,22 +217,11 @@ function ask_user() {
     return 1
 }
 
-function echo_red(){
-    echo_green -e "\033[1;31m$1\033[0m"
-}
+# End src/include/03-base_input.sh
 
-function echo_green (){
-    echo -e "\033[1;32m$1\033[0m"
-}
+# Start src/include/04-base_fs.sh
 
-function echo_yellow (){
-    echo -e "\033[1;33m$1\033[0m"
-}
-
-# End src/include/01-base_input.sh
-
-# Start src/include/02-base_fs.sh
-
+# shellcheck disable=SC2329
 function delete_file() {
     if ! rm "$1"; then
         echo_red "$1 not deleted!"
@@ -75,6 +231,7 @@ function delete_file() {
     echo_green "$1 deleted"
 }
 
+# shellcheck disable=SC2329
 function replace_file() {
     local src="$1"
     local dest="$2"
@@ -116,10 +273,11 @@ function replace_file() {
     return 0
 }
 
-# End src/include/02-base_fs.sh
+# End src/include/04-base_fs.sh
 
 # Start src/include/base_download.sh
 
+# shellcheck disable=SC2329
 function download_url(){
     local url="$1"
     local dest="$2"
@@ -127,6 +285,7 @@ function download_url(){
     curl -fsSL "$url" -o "$dest"
 }
 
+# shellcheck disable=SC2329
 function download_script_and_run() {
     local url="$1"
     local not_ask="$2"
@@ -182,6 +341,7 @@ function download_script_and_run() {
 
 # Start src/include/base_pkg.sh
 
+# shellcheck disable=SC2329
 function install_packages() {
     echo_green "Install apt packages $* ..."
     if ! apt update; then 
@@ -197,6 +357,7 @@ function install_packages() {
     echo_green "Packages $* installed!"
 }
 
+# shellcheck disable=SC2329
 function check_packages_installed() {
     local all="true"
     while [[ $# -gt 0 ]]; do
@@ -219,6 +380,7 @@ function check_packages_installed() {
 
 # Start src/include/base_user.sh
 
+# shellcheck disable=SC2329
 function run_passwd_for_user() {
     local name="$1"
     local password="${2-}"
@@ -244,6 +406,7 @@ function run_passwd_for_user() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function add_user() {
     local name="$1"
     local remove_password="${2-false}"
@@ -281,6 +444,7 @@ function add_user() {
     echo_green "User ${name} added or updated!"
 }
 
+# shellcheck disable=SC2329
 function add_user_to_group() {
     local user_name="$1"
     local group_name="$2"
@@ -300,6 +464,7 @@ function add_user_to_group() {
     echo_green "User $user_name added to group ${group_name}!"
 }
 
+# shellcheck disable=SC2329
 function add_user_to_sudoers() {
     local name="$1"
     local not_ask="${2-no}"
@@ -353,7 +518,8 @@ function add_user_to_sudoers() {
     return 0
  }
 
- function add_pubkey_for_user() { 
+# shellcheck disable=SC2329
+function add_pubkey_for_user() { 
     local name="$1"
     local ssh_key_file="$2"
     local not_ask="${3-no}"
@@ -419,7 +585,7 @@ function add_user_to_sudoers() {
     fi
 
     return 0
- }
+}
 
 # End src/include/base_user.sh
 
@@ -428,10 +594,10 @@ function add_user_to_sudoers() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["users"]="02"
 
-
+# shellcheck disable=SC2329
 function phase_users_run() {
     if [[ "${DISABLE_USERS-no}" == "true" ]]; then
-        echo_yellow "Skip install werf!"
+        echo_yellow "Skip add users!"
         return 0
     fi
 
@@ -499,25 +665,25 @@ function phase_users_run() {
         fi
 
         echo_green "User $username added!"
-
     done
 }
 
+# shellcheck disable=SC2329
 function phase_users_help() {
-    echo "Add users
-  Options:
-    $(not_ask_arg_help)
-    --add-user -- --name 'name' [-- --sudo | -- --password 'PASSWORD' | -- --remove-password -- | --ssh-pub-key PATH]
-       Provide user settings.
-       Can be multiple time.
-       Script parse every own sub arguments while get -- argument
-       Sub args:
-        --name     - name of user. required
-        --sudo     - if passed add user to sudo group and sudoers. Default no add to sudo.
-        --password - if passed use PASSWORD as password. If not passed 
-                     and not use --remove-password ask run passwd as not interactive
-        --remove-password - if passed remove password for user.
-        --ssh-pub-key - path to ssh public key to add for user
+    echo -n "
+    Add users
+    Options:
+      --add-user -- --name 'name' [-- --sudo | -- --password 'PASSWORD' | -- --remove-password -- | --ssh-pub-key PATH]
+        Provide user settings.
+        Can be multiple time.
+        Script parse every own sub arguments while get -- argument
+        Sub args:
+          --name     - name of user. required
+          --sudo     - if passed add user to sudo group and sudoers. Default no add to sudo.
+          --password - if passed use PASSWORD as password. If not passed 
+                       and not use --remove-password ask run passwd as not interactive
+          --remove-password - if passed remove password for user.
+          --ssh-pub-key - path to ssh public key to add for user
     You can use next envs for add users.
     every env should has prefix ADD_USER_\${INDEX}_ when INDEX index for user started from 0 
     Script can try to get env ADD_USER_\${INDEX}_NAME and if next index env is not found stop adding
@@ -530,6 +696,7 @@ function phase_users_help() {
 "
 }
 
+# shellcheck disable=SC2329
 function phase_users_disable_env() {
     echo -n "DISABLE_USERS"
 }
@@ -541,6 +708,7 @@ function phase_users_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["aliases"]="99"
 
+# shellcheck disable=SC2329
 function aliases_run() {
     if [[ "${DISABLE_ALIASES-no}" == "true" ]]; then
         echo_yellow "Skip add aliases!"
@@ -552,13 +720,15 @@ alias h='history | grep -i'
 EOF
 }
 
-function aliases_help() {
-    echo "Add aditional aliases
-  No Options.
-  For disable use DISABLE_ALIASES=true
+# shellcheck disable=SC2329
+function phase_aliases_help() {
+    echo -n "
+    Add aditional aliases
+    No Options.
 "
 }
 
+# shellcheck disable=SC2329
 function phase_aliases_disable_env() {
     echo -n "DISABLE_ALIASES"
 }
@@ -570,7 +740,7 @@ function phase_aliases_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["base_pkgs"]="01"
 
-
+# shellcheck disable=SC2329
 function phase_base_pkgs_run() {
     echo_green "Install base packages..."
 
@@ -606,12 +776,15 @@ function phase_base_pkgs_run() {
     echo_green "Base packages installed!"
 }
 
+# shellcheck disable=SC2329
 function phase_base_pkgs_help() {
-    echo "Install base packages
-  No options.
+    echo -n "
+    Install base packages
+    No options.
 "
 }
 
+# shellcheck disable=SC2329
 function phase_base_pkgs_disable_env() {
     echo -n ""
 }
@@ -623,9 +796,10 @@ function phase_base_pkgs_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["hostname"]="10"
 
+# shellcheck disable=SC2329
 function phase_hostname_run() {
     if [[ "${DISABLE_HOSTNAME-no}" == "true" ]]; then
-        echo_yellow "prepare sshd!"
+        echo_yellow "Skip change sshd!"
         return 0
     fi
 
@@ -670,17 +844,18 @@ function phase_hostname_run() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function phase_hostname_help() {
-    echo "Change hostname
-  Options:
-    $(not_ask_arg_help)
-    --hostname hostaname
-       Set new hostname.
-       Can be provided with env SET_HOSTNAME
-  Can be disabled with env DISABLE_HOSTNAME=true
+    echo "
+    Change hostname
+    Options:
+      --hostname hostaname
+        Set new hostname.
+        Can be provided with env SET_HOSTNAME
 "
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }
@@ -692,6 +867,7 @@ function phase_sshd_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["docker"]="03"
 
+# shellcheck disable=SC2329
 function phase_docker_run() {
     if [[ "${DISABLE_DOCKER-no}" == "true" ]]; then
         echo_yellow "Skip install docker!"
@@ -740,13 +916,15 @@ EOF
     echo_green "Docker installed!"
 }
 
+# shellcheck disable=SC2329
 function phase_docker_help() {
-    echo "Install docker
-  No options. 
-  For disable use DISABLE_DOCKER=true
+    echo -n "
+    Install docker
+    No options. 
 "
  }
 
+# shellcheck disable=SC2329
 function phase_docker_disable_env() {
     echo -n "DISABLE_DOCKER"
 }
@@ -755,6 +933,7 @@ function phase_docker_disable_env() {
 
 # Start src/include/phase_gitlab.sh
 
+# shellcheck disable=SC2329
 function prepare_gitlab_runner_service() {
     local service_name="$1"
     local username="$2"
@@ -845,6 +1024,7 @@ function prepare_gitlab_runner_service() {
     echo_green "Gitlab service reinstalled with new user!"
 }
 
+# shellcheck disable=SC2329
 function install_gitlab_runner() {
     local not_ask="$1"
 
@@ -904,6 +1084,7 @@ function install_gitlab_runner() {
     echo_green "gitlab runner installed!"
 }
 
+# shellcheck disable=SC2329
 function register_gitlab_runner() {
     local runner_config="$1"
 
@@ -912,6 +1093,7 @@ function register_gitlab_runner() {
         return 1
     fi
 
+    # shellcheck disable=SC2046
     export $(grep -v '^#' "$runner_config" | xargs -d '\n')
 
     local errors=""
@@ -979,6 +1161,7 @@ function register_gitlab_runner() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["sshd"]="03"
 
+# shellcheck disable=SC2329
 function sshd_verify_and_restart() {
     local setting="${1,,}"
 
@@ -1008,6 +1191,7 @@ function sshd_verify_and_restart() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function sshd_apply_setting() {
     local setting="${1}"
     local conf_file="${2}"
@@ -1045,6 +1229,7 @@ function sshd_apply_setting() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_run() {
     if [[ "${DISABLE_PREPARE_SSHD-no}" == "true" ]]; then
         echo_yellow "prepare sshd!"
@@ -1154,17 +1339,18 @@ function phase_sshd_run() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_help() {
-    echo "Change sshd port remove pass auth and root login
-  Options:
-    $(not_ask_arg_help)
-    --sshd-port PORT
-       Replace to new port.
-       Can be provided with env SSHD_PORT
-  Can be disabled with env DISABLE_PREPARE_SSHD
+    echo -n "
+    Change sshd port remove pass auth and root login
+    Options:
+      --sshd-port PORT
+         Replace to new port.
+         Can be provided with env SSHD_PORT
 "
 }
 
+# shellcheck disable=SC2329
 function phase_sshd_disable_env() {
     echo -n "DISABLE_PREPARE_SSHD"
 }
@@ -1176,6 +1362,7 @@ function phase_sshd_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["werf"]="98"
 
+# shellcheck disable=SC2329
 function phase_werf_run() {
     if [[ "${DISABLE_WERF-no}" == "true" ]]; then
         echo_yellow "Skip install werf!"
@@ -1201,14 +1388,15 @@ function phase_werf_run() {
     echo_green "Werf installed!"
 }
 
+# shellcheck disable=SC2329
 function phase_werf_help() {
-    echo "Install Werf
-  Options:
-    $(not_ask_arg_help)
-  For disable use DISABLE_WERF=true
+    echo -n "
+    Install Werf
+      No options.
 "
 }
 
+# shellcheck disable=SC2329
 function phase_werf_disable_env() {
     echo -n "DISABLE_WERF"
 }
@@ -1217,122 +1405,157 @@ function phase_werf_disable_env() {
 
 # Start src/main.sh
 
-bin_name="$0"
+function phase_run_func() {
+    local phase="$1"
 
-declare -A PHASES_WITH_INDEX=()
+    local phase_func="phase_${phase}_run"
 
-function install_runner_and_deps() {
-    local not_ask="$1"
-
-    echo "Install runner and deps..."
-
-    if ! install_base_packages; then 
-        return 1
-    fi    
-    
-    if ! install_docker; then 
+    if ! declare -F "$phase_func" > /dev/null; then
+        echo_red -n "Internal error: '$phase_func' func not declared for phase $phase!"
         return 1
     fi
 
-    if ! install_gitlab_runner "$not_ask"; then 
-        return 1
-    fi
-
-    if ! install_werf "$not_ask"; then 
-        return 1
-    fi
-
-    if ! install_flint "$not_ask"; then 
-        return 1
-    fi
-
-    if ! add_aliases ; then 
-        echo_red "Aliases not installed!"
-        return 1
-    fi
-
-    echo "Runner and deps installed!"
+    echo -n "$phase_func"
+    return 0
 }
 
+# shellcheck disable=SC2120
 function usage() {
-     printf "
-Usage: %s [optional-args...] -c|config PATH
-Install gitlab runner and/or register gitlab runner
-
-    -c|--config 'path to runner register config'
-      Path to runner config. Required.
-
-      Config should be .env format with next variables:
-        GITLAB_RUNNER_URL   - url for runner
-        GITLAB_RUNNER_TOKEN - runner token
-        GITLAB_RUNNER_DESC  - runner description/name
-        GITLAB_RUNNER_TAGS  - comma separated string with runner tags
-
-
-    -o|--only-register
-      If passed will not attempt to install runner and deps only register runner.
-
-
-    -f|--not-ask
+     echo "
+Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
+  Init server.
+  Global parameters
+    --not-ask
       If passed will not ask user about actions.
-" "$bin_name"
+      Env NOT_ASK=true for set.
+
+    --config 'PATH'
+      Path to config with envs to settings.
+      Should be .env format
+      Env CONFIG_PATH 
+    
+    -h|--help
+      Show this message.
+  
+  If passed --phase only run only one phase.
+  Otherwise, run all phases. For disable some phase 
+  you can use disable env variable (see phase params).  
+  
+  Phases for run in order:
+"
+
+    for p in "$@"; do
+        local help_fun="phase_${p}_help"
+        if ! declare -F "$help_fun" > /dev/null; then
+            echo_red "Help function not found for $p"
+            exit 1
+        fi
+        echo ""
+        echo "  Phase $p"
+        "$help_fun"
+        echo "    $(disable_help "$p")"
+    done
 }
 
 function main() {
-    local only_register=""
-    local not_ask="false"
-    local runner_config=""
+    local -a not_ordered_phases=()
 
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -c|--config)
-                runner_config="$2"
-                shift
-                shift
-                ;;
-            -f|--not-ask)
-                not_ask="$CONST_NOT_ASK_VAL"
-                shift # past argument
-                ;;
-            -o|--only-register)
-                only_register="true"
-                shift # past argument
-                ;;
-            -h|--help)
-                usage
-                exit 0
-            ;;
-        *)
-            usage
-            echo_red "Illegal option $1"
-            exit 1
-            ;;
-        esac
-    done
-
-    if [ -z "$runner_config" ]; then
-        usage
-        echo_red "Runner config did not pass!"
-        exit 1
-    fi
-
-    if [ ! -f "$runner_config" ]; then
-        usage
-        echo_red "Runner config $runner_config is not file!"
-        exit 1
-    fi
-
-    if [ -z "$only_register" ]; then
-        if ! install_runner_and_deps "$not_ask"; then
-            echo_red "Runner and deps not installed!"
+    for p in "${!PHASES_WITH_INDEX[@]}"; do
+        if [ -z "$p" ]; then
+            echo_red "Got empty phase name!"
             exit 1
         fi
+        not_ordered_phases+=("${PHASES_WITH_INDEX[$p]}:${p}")
+    done
+
+    local -a phases_sorted=()
+    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort)
+
+    local -a phases=()
+    for p in "${phases_sorted[@]}"; do
+        local phase_to_add="${p#*:}}"
+        local func_err=""
+        if ! func_err="$(phase_run_func "$phase_to_add")"; then
+            echo_red "$func_err"
+            exit 1
+        fi 
+        phases+=("$phase_to_add")
+    done
+
+    local -a help_flags=("-h" "--help")
+
+    for ha in "${help_flags[@]}"; do 
+        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+            usage "${phases[@]}"
+            exit 0
+        fi
+    done
+
+    local phase_to_run=""
+
+    if [[ "$1" == "phase" ]]; then
+        phase_to_run="$2"
+        if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
+            usage "${phases[@]}"
+            echo_red "Not found phase $phase_to_run"
+            exit 1
+        fi
+
+        shift
+        shift
     fi
 
-    if ! register_gitlab_runner "$runner_config"; then
-        echo_red "Runner not registered!"
+    local config=""
+
+    if ! config="$(arg_flag_is_set "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+        echo_red "Passed config is incorrect: $config"
         exit 1
     fi
+
+    if [ -n "$config" ]; then
+        echo_green "Load config $config"
+        # shellcheck disable=SC1090
+        set -a && source "$config" && set +a
+    fi
+
+    local -a phases_to_run=()
+
+    if [ -z "$phase_to_run" ]; then
+        for p in "${phases[@]}"; do
+            if phase_is_not_disabled "$p"; then
+                phases_to_run+=("$p")
+            else
+                echo_yellow "Phase $p is skipped!"
+            fi
+        done
+    else
+        phases_to_run=("$phase_to_run")
+    fi
+
+    if [[ "${#phases_to_run[@]}" == "0" ]]; then
+        echo_red "No one phase to run found!"
+        exit 1
+    fi
+
+    for p in "${phases[@]}"; do
+        local phase_run=""
+
+        if ! phase_run="$(phase_run_func "$phase_to_add")"; then
+            echo_red "$phase_run"
+            exit 1
+        fi 
+
+        echo_green "Run phase ${p}..."
+
+        if ! "$phase_run" "$@"; then
+            echo_red "Phase $p failed! Exit"
+            exit 1
+        fi
+        
+        echo_green "Phase ${p} successed!"
+    done
+
+    return 0
 }
 
 main "$@"
