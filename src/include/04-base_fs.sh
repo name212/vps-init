@@ -20,12 +20,34 @@ function replace_file() {
     local remove_src="${4-true}"
     local not_ask="${5-false}"
 
+    if [ -z "$src" ]; then
+        echo_red "Source file not passed"
+        return 1
+    fi
+
+    if [ ! -f "$src" ]; then
+        echo_red "Source file $src is not file"
+        return 1
+    fi
+
+    if [ -z "$dest" ]; then
+        echo_red "Dest file not passed"
+        return 1
+    fi
+
     echo_green "--- $title from $src ---"
     cat "$src"
     echo_green "--- End file ---"
     echo ""
+    
     echo_green "--- Diff ---"
-    diff "$src" "$dest" || true
+    if [ ! -f "$dest" ]; then
+        echo_green "Add new file with content:"
+        cat "$src"
+    else
+        diff "$src" "$dest" || true
+    fi
+
     echo_green "--- End diff ---"
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then

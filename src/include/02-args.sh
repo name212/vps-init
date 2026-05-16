@@ -221,6 +221,7 @@ function validate_arg_number() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function get_env_value_or_default() {
     local var_name="$1"
     local default_val="${2-}"

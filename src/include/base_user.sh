@@ -2,10 +2,23 @@
 
 set -Eeuo pipefail
 
+export CONST_REMOVE_PASSWORD="true"
+
 # shellcheck disable=SC2329
-function run_passwd_for_user() {
+function update_passwd_for_user() {
     local name="$1"
-    local password="${2-}"
+    local remove_password="${2-false}"
+    local password="${3-}"
+
+     if [[ "$remove_password" == "$CONST_REMOVE_PASSWORD" ]]; then
+        echo_green "Remove password for user ${name}..."
+        if ! passwd -d "$name"; then
+            echo_red "Password not removed for $name"
+            return 1
+        fi
+
+        return 0
+    fi
 
     if [ -z "$password" ]; then
         echo_green "Please set password for ${name}:"
@@ -20,8 +33,8 @@ function run_passwd_for_user() {
     local enter_pass=""
     printf -v enter_pass "%s\n%s" "$password" "$password"
 
-    if ! passwd username <<<"$enter_pass"; then
-        echo_red "Cannot use not interactive $name"
+    if ! passwd "$name" <<<"$enter_pass"; then
+        echo_red "Cannot update passed password for $name"
         return 1
     fi
 
@@ -32,12 +45,15 @@ function run_passwd_for_user() {
 function add_user() {
     local name="$1"
     local remove_password="${2-false}"
-    local password="${3-}"
+    local not_ask="${3-false}"
+    local password="${4-}"
 
-    if [ -z "$user" ]; then
+    if [ -z "$name" ]; then
         echo_red "User name is empty"
         return 1
     fi
+
+    local user_exists="true"
 
     if ! getent passwd "$name" > /dev/null; then
         echo_green "Add user ${name}..."
@@ -46,21 +62,20 @@ function add_user() {
             echo_red "User $name not added!"
             return 1
         fi
-    else
-        echo_green "User '$name' exists. Update password..."
+
+        user_exists="false"
     fi
 
-
-    if [[ "$remove_password" == "true" ]]; then
-        echo_green "Remove password for user ${name}..."
-        if ! passwd -d "$name"; then
-            echo_red "Password not removed for $name"
-            return 1
+    if [[ "$user_exists" == "true" ]]; then
+        if ! ask_user "User $name exists. Update password?" "$not_ask"; then
+            echo_yellow "Skip update password for $name"
+            echo_green "User ${name} updated!"
+            return 0
         fi
-    else
-        if ! run_passwd_for_user "$name" "$password"; then 
-            return 1
-        fi
+    fi
+    
+    if ! update_passwd_for_user "$name" "$remove_password" "$password"; then 
+        return 1
     fi
 
     echo_green "User ${name} added or updated!"
@@ -100,7 +115,7 @@ function add_user_to_sudoers() {
 
     local sudoers_path="/etc/sudoers"
 
-    if grep "$sudoers_str" "$sudoers_path"; then
+    if grep -q "$sudoers_str" "$sudoers_path"; then
         echo_green "User $name already add to $sudoers_path"
         return 0
     fi
@@ -183,6 +198,16 @@ function add_pubkey_for_user() {
         return 1
     fi
 
+    if ! chmod 700 "$ssh_dir"; then
+        echo_red "cannot chmod $ssh_dir dir for $name"
+        return 1
+    fi
+
+    if ! chown "${name}:${name}" "$ssh_dir"; then
+        echo_red "cannot chown $ssh_dir dir for $name"
+        return 1
+    fi
+
     local auth_keys_file="${ssh_dir}/authorized_keys"
 
     # shellcheck disable=SC2155
@@ -203,6 +228,16 @@ function add_pubkey_for_user() {
     } >> "$tmp_file"
 
     if ! replace_file "$tmp_file" "$auth_keys_file" "Add public key from $ssh_key_file for $name" "true" "$not_ask"; then
+        return 1
+    fi
+
+    if ! chmod 600 "$auth_keys_file"; then
+        echo_red "cannot chmod $auth_keys_file file for $name"
+        return 1
+    fi
+
+    if ! chown "${name}:${name}" "$auth_keys_file"; then
+        echo_red "cannot chown $auth_keys_file file for $name"
         return 1
     fi
 

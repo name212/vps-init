@@ -90,7 +90,12 @@ function main() {
 
     local got_phase_to_run=""
 
-    if [[ "${1-}" == "phase" ]]; then
+    local old_hostname=""
+    if ! old_hostname="$(hostnamectl hostname)"; then
+         old_hostname="ERROR GET"
+    fi
+
+    if [[ "${1-}" == "--phase" ]]; then
         got_phase_to_run="${2-}"
         if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
             usage "${phases[@]}"
@@ -138,7 +143,7 @@ function main() {
     fi
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
-    if ! ask_user "Start init?" "$not_ask"; then
+    if ! ask_user "Start init ${old_hostname} ?" "$not_ask"; then
         echo_red "Disallow start!"
         exit 1
     fi
@@ -163,6 +168,12 @@ function main() {
         echo ""
     done
 
+    local new_hostname=""
+    if ! new_hostname="$(hostnamectl hostname)"; then
+         new_hostname="ERROR GET"
+    fi
+
+    echo_green "Init server $old_hostname done! New hostname: $new_hostname"
     return 0
 }
 
