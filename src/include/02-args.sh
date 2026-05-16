@@ -170,3 +170,35 @@ function validate_arg_not_empty_file() {
     echo -n "$real"
     return 0
 }
+
+# shellcheck disable=SC2329
+function validate_arg_not_empty() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo "Arg not passed"
+        return 1
+    fi
+
+    if [ -z "$val" ]; then
+        echo "Empty arg val"
+        return 1 
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+function get_env_value_or_default() {
+    local var_name="$1"
+    local default_val="${2-}"
+
+    if ! [[ -v "$var_name" ]]; then
+        echo -n "$default_val"
+        return 0
+    fi
+
+    echo -n "${!var_name}"
+    return 0
+}

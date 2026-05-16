@@ -193,6 +193,38 @@ function validate_arg_not_empty_file() {
     return 0
 }
 
+# shellcheck disable=SC2329
+function validate_arg_not_empty() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo "Arg not passed"
+        return 1
+    fi
+
+    if [ -z "$val" ]; then
+        echo "Empty arg val"
+        return 1 
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+function get_env_value_or_default() {
+    local var_name="$1"
+    local default_val="${2-}"
+
+    if ! [[ -v "$var_name" ]]; then
+        echo -n "$default_val"
+        return 0
+    fi
+
+    echo -n "${!var_name}"
+    return 0
+}
+
 # End src/include/02-args.sh
 
 # Start src/include/03-base_input.sh
@@ -661,39 +693,31 @@ function phase_users_run() {
 
     while true; do
         echo_green "Try to extract user from envs with index  ${cur_index}..."
-        # shellcheck disable=SC2034
         local username_env="ADD_USER_${cur_index}_NAME"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local username="$(!username_env:-)"
+        local username="$(get_env_value_or_default "$username_env" "")"
         if [ -z "$username" ]; then
             echo_green "No get value with index $cur_index Done getting users from envs"
             return 0
         fi
 
-        # shellcheck disable=SC2034
         local no_pass_env="ADD_USER_${cur_index}_NO_PASSWORD"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local no_pass="$(!no_pass_env:-flase)"
+        local no_pass="$(get_env_value_or_default "$no_pass_env" "false")"
 
-        # shellcheck disable=SC2034
         local pass_env="ADD_USER_${cur_index}_PASSWORD"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local pass="$(!pass_env:-)"
+        local pass="$(get_env_value_or_default "$pass_env" "")"
 
-        # shellcheck disable=SC2034
         local sudo_env="ADD_USER_${cur_index}_SUDO"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local should_sudo="$(!sudo_env:-false)"
+        local should_sudo="$(get_env_value_or_default "$sudo_env" "false")"
 
-        # shellcheck disable=SC2034
         local ssh_env="ADD_USER_${cur_index}_SSH_KEY"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local ssh_key="$(!ssh_env:-false)"
+        local ssh_key="$(get_env_value_or_default "$ssh_env" "")"
+
+        ((cur_index++))
 
         if ! add_user "$username" "$no_pass" "$pass"; then
             return 1
@@ -761,10 +785,11 @@ PHASES_WITH_INDEX["hostname"]="03"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {
-    local new_hostname="${SET_HOSTNAME-}"
-    if [ -z "$new_hostname" ]; then
-        echo_red "New hostname not passed!"
-        return 1
+    local new_hostname=""
+
+    if ! new_hostname="$(extract_argument "--new-hostname" "NEW_HOSTNAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
+        echo_red "New hostname: $new_hostname"
+        exit 1
     fi
 
     echo_green "Prepare hostname..."
@@ -777,27 +802,35 @@ function phase_hostname_run() {
 
     if [[ "$new_hostname" == "$cur_hostanme" ]]; then
         echo_green "Hostname already set to $new_hostname!"
-        return 0
+    else
+        if ! hostnamectl set-hostname "$new_hostname"; then
+            echo_red "Cannot set hostname to $new_hostname!"
+            return 1
+        fi
     fi
 
-    if ! hostnamectl set-hostname "$new_hostname"; then
-        echo_red "Cannot set hostname to $new_hostname!"
-        return 1
-    fi
-
-    echo_green "Prepare hostname. Change /etc/hosts..."
+    local hosts_file="/etc/hosts"
     local tab=$'\t'
+    local hostname_hosts="127.0.1.1${tab}${new_hostname}"
 
-    {
-        echo ""
-        echo "# local for ${new_hostname}"
-        echo "127.0.0.1${tab}${new_hostname}"
-        echo ""
-    } >> "/etc/hosts"
+    if grep -q "$hostname_hosts" "$hosts_file"; then
+        echo_green "$new_hostname added to $hosts_file for alias to 127.0.1.1"
+    else
+        echo_green "Prepare hostname. Add new hostname for alias 127.0.1.1 to ${hosts_file} ..."
 
-    echo_green "--- New /etc/hosts ---"
-    cat "/etc/hosts"
-    echo_green "--- End file ---"
+        {
+            echo ""
+            echo "# local for ${new_hostname}"
+            echo "$hostname_hosts"
+            echo ""
+        } >> "$hosts_file"
+
+        echo_green "--- New $hosts_file ---"
+        cat "$hosts_file"
+        echo_green "--- End file ---"
+    fi
+
+    echo_green "Hostname changed!"
 
     return 0
 }
@@ -807,9 +840,9 @@ function phase_hostname_help() {
     echo "
     Change hostname
     Options:
-      --hostname hostaname
+      --new-hostname hostaname
         Set new hostname.
-        Can be provided with env SET_HOSTNAME
+        Can be provided with env NEW_HOSTNAME
 "
 }
 

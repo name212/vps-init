@@ -16,39 +16,31 @@ function phase_users_run() {
 
     while true; do
         echo_green "Try to extract user from envs with index  ${cur_index}..."
-        # shellcheck disable=SC2034
         local username_env="ADD_USER_${cur_index}_NAME"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local username="$(!username_env:-)"
+        local username="$(get_env_value_or_default "$username_env" "")"
         if [ -z "$username" ]; then
             echo_green "No get value with index $cur_index Done getting users from envs"
             return 0
         fi
 
-        # shellcheck disable=SC2034
         local no_pass_env="ADD_USER_${cur_index}_NO_PASSWORD"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local no_pass="$(!no_pass_env:-flase)"
+        local no_pass="$(get_env_value_or_default "$no_pass_env" "false")"
 
-        # shellcheck disable=SC2034
         local pass_env="ADD_USER_${cur_index}_PASSWORD"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local pass="$(!pass_env:-)"
+        local pass="$(get_env_value_or_default "$pass_env" "")"
 
-        # shellcheck disable=SC2034
         local sudo_env="ADD_USER_${cur_index}_SUDO"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local should_sudo="$(!sudo_env:-false)"
+        local should_sudo="$(get_env_value_or_default "$sudo_env" "false")"
 
-        # shellcheck disable=SC2034
         local ssh_env="ADD_USER_${cur_index}_SSH_KEY"
-        # shellcheck disable=SC1035
         # shellcheck disable=SC2155
-        local ssh_key="$(!ssh_env:-false)"
+        local ssh_key="$(get_env_value_or_default "$ssh_env" "")"
+
+        ((cur_index++))
 
         if ! add_user "$username" "$no_pass" "$pass"; then
             return 1
