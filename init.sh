@@ -30,6 +30,8 @@ export CONST_IS_FLAG="true"
 export CONST_NOT_FLAG="false"
 export CONST_ARG_NOT_PASSED="false"
 export CONST_ARG_PASSED="true"
+export CONST_NOT_ASK_VAL="true"
+export CONST_ASK_VAL=""
 
 function disable_env() {
     local phase="$1"
@@ -153,8 +155,13 @@ function arg_flag_is_set() {
 
 # shellcheck disable=SC2329
 function parse_not_ask() {
-    arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"
-    return $?
+    if arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+        echo -n "$CONST_NOT_ASK_VAL"
+        return 0
+    fi
+
+    echo "$CONST_ASK_VAL"
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -212,6 +219,30 @@ function validate_arg_not_empty() {
     return 0
 }
 
+# shellcheck disable=SC2329
+function validate_arg_number() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo "Arg not passed"
+        return 1
+    fi
+
+    if [ -z "$val" ]; then
+        echo "Empty arg val"
+        return 1 
+    fi
+
+    if ! [[ $val =~ ^[0-9]+$ ]]; then
+        echo_red "$val is not number!"
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
 function get_env_value_or_default() {
     local var_name="$1"
     local default_val="${2-}"
@@ -234,7 +265,7 @@ function ask_user() {
     local prompt="$1"
     local not_ask="${2-no}"
 
-    if [[ "$not_ask" == "$CONST_FLAG_SET" ]]; then
+    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
         return 0
     fi
 
@@ -314,7 +345,11 @@ function download_url(){
     local url="$1"
     local dest="$2"
 
-    curl -fsSL "$url" -o "$dest"
+    if ! curl -fsSL "$url" -o "$dest"; then
+        return 1 
+    fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -789,7 +824,7 @@ function phase_hostname_run() {
 
     if ! new_hostname="$(extract_argument "--new-hostname" "NEW_HOSTNAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
         echo_red "New hostname: $new_hostname"
-        exit 1
+        return 1
     fi
 
     echo_green "Prepare hostname..."
@@ -863,6 +898,13 @@ function sshd_disable_systemd_socket() {
     echo_green "Enable sshd service..."
     if ! systemctl enable --now ssh.service; then
         echo_red "Cannot enable ssh.service"
+        return 1
+    fi
+
+    echo_green "SSHD service enabled! Restart..."
+
+    if ! systemctl restart ssh.service; then
+        echo_red "!!! SSHD was not restarted !!!"
         return 1
     fi
 
@@ -951,16 +993,15 @@ function sshd_apply_setting() {
 
 # shellcheck disable=SC2329
 function phase_sshd_run() {
-    local port="${SSHD_PORT-}"
-    if [ -z "$port" ]; then
-        echo_red "SSHD port not passed"
+    local port=""
+
+    if ! port="$(extract_argument "--sshd-port" "SSHD_PORT" "$CONST_NOT_FLAG" "validate_arg_number" "$@")"; then
+        echo_red "SSHD port: $port"
         return 1
     fi
 
-    if ! [[ $port =~ ^[0-9]+$ ]]; then
-        echo_red "SSHD port is not number"
-        return 1
-    fi
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
 
     echo_green "Prepare sshd..."
 
@@ -983,7 +1024,7 @@ function phase_sshd_run() {
     echo_green "Prepare sshd. New port applyer!"
     echo_green "Please verify that ssh available on port $port"
 
-    if ! ask_user "SSH available? Continue?"; then
+    if ! ask_user "SSH available? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
     fi
@@ -1015,7 +1056,7 @@ function phase_sshd_run() {
     echo_green "Prepare sshd. Root login disabled!"
     echo_green "Please verify that ssh not avaiable with root"
 
-    if ! ask_user "SSH not available with root? Continue?"; then
+    if ! ask_user "SSH not available with root? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
     fi
@@ -1032,8 +1073,10 @@ function phase_sshd_run() {
 
     echo_green "Prepare sshd. Password auth disabled!"
     echo_green "Please verify that ssh not avaiable with password auth"
+    echo_green "Can be verify with command:" 
+    echo_green "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
 
-    if ! ask_user "SSH passwor auth not available? Continue?"; then
+    if ! ask_user "SSH password auth not available? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
     fi
@@ -1083,16 +1126,27 @@ function phase_docker_run() {
 
     echo_green "Add Docker's official GPG key..."
 
-    install -m 0755 -d /etc/apt/keyrings
-    download_url "https://download.docker.com/linux/ubuntu/gpg" "/etc/apt/keyrings/docker.asc"
-    chmod a+r /etc/apt/keyrings/docker.asc
+    if ! install -m 0755 -d /etc/apt/keyrings; then
+        echo_red "Keyrings not installed"
+        return 0
+    fi
+   
+    if ! download_url "https://download.docker.com/linux/ubuntu/gpg" "/etc/apt/keyrings/docker.asc"; then
+        echo_red "GPG keys not downloaded"
+        return 0
+    fi
+
+    if ! chmod a+r /etc/apt/keyrings/docker.asc; then
+        echo_red "Cannot chmod GPG keys"
+        return 1
+    fi
 
     echo_green "Add the docker repository to apt sources..."
 
     tee /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
-Suites: $(source /etc/os-release && echo_green "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Suites: $(source /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
 Components: stable
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
@@ -1576,6 +1630,7 @@ function main() {
             exit 1
         fi 
 
+        echo ""
         echo_green "Run phase ${ph} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
@@ -1584,6 +1639,7 @@ function main() {
         fi
         
         echo_green "Phase ${ph} successed!"
+        echo ""
     done
 
     return 0

@@ -7,7 +7,7 @@ function ask_user() {
     local prompt="$1"
     local not_ask="${2-no}"
 
-    if [[ "$not_ask" == "$CONST_FLAG_SET" ]]; then
+    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
         return 0
     fi
 

@@ -7,7 +7,11 @@ function download_url(){
     local url="$1"
     local dest="$2"
 
-    curl -fsSL "$url" -o "$dest"
+    if ! curl -fsSL "$url" -o "$dest"; then
+        return 1 
+    fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329

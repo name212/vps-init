@@ -8,6 +8,8 @@ export CONST_IS_FLAG="true"
 export CONST_NOT_FLAG="false"
 export CONST_ARG_NOT_PASSED="false"
 export CONST_ARG_PASSED="true"
+export CONST_NOT_ASK_VAL="true"
+export CONST_ASK_VAL=""
 
 function disable_env() {
     local phase="$1"
@@ -131,8 +133,13 @@ function arg_flag_is_set() {
 
 # shellcheck disable=SC2329
 function parse_not_ask() {
-    arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"
-    return $?
+    if arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+        echo -n "$CONST_NOT_ASK_VAL"
+        return 0
+    fi
+
+    echo "$CONST_ASK_VAL"
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -184,6 +191,30 @@ function validate_arg_not_empty() {
     if [ -z "$val" ]; then
         echo "Empty arg val"
         return 1 
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function validate_arg_number() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo "Arg not passed"
+        return 1
+    fi
+
+    if [ -z "$val" ]; then
+        echo "Empty arg val"
+        return 1 
+    fi
+
+    if ! [[ $val =~ ^[0-9]+$ ]]; then
+        echo_red "$val is not number!"
+        return 1
     fi
 
     echo -n "$val"

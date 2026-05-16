@@ -151,6 +151,7 @@ function main() {
             exit 1
         fi 
 
+        echo ""
         echo_green "Run phase ${ph} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
@@ -159,6 +160,7 @@ function main() {
         fi
         
         echo_green "Phase ${ph} successed!"
+        echo ""
     done
 
     return 0

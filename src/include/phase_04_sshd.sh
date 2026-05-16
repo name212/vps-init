@@ -13,6 +13,13 @@ function sshd_disable_systemd_socket() {
         return 1
     fi
 
+    echo_green "SSHD service enabled! Restart..."
+
+    if ! systemctl restart ssh.service; then
+        echo_red "!!! SSHD was not restarted !!!"
+        return 1
+    fi
+
     echo_green "Stop sshd systemd socket.."
     if ! systemctl stop ssh.socket; then
         echo_red "Cannot stop ssh.socket"
@@ -98,16 +105,15 @@ function sshd_apply_setting() {
 
 # shellcheck disable=SC2329
 function phase_sshd_run() {
-    local port="${SSHD_PORT-}"
-    if [ -z "$port" ]; then
-        echo_red "SSHD port not passed"
+    local port=""
+
+    if ! port="$(extract_argument "--sshd-port" "SSHD_PORT" "$CONST_NOT_FLAG" "validate_arg_number" "$@")"; then
+        echo_red "SSHD port: $port"
         return 1
     fi
 
-    if ! [[ $port =~ ^[0-9]+$ ]]; then
-        echo_red "SSHD port is not number"
-        return 1
-    fi
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
 
     echo_green "Prepare sshd..."
 
@@ -130,7 +136,7 @@ function phase_sshd_run() {
     echo_green "Prepare sshd. New port applyer!"
     echo_green "Please verify that ssh available on port $port"
 
-    if ! ask_user "SSH available? Continue?"; then
+    if ! ask_user "SSH available? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
     fi
@@ -162,7 +168,7 @@ function phase_sshd_run() {
     echo_green "Prepare sshd. Root login disabled!"
     echo_green "Please verify that ssh not avaiable with root"
 
-    if ! ask_user "SSH not available with root? Continue?"; then
+    if ! ask_user "SSH not available with root? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
     fi
@@ -179,8 +185,10 @@ function phase_sshd_run() {
 
     echo_green "Prepare sshd. Password auth disabled!"
     echo_green "Please verify that ssh not avaiable with password auth"
+    echo_green "Can be verify with command:" 
+    echo_green "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
 
-    if ! ask_user "SSH passwor auth not available? Continue?"; then
+    if ! ask_user "SSH password auth not available? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
     fi

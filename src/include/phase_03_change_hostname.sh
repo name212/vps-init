@@ -11,7 +11,7 @@ function phase_hostname_run() {
 
     if ! new_hostname="$(extract_argument "--new-hostname" "NEW_HOSTNAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
         echo_red "New hostname: $new_hostname"
-        exit 1
+        return 1
     fi
 
     echo_green "Prepare hostname..."

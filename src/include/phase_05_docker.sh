@@ -24,16 +24,27 @@ function phase_docker_run() {
 
     echo_green "Add Docker's official GPG key..."
 
-    install -m 0755 -d /etc/apt/keyrings
-    download_url "https://download.docker.com/linux/ubuntu/gpg" "/etc/apt/keyrings/docker.asc"
-    chmod a+r /etc/apt/keyrings/docker.asc
+    if ! install -m 0755 -d /etc/apt/keyrings; then
+        echo_red "Keyrings not installed"
+        return 0
+    fi
+   
+    if ! download_url "https://download.docker.com/linux/ubuntu/gpg" "/etc/apt/keyrings/docker.asc"; then
+        echo_red "GPG keys not downloaded"
+        return 0
+    fi
+
+    if ! chmod a+r /etc/apt/keyrings/docker.asc; then
+        echo_red "Cannot chmod GPG keys"
+        return 1
+    fi
 
     echo_green "Add the docker repository to apt sources..."
 
     tee /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
-Suites: $(source /etc/os-release && echo_green "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Suites: $(source /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
 Components: stable
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
