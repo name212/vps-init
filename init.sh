@@ -589,7 +589,63 @@ function add_pubkey_for_user() {
 
 # End src/include/base_user.sh
 
-# Start src/include/phase_add_users.sh
+# Start src/include/phase_01_base_pkgs.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["base_pkgs"]="01"
+
+# shellcheck disable=SC2329
+function phase_base_pkgs_run() {
+    echo_green "Install base packages..."
+
+    local packages=(
+        "bash-completion" 
+        "ca-certificates" 
+        "nano" 
+        "vim" 
+        "less" 
+        "dnsutils" 
+        "iputils-ping" 
+        "htop" 
+        "mc" 
+        "curl" 
+        "jq" 
+        "yq"
+        "libc-bin"
+        "diffutils"
+        # "git"
+        "procps"
+    )
+
+    if check_packages_installed "${packages[@]}"; then
+        echo_green "Base packages already installed!"
+        return 0
+    fi
+    
+    if ! install_packages "${packages[@]}"; then
+        echo_red "Base packages not installed!"
+        return 1
+    fi
+
+    echo_green "Base packages installed!"
+}
+
+# shellcheck disable=SC2329
+function phase_base_pkgs_help() {
+    echo -n "
+    Install base packages
+    No options.
+"
+}
+
+# shellcheck disable=SC2329
+function phase_base_pkgs_disable_env() {
+    echo -n ""
+}
+
+# End src/include/phase_01_base_pkgs.sh
+
+# Start src/include/phase_02_add_users.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["users"]="02"
@@ -701,101 +757,12 @@ function phase_users_disable_env() {
     echo -n "DISABLE_USERS"
 }
 
-# End src/include/phase_add_users.sh
+# End src/include/phase_02_add_users.sh
 
-# Start src/include/phase_aliases.sh
-
-# shellcheck disable=SC2034
-PHASES_WITH_INDEX["aliases"]="99"
-
-# shellcheck disable=SC2329
-function phase_aliases_run() {
-    if [[ "${DISABLE_ALIASES-no}" == "true" ]]; then
-        echo_yellow "Skip add aliases!"
-        return 0
-    fi
-
-    cat << EOF > /etc/profile.d/099-additional-aliases.sh
-alias h='history | grep -i'
-alias psf='ps aux | grep -i'
-EOF
-}
-
-# shellcheck disable=SC2329
-function phase_aliases_help() {
-    echo -n "
-    Add aditional aliases
-    No Options.
-"
-}
-
-# shellcheck disable=SC2329
-function phase_aliases_disable_env() {
-    echo -n "DISABLE_ALIASES"
-}
-
-# End src/include/phase_aliases.sh
-
-# Start src/include/phase_base_pkgs.sh
+# Start src/include/phase_03_change_hostname.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["base_pkgs"]="01"
-
-# shellcheck disable=SC2329
-function phase_base_pkgs_run() {
-    echo_green "Install base packages..."
-
-    local packages=(
-        "bash-completion" 
-        "ca-certificates" 
-        "nano" 
-        "vim" 
-        "less" 
-        "dnsutils" 
-        "iputils-ping" 
-        "htop" 
-        "mc" 
-        "curl" 
-        "jq" 
-        "yq"
-        "libc-bin"
-        "diffutils"
-        # "git"
-        "procps"
-    )
-
-    if check_packages_installed "${packages[@]}"; then
-        echo_green "Base packages already installed!"
-        return 0
-    fi
-    
-    if ! install_packages "${packages[@]}"; then
-        echo_red "Base packages not installed!"
-        return 1
-    fi
-
-    echo_green "Base packages installed!"
-}
-
-# shellcheck disable=SC2329
-function phase_base_pkgs_help() {
-    echo -n "
-    Install base packages
-    No options.
-"
-}
-
-# shellcheck disable=SC2329
-function phase_base_pkgs_disable_env() {
-    echo -n ""
-}
-
-# End src/include/phase_base_pkgs.sh
-
-# Start src/include/phase_change_hostname.sh
-
-# shellcheck disable=SC2034
-PHASES_WITH_INDEX["hostname"]="10"
+PHASES_WITH_INDEX["hostname"]="03"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {
@@ -861,12 +828,213 @@ function phase_hostname_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }
 
-# End src/include/phase_change_hostname.sh
+# End src/include/phase_03_change_hostname.sh
 
-# Start src/include/phase_docker.sh
+# Start src/include/phase_04_sshd.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["docker"]="03"
+PHASES_WITH_INDEX["sshd"]="04"
+
+# shellcheck disable=SC2329
+function sshd_verify_and_restart() {
+    local setting="${1,,}"
+
+    if ! sshd -t; then
+        echo_red "Test sshd config failed!"
+        return 1 
+    fi
+
+    local conf_for_check=""
+    if ! conf_for_check="$(sshd -T)"; then
+        echo_red "Cannot get sshd config from sshd!"
+        return 1 
+    fi
+
+    if ! grep -q "$setting" <<<"$conf_for_check"; then
+        echo_red "Cannot found setting '$setting' in sshd config!"
+        return 1 
+    fi
+
+    echo_green "SSHD config is valid! Restart..."
+
+    if ! systemctl restart ssh.service; then
+        echo_red "!!! SSHD was not restarted !!!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function sshd_apply_setting() {
+    local setting="${1}"
+    local conf_file="${2}"
+
+    if [ ! -f "$conf_file" ]; then
+        echo "$setting" > "$conf_file" 
+    fi
+
+    if ! grep -q "$setting" "$conf_file"; then
+        echo_yellow "Change to new sshd port setting $setting"
+        echo "$setting" > "$conf_file"
+    fi
+
+    if ! chmod 600 "$conf_file"; then
+        echo_yellow "Cannot change mode for config file $conf_file"
+    else
+        if ! chown "root:root" "$conf_file"; then
+            echo_yellow "Cannot change owner to root for config file $conf_file"
+        fi
+    fi
+
+    if ! sshd_verify_and_restart "$setting"; then
+        echo_yellow "Remove config $conf_file file and restart..."
+        if ! delete_file "$conf_file"; then
+            echo_red "Cannot remove port file config $conf_file"
+        fi
+
+        if ! systemctl restart ssh.service; then
+            echo_red "!!! SSHD was not restarted !!!"
+        fi
+
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function phase_sshd_run() {
+    if [[ "${DISABLE_PREPARE_SSHD-no}" == "true" ]]; then
+        echo_yellow "prepare sshd!"
+        return 0
+    fi
+
+    local port="${SSHD_PORT-}"
+    if [ -z "$port" ]; then
+        echo_red "SSHD port not passed"
+        return 1
+    fi
+
+    if ! [[ $port =~ ^[0-9]+$ ]]; then
+        echo_red "SSHD port is not number"
+        return 1
+    fi
+
+    echo_green "Prepare sshd..."
+
+    local base_cfgs_dir="/etc/ssh/sshd_config.d"
+
+    echo_green "Prepare sshd. Disable systemd socket..."
+
+    if ! systemctl enable --now ssh.service; then
+        echo_red "Cannot enable ssh.service"
+        return 1
+    fi
+
+    if ! systemctl stop ssh.socket; then
+        echo_red "Cannot stop ssh.socket"
+        return 1
+    fi
+
+    if ! systemctl disable --now ssh.socket; then
+        echo_red "Cannot disabe ssh.socket"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Apply new port..."
+
+    local port_setting="Port $port"
+    local port_file="${base_cfgs_dir}/99_z_port.conf"
+
+    if ! sshd_apply_setting "$port_setting" "$port_file"; then
+        echo_red "Cannot apply sshd port setting '$port_setting'"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. New port applyer!"
+    echo_green "Please verify that ssh available on port $port"
+
+    if ! ask_user "SSH available? Continue?"; then
+        echo_red "Disallow continue"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Disable root login..."
+
+    local auth_present=""
+    # shellcheck disable=SC2044
+    for auth_file in $(find /home -name "authorized_keys"); do 
+        if [ -s "$auth_file" ]; then
+            echo_green "Found not empty authorized_keys $auth_file"
+            auth_present="true"
+        fi 
+    done
+
+    if [ -z "$auth_present" ]; then
+        echo_red "Not found any non zero authorized_keys files. Cannot continue"
+        return 1
+    fi
+
+    local root_setting="PermitRootLogin no"
+    local root_file="${base_cfgs_dir}/99_z_disable_root.conf"
+
+    if ! sshd_apply_setting "$root_setting" "$root_file"; then
+        echo_red "Cannot disable root login '$root_setting'"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Root login disabled!"
+    echo_green "Please verify that ssh not avaiable with root"
+
+    if ! ask_user "SSH not available with root? Continue?"; then
+        echo_red "Disallow continue"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Disable password auth..."
+
+    local pass_setting="PasswordAuthentication no"
+    local pass_file="${base_cfgs_dir}/99_z_disable_pass_auth.conf"
+
+    if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
+        echo_red "Cannot apply sshd port setting '$pass_setting'"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Password auth disabled!"
+    echo_green "Please verify that ssh not avaiable with password auth"
+
+    if ! ask_user "SSH passwor auth not available? Continue?"; then
+        echo_red "Disallow continue"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function phase_sshd_help() {
+    echo -n "
+    Change sshd port remove pass auth and root login
+    Options:
+      --sshd-port PORT
+         Replace to new port.
+         Can be provided with env SSHD_PORT
+"
+}
+
+# shellcheck disable=SC2329
+function phase_sshd_disable_env() {
+    echo -n "DISABLE_PREPARE_SSHD"
+}
+
+# End src/include/phase_04_sshd.sh
+
+# Start src/include/phase_05_docker.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["docker"]="05"
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
@@ -930,7 +1098,86 @@ function phase_docker_disable_env() {
     echo -n "DISABLE_DOCKER"
 }
 
-# End src/include/phase_docker.sh
+# End src/include/phase_05_docker.sh
+
+# Start src/include/phase_98_werf.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["werf"]="98"
+
+# shellcheck disable=SC2329
+function phase_werf_run() {
+    if [[ "${DISABLE_WERF-no}" == "true" ]]; then
+        echo_yellow "Skip install werf!"
+        return 0
+    fi
+
+    echo_green "Install werf..."
+
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
+
+    if command -v werf &> /dev/null; then
+        echo_green "Werf already installed!"
+        return 0
+    fi
+
+    local url="https://werf.io/install.sh"
+
+    if ! download_script_and_run "$url" "$not_ask" "--ci"; then
+        return 1
+    fi
+
+    echo_green "Werf installed!"
+}
+
+# shellcheck disable=SC2329
+function phase_werf_help() {
+    echo -n "
+    Install Werf
+      No options.
+"
+}
+
+# shellcheck disable=SC2329
+function phase_werf_disable_env() {
+    echo -n "DISABLE_WERF"
+}
+
+# End src/include/phase_98_werf.sh
+
+# Start src/include/phase_99_aliases.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["aliases"]="99"
+
+# shellcheck disable=SC2329
+function phase_aliases_run() {
+    if [[ "${DISABLE_ALIASES-no}" == "true" ]]; then
+        echo_yellow "Skip add aliases!"
+        return 0
+    fi
+
+    cat << EOF > /etc/profile.d/099-additional-aliases.sh
+alias h='history | grep -i'
+alias psf='ps aux | grep -i'
+EOF
+}
+
+# shellcheck disable=SC2329
+function phase_aliases_help() {
+    echo -n "
+    Add aditional aliases
+    No Options.
+"
+}
+
+# shellcheck disable=SC2329
+function phase_aliases_disable_env() {
+    echo -n "DISABLE_ALIASES"
+}
+
+# End src/include/phase_99_aliases.sh
 
 # Start src/include/phase_gitlab.sh
 
@@ -1157,253 +1404,6 @@ function register_gitlab_runner() {
 
 # End src/include/phase_gitlab.sh
 
-# Start src/include/phase_sshd.sh
-
-# shellcheck disable=SC2034
-PHASES_WITH_INDEX["sshd"]="03"
-
-# shellcheck disable=SC2329
-function sshd_verify_and_restart() {
-    local setting="${1,,}"
-
-    if ! sshd -t; then
-        echo_red "Test sshd config failed!"
-        return 1 
-    fi
-
-    local conf_for_check=""
-    if ! conf_for_check="$(sshd -T)"; then
-        echo_red "Cannot get sshd config from sshd!"
-        return 1 
-    fi
-
-    if ! grep -q "$setting" <<<"$conf_for_check"; then
-        echo_red "Cannot found setting '$setting' in sshd config!"
-        return 1 
-    fi
-
-    echo_green "SSHD config is valid! Restart..."
-
-    if ! systemctl restart ssh.service; then
-        echo_red "!!! SSHD was not restarted !!!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function sshd_apply_setting() {
-    local setting="${1}"
-    local conf_file="${2}"
-
-    if [ ! -f "$conf_file" ]; then
-        echo "$setting" > "$conf_file" 
-    fi
-
-    if ! grep -q "$setting" "$conf_file"; then
-        echo_yellow "Change to new sshd port setting $setting"
-        echo "$setting" > "$conf_file"
-    fi
-
-    if ! chmod 600 "$conf_file"; then
-        echo_yellow "Cannot change mode for config file $conf_file"
-    else
-        if ! chown "root:root" "$conf_file"; then
-            echo_yellow "Cannot change owner to root for config file $conf_file"
-        fi
-    fi
-
-    if ! sshd_verify_and_restart "$setting"; then
-        echo_yellow "Remove config $conf_file file and restart..."
-        if ! delete_file "$conf_file"; then
-            echo_red "Cannot remove port file config $conf_file"
-        fi
-
-        if ! systemctl restart ssh.service; then
-            echo_red "!!! SSHD was not restarted !!!"
-        fi
-
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function phase_sshd_run() {
-    if [[ "${DISABLE_PREPARE_SSHD-no}" == "true" ]]; then
-        echo_yellow "prepare sshd!"
-        return 0
-    fi
-
-    local port="${SSHD_PORT-}"
-    if [ -z "$port" ]; then
-        echo_red "SSHD port not passed"
-        return 1
-    fi
-
-    if ! [[ $port =~ ^[0-9]+$ ]]; then
-        echo_red "SSHD port is not number"
-        return 1
-    fi
-
-    echo_green "Prepare sshd..."
-
-    local base_cfgs_dir="/etc/ssh/sshd_config.d"
-
-    echo_green "Prepare sshd. Disable systemd socket..."
-
-    if ! systemctl enable --now ssh.service; then
-        echo_red "Cannot enable ssh.service"
-        return 1
-    fi
-
-    if ! systemctl stop ssh.socket; then
-        echo_red "Cannot stop ssh.socket"
-        return 1
-    fi
-
-    if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disabe ssh.socket"
-        return 1
-    fi
-
-    echo_green "Prepare sshd. Apply new port..."
-
-    local port_setting="Port $port"
-    local port_file="${base_cfgs_dir}/99_z_port.conf"
-
-    if ! sshd_apply_setting "$port_setting" "$port_file"; then
-        echo_red "Cannot apply sshd port setting '$port_setting'"
-        return 1
-    fi
-
-    echo_green "Prepare sshd. New port applyer!"
-    echo_green "Please verify that ssh available on port $port"
-
-    if ! ask_user "SSH available? Continue?"; then
-        echo_red "Disallow continue"
-        return 1
-    fi
-
-    echo_green "Prepare sshd. Disable root login..."
-
-    local auth_present=""
-    # shellcheck disable=SC2044
-    for auth_file in $(find /home -name "authorized_keys"); do 
-        if [ -s "$auth_file" ]; then
-            echo_green "Found not empty authorized_keys $auth_file"
-            auth_present="true"
-        fi 
-    done
-
-    if [ -z "$auth_present" ]; then
-        echo_red "Not found any non zero authorized_keys files. Cannot continue"
-        return 1
-    fi
-
-    local root_setting="PermitRootLogin no"
-    local root_file="${base_cfgs_dir}/99_z_disable_root.conf"
-
-    if ! sshd_apply_setting "$root_setting" "$root_file"; then
-        echo_red "Cannot disable root login '$root_setting'"
-        return 1
-    fi
-
-    echo_green "Prepare sshd. Root login disabled!"
-    echo_green "Please verify that ssh not avaiable with root"
-
-    if ! ask_user "SSH not available with root? Continue?"; then
-        echo_red "Disallow continue"
-        return 1
-    fi
-
-    echo_green "Prepare sshd. Disable password auth..."
-
-    local pass_setting="PasswordAuthentication no"
-    local pass_file="${base_cfgs_dir}/99_z_disable_pass_auth.conf"
-
-    if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
-        echo_red "Cannot apply sshd port setting '$pass_setting'"
-        return 1
-    fi
-
-    echo_green "Prepare sshd. Password auth disabled!"
-    echo_green "Please verify that ssh not avaiable with password auth"
-
-    if ! ask_user "SSH passwor auth not available? Continue?"; then
-        echo_red "Disallow continue"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function phase_sshd_help() {
-    echo -n "
-    Change sshd port remove pass auth and root login
-    Options:
-      --sshd-port PORT
-         Replace to new port.
-         Can be provided with env SSHD_PORT
-"
-}
-
-# shellcheck disable=SC2329
-function phase_sshd_disable_env() {
-    echo -n "DISABLE_PREPARE_SSHD"
-}
-
-# End src/include/phase_sshd.sh
-
-# Start src/include/phase_werf.sh
-
-# shellcheck disable=SC2034
-PHASES_WITH_INDEX["werf"]="98"
-
-# shellcheck disable=SC2329
-function phase_werf_run() {
-    if [[ "${DISABLE_WERF-no}" == "true" ]]; then
-        echo_yellow "Skip install werf!"
-        return 0
-    fi
-
-    echo_green "Install werf..."
-
-    local not_ask=""
-    not_ask="$(parse_not_ask "$@")"
-
-    if command -v werf &> /dev/null; then
-        echo_green "Werf already installed!"
-        return 0
-    fi
-
-    local url="https://werf.io/install.sh"
-
-    if ! download_script_and_run "$url" "$not_ask" "--ci"; then
-        return 1
-    fi
-
-    echo_green "Werf installed!"
-}
-
-# shellcheck disable=SC2329
-function phase_werf_help() {
-    echo -n "
-    Install Werf
-      No options.
-"
-}
-
-# shellcheck disable=SC2329
-function phase_werf_disable_env() {
-    echo -n "DISABLE_WERF"
-}
-
-# End src/include/phase_werf.sh
-
 # Start src/main.sh
 
 function phase_run_func() {
@@ -1494,7 +1494,7 @@ function main() {
 
     local phase_to_run=""
 
-    if [[ "$1" == "phase" ]]; then
+    if [[ "${1-}" == "phase" ]]; then
         phase_to_run="${2-}"
         if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
             usage "${phases[@]}"
@@ -1555,7 +1555,7 @@ function main() {
             exit 1
         fi 
 
-        echo_green "Run phase ${p}..."
+        echo_green "Run phase ${p} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
             echo_red "Phase $p failed! Exit"

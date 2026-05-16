@@ -51,5 +51,5 @@ deploy/with-sudo-password:
 deploy/no-sudo-password:
 	$(call run-with-cleanup, $(MAKE) _deploy/no-sudo-password, $(MAKE) deploy/cleanup-tmp)
 
-deploy/debug: build deploy/with-sudo-password
+deploy/debug: build deploy/no-sudo-password
 

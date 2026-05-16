@@ -90,7 +90,7 @@ function main() {
 
     local phase_to_run=""
 
-    if [[ "$1" == "phase" ]]; then
+    if [[ "${1-}" == "phase" ]]; then
         phase_to_run="${2-}"
         if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
             usage "${phases[@]}"
@@ -151,7 +151,7 @@ function main() {
             exit 1
         fi 
 
-        echo_green "Run phase ${p}..."
+        echo_green "Run phase ${p} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
             echo_red "Phase $p failed! Exit"

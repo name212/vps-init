@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["sshd"]="03"
+PHASES_WITH_INDEX["sshd"]="04"
 
 # shellcheck disable=SC2329
 function sshd_verify_and_restart() {
