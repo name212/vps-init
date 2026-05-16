@@ -6,6 +6,29 @@ set -Eeuo pipefail
 PHASES_WITH_INDEX["sshd"]="04"
 
 # shellcheck disable=SC2329
+function sshd_disable_systemd_socket() {
+    echo_green "Enable sshd service..."
+    if ! systemctl enable --now ssh.service; then
+        echo_red "Cannot enable ssh.service"
+        return 1
+    fi
+
+    echo_green "Stop sshd systemd socket.."
+    if ! systemctl stop ssh.socket; then
+        echo_red "Cannot stop ssh.socket"
+        return 1
+    fi
+
+    echo_green "Disable sshd systemd socket..."
+    if ! systemctl disable --now ssh.socket; then
+        echo_red "Cannot disabe ssh.socket"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
 function sshd_verify_and_restart() {
     local setting="${1,,}"
 
@@ -45,7 +68,7 @@ function sshd_apply_setting() {
     fi
 
     if ! grep -q "$setting" "$conf_file"; then
-        echo_yellow "Change to new sshd port setting $setting"
+        echo_yellow "Change to new sshd port setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
 
@@ -75,11 +98,6 @@ function sshd_apply_setting() {
 
 # shellcheck disable=SC2329
 function phase_sshd_run() {
-    if [[ "${DISABLE_PREPARE_SSHD-no}" == "true" ]]; then
-        echo_yellow "prepare sshd!"
-        return 0
-    fi
-
     local port="${SSHD_PORT-}"
     if [ -z "$port" ]; then
         echo_red "SSHD port not passed"
@@ -95,20 +113,7 @@ function phase_sshd_run() {
 
     local base_cfgs_dir="/etc/ssh/sshd_config.d"
 
-    echo_green "Prepare sshd. Disable systemd socket..."
-
-    if ! systemctl enable --now ssh.service; then
-        echo_red "Cannot enable ssh.service"
-        return 1
-    fi
-
-    if ! systemctl stop ssh.socket; then
-        echo_red "Cannot stop ssh.socket"
-        return 1
-    fi
-
-    if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disabe ssh.socket"
+    if ! sshd_disable_systemd_socket; then
         return 1
     fi
 

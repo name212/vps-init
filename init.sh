@@ -652,11 +652,6 @@ PHASES_WITH_INDEX["users"]="02"
 
 # shellcheck disable=SC2329
 function phase_users_run() {
-    if [[ "${DISABLE_USERS-no}" == "true" ]]; then
-        echo_yellow "Skip add users!"
-        return 0
-    fi
-
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
@@ -766,11 +761,6 @@ PHASES_WITH_INDEX["hostname"]="03"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {
-    if [[ "${DISABLE_HOSTNAME-no}" == "true" ]]; then
-        echo_yellow "Skip change sshd!"
-        return 0
-    fi
-
     local new_hostname="${SET_HOSTNAME-}"
     if [ -z "$new_hostname" ]; then
         echo_red "New hostname not passed!"
@@ -836,6 +826,29 @@ function phase_hostname_disable_env() {
 PHASES_WITH_INDEX["sshd"]="04"
 
 # shellcheck disable=SC2329
+function sshd_disable_systemd_socket() {
+    echo_green "Enable sshd service..."
+    if ! systemctl enable --now ssh.service; then
+        echo_red "Cannot enable ssh.service"
+        return 1
+    fi
+
+    echo_green "Stop sshd systemd socket.."
+    if ! systemctl stop ssh.socket; then
+        echo_red "Cannot stop ssh.socket"
+        return 1
+    fi
+
+    echo_green "Disable sshd systemd socket..."
+    if ! systemctl disable --now ssh.socket; then
+        echo_red "Cannot disabe ssh.socket"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
 function sshd_verify_and_restart() {
     local setting="${1,,}"
 
@@ -875,7 +888,7 @@ function sshd_apply_setting() {
     fi
 
     if ! grep -q "$setting" "$conf_file"; then
-        echo_yellow "Change to new sshd port setting $setting"
+        echo_yellow "Change to new sshd port setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
 
@@ -905,11 +918,6 @@ function sshd_apply_setting() {
 
 # shellcheck disable=SC2329
 function phase_sshd_run() {
-    if [[ "${DISABLE_PREPARE_SSHD-no}" == "true" ]]; then
-        echo_yellow "prepare sshd!"
-        return 0
-    fi
-
     local port="${SSHD_PORT-}"
     if [ -z "$port" ]; then
         echo_red "SSHD port not passed"
@@ -925,20 +933,7 @@ function phase_sshd_run() {
 
     local base_cfgs_dir="/etc/ssh/sshd_config.d"
 
-    echo_green "Prepare sshd. Disable systemd socket..."
-
-    if ! systemctl enable --now ssh.service; then
-        echo_red "Cannot enable ssh.service"
-        return 1
-    fi
-
-    if ! systemctl stop ssh.socket; then
-        echo_red "Cannot stop ssh.socket"
-        return 1
-    fi
-
-    if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disabe ssh.socket"
+    if ! sshd_disable_systemd_socket; then
         return 1
     fi
 
@@ -1038,11 +1033,6 @@ PHASES_WITH_INDEX["docker"]="05"
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
-    if [[ "${DISABLE_DOCKER-no}" == "true" ]]; then
-        echo_yellow "Skip install docker!"
-        return 0
-    fi
-    
     echo_green "Install docker..."
 
     local packages=(
@@ -1107,11 +1097,6 @@ PHASES_WITH_INDEX["werf"]="98"
 
 # shellcheck disable=SC2329
 function phase_werf_run() {
-    if [[ "${DISABLE_WERF-no}" == "true" ]]; then
-        echo_yellow "Skip install werf!"
-        return 0
-    fi
-
     echo_green "Install werf..."
 
     local not_ask=""
@@ -1153,15 +1138,18 @@ PHASES_WITH_INDEX["aliases"]="99"
 
 # shellcheck disable=SC2329
 function phase_aliases_run() {
-    if [[ "${DISABLE_ALIASES-no}" == "true" ]]; then
-        echo_yellow "Skip add aliases!"
-        return 0
-    fi
+    echo_green "Add aliases..."
 
-    cat << EOF > /etc/profile.d/099-additional-aliases.sh
+    local content=""
+    content=$(cat <<EOF
 alias h='history | grep -i'
 alias psf='ps aux | grep -i'
 EOF
+    )
+
+    echo "$content" > /etc/profile.d/099-additional-aliases.sh
+
+    echo_green "Aliases added!"
 }
 
 # shellcheck disable=SC2329
@@ -1461,20 +1449,20 @@ Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
 function main() {
     local -a not_ordered_phases=()
 
-    for p in "${!PHASES_WITH_INDEX[@]}"; do
-        if [ -z "$p" ]; then
+    for pi in "${!PHASES_WITH_INDEX[@]}"; do
+        if [ -z "$pi" ]; then
             echo_red "Got empty phase name!"
             exit 1
         fi
-        not_ordered_phases+=("${PHASES_WITH_INDEX[$p]}:${p}")
+        not_ordered_phases+=("${PHASES_WITH_INDEX[$pi]}:${pi}")
     done
 
     local -a phases_sorted=()
     readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort)
 
     local -a phases=()
-    for p in "${phases_sorted[@]}"; do
-        local phase_to_add="${p#*:}"
+    for ps in "${phases_sorted[@]}"; do
+        local phase_to_add="${ps#*:}"
         local func_err=""
         if ! func_err="$(phase_run_func "$phase_to_add")"; then
             echo_red "$func_err"
@@ -1492,13 +1480,13 @@ function main() {
         fi
     done
 
-    local phase_to_run=""
+    local got_phase_to_run=""
 
     if [[ "${1-}" == "phase" ]]; then
-        phase_to_run="${2-}"
-        if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
+        got_phase_to_run="${2-}"
+        if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
             usage "${phases[@]}"
-            echo_red "Not found phase $phase_to_run"
+            echo_red "Not found phase $got_phase_to_run"
             exit 1
         fi
 
@@ -1524,16 +1512,16 @@ function main() {
 
     local -a phases_to_run=()
 
-    if [ -z "$phase_to_run" ]; then
-        for p in "${phases[@]}"; do
-            if phase_is_not_disabled "$p"; then
-                phases_to_run+=("$p")
+    if [ -z "$got_phase_to_run" ]; then
+        for pp in "${phases[@]}"; do
+            if phase_is_not_disabled "$pp"; then
+                phases_to_run+=("$pp")
             else
-                echo_yellow "Phase $p is skipped!"
+                echo_yellow "Phase $pp is skipped!"
             fi
         done
     else
-        phases_to_run=("$phase_to_run")
+        phases_to_run=("$got_phase_to_run")
     fi
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then
@@ -1547,22 +1535,22 @@ function main() {
         exit 1
     fi
 
-    for p in "${phases[@]}"; do
+    for ph in "${phases_to_run[@]}"; do
         local phase_run=""
 
-        if ! phase_run="$(phase_run_func "$phase_to_add")"; then
+        if ! phase_run="$(phase_run_func "$ph")"; then
             echo_red "$phase_run"
             exit 1
         fi 
 
-        echo_green "Run phase ${p} with func '$phase_run'..."
+        echo_green "Run phase ${ph} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
-            echo_red "Phase $p failed! Exit"
+            echo_red "Phase $ph failed! Exit"
             exit 1
         fi
         
-        echo_green "Phase ${p} successed!"
+        echo_green "Phase ${ph} successed!"
     done
 
     return 0

@@ -57,20 +57,20 @@ Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
 function main() {
     local -a not_ordered_phases=()
 
-    for p in "${!PHASES_WITH_INDEX[@]}"; do
-        if [ -z "$p" ]; then
+    for pi in "${!PHASES_WITH_INDEX[@]}"; do
+        if [ -z "$pi" ]; then
             echo_red "Got empty phase name!"
             exit 1
         fi
-        not_ordered_phases+=("${PHASES_WITH_INDEX[$p]}:${p}")
+        not_ordered_phases+=("${PHASES_WITH_INDEX[$pi]}:${pi}")
     done
 
     local -a phases_sorted=()
     readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort)
 
     local -a phases=()
-    for p in "${phases_sorted[@]}"; do
-        local phase_to_add="${p#*:}"
+    for ps in "${phases_sorted[@]}"; do
+        local phase_to_add="${ps#*:}"
         local func_err=""
         if ! func_err="$(phase_run_func "$phase_to_add")"; then
             echo_red "$func_err"
@@ -88,13 +88,13 @@ function main() {
         fi
     done
 
-    local phase_to_run=""
+    local got_phase_to_run=""
 
     if [[ "${1-}" == "phase" ]]; then
-        phase_to_run="${2-}"
-        if ! [[ -v PHASES_WITH_INDEX["$phase_to_run"] ]]; then
+        got_phase_to_run="${2-}"
+        if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
             usage "${phases[@]}"
-            echo_red "Not found phase $phase_to_run"
+            echo_red "Not found phase $got_phase_to_run"
             exit 1
         fi
 
@@ -120,16 +120,16 @@ function main() {
 
     local -a phases_to_run=()
 
-    if [ -z "$phase_to_run" ]; then
-        for p in "${phases[@]}"; do
-            if phase_is_not_disabled "$p"; then
-                phases_to_run+=("$p")
+    if [ -z "$got_phase_to_run" ]; then
+        for pp in "${phases[@]}"; do
+            if phase_is_not_disabled "$pp"; then
+                phases_to_run+=("$pp")
             else
-                echo_yellow "Phase $p is skipped!"
+                echo_yellow "Phase $pp is skipped!"
             fi
         done
     else
-        phases_to_run=("$phase_to_run")
+        phases_to_run=("$got_phase_to_run")
     fi
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then
@@ -143,22 +143,22 @@ function main() {
         exit 1
     fi
 
-    for p in "${phases[@]}"; do
+    for ph in "${phases_to_run[@]}"; do
         local phase_run=""
 
-        if ! phase_run="$(phase_run_func "$phase_to_add")"; then
+        if ! phase_run="$(phase_run_func "$ph")"; then
             echo_red "$phase_run"
             exit 1
         fi 
 
-        echo_green "Run phase ${p} with func '$phase_run'..."
+        echo_green "Run phase ${ph} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
-            echo_red "Phase $p failed! Exit"
+            echo_red "Phase $ph failed! Exit"
             exit 1
         fi
         
-        echo_green "Phase ${p} successed!"
+        echo_green "Phase ${ph} successed!"
     done
 
     return 0

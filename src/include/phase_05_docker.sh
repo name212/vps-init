@@ -7,11 +7,6 @@ PHASES_WITH_INDEX["docker"]="05"
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
-    if [[ "${DISABLE_DOCKER-no}" == "true" ]]; then
-        echo_yellow "Skip install docker!"
-        return 0
-    fi
-    
     echo_green "Install docker..."
 
     local packages=(

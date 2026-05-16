@@ -7,11 +7,6 @@ PHASES_WITH_INDEX["users"]="02"
 
 # shellcheck disable=SC2329
 function phase_users_run() {
-    if [[ "${DISABLE_USERS-no}" == "true" ]]; then
-        echo_yellow "Skip add users!"
-        return 0
-    fi
-
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 

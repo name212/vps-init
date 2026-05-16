@@ -7,11 +7,6 @@ PHASES_WITH_INDEX["hostname"]="03"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {
-    if [[ "${DISABLE_HOSTNAME-no}" == "true" ]]; then
-        echo_yellow "Skip change sshd!"
-        return 0
-    fi
-
     local new_hostname="${SET_HOSTNAME-}"
     if [ -z "$new_hostname" ]; then
         echo_red "New hostname not passed!"

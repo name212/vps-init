@@ -7,11 +7,6 @@ PHASES_WITH_INDEX["werf"]="98"
 
 # shellcheck disable=SC2329
 function phase_werf_run() {
-    if [[ "${DISABLE_WERF-no}" == "true" ]]; then
-        echo_yellow "Skip install werf!"
-        return 0
-    fi
-
     echo_green "Install werf..."
 
     local not_ask=""
