@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["hostname"]="03"
+PHASES_WITH_INDEX["hostname"]="04"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {

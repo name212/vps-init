@@ -15,7 +15,8 @@ function phase_base_pkgs_run() {
         "nano" 
         "vim" 
         "less" 
-        "dnsutils" 
+        "dnsutils"
+        "bind9-dnsutils"
         "iputils-ping" 
         "htop" 
         "mc" 
@@ -24,8 +25,11 @@ function phase_base_pkgs_run() {
         "yq"
         "libc-bin"
         "diffutils"
-        # "git"
+        "git"
         "procps"
+        "tzdata"
+        "gnupg"
+        "apt-transport-https"
     )
 
     if check_packages_installed "${packages[@]}"; then

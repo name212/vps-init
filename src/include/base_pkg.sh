@@ -36,3 +36,30 @@ function check_packages_installed() {
     
     return 0
 }
+
+# shellcheck disable=SC2329
+function remove_packages() {
+    local -a for_remove=()
+
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if dpkg-query -s "$name" &> /dev/null; then
+            for_remove+=("$name")
+        fi
+        shift
+    done
+
+    if [[ "${#for_remove[@]}" == "0" ]]; then
+        echo_green "All passed packages already removed"
+        return 0
+    fi
+
+    echo_green "Remove packages ${for_remove[*]}"
+    
+    if ! apt purge -y --auto-remove "${for_remove[@]}"; then
+        echo_red "Some packages not removed!"
+        return 1
+    fi
+
+    return 0
+}

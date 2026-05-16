@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["docker"]="05"
+PHASES_WITH_INDEX["docker"]="06"
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
