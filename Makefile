@@ -53,3 +53,5 @@ deploy/no-sudo-password:
 
 deploy/debug: build deploy/no-sudo-password
 
+deploy/debug-sudo-pass: build deploy/with-sudo-password
+

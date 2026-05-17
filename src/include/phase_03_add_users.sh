@@ -20,12 +20,14 @@ function users_validate_pub_key() {
         valid="$valid not .pub"
     fi
 
-    local base=""
-    if base="$(basename "$ssh_key")"; then
-        if [[ "$base" != "authorized_keys" ]]; then
-            valid="$valid not authorized_keys"
-        else
-            valid=""
+    if [ -n "$valid" ]; then
+        local base=""
+        if base="$(basename "$ssh_key")"; then
+            if [[ "$base" != "authorized_keys" ]]; then
+                valid="$valid not authorized_keys"
+            else
+                valid=""
+            fi
         fi
     fi
 
@@ -60,6 +62,7 @@ function phase_users_run() {
     local -A users_no_pass=()
     local -A users_passwords=()
     local -A users_sudo=()
+    local -A users_sudo_no_pass=()
     local -A users_keys=()
 
     while true; do
@@ -89,6 +92,10 @@ function phase_users_run() {
         # shellcheck disable=SC2155
         local should_sudo="$(get_env_value_or_default "$sudo_env" "false")"
 
+        local sudo_no_pass_env="ADD_USER_${cur_index}_SUDO_NO_PASS"
+        # shellcheck disable=SC2155
+        local sudo_no_pass="$(get_env_value_or_default "$sudo_no_pass_env" "false")"
+
         local ssh_env="ADD_USER_${cur_index}_SSH_KEY"
         # shellcheck disable=SC2155
         local ssh_key="$(get_env_value_or_default "$ssh_env" "")"
@@ -97,6 +104,7 @@ function phase_users_run() {
         users_no_pass["$username"]="$no_pass"
         users_passwords["$username"]="$pass"
         users_sudo["$username"]="$should_sudo"
+        users_sudo_no_pass["$username"]="$sudo_no_pass"
         users_keys["$username"]="$ssh_key"
 
         ((cur_index++))
@@ -116,6 +124,7 @@ function phase_users_run() {
         local arg_no_pass="false"
         local arg_pass=""
         local arg_should_sudo="false"
+        local arg_sudo_no_pass="false"
         local arg_ssh_key=""
 
         local arg="${1-}"
@@ -130,6 +139,11 @@ function phase_users_run() {
 
                 "--sudo")
                     arg_should_sudo="$CONST_SHOULD_SUDO"
+                    shift
+                ;;
+
+                "--sudo-no-pass")
+                    arg_sudo_no_pass="$CONST_SUDO_NO_PASS"
                     shift
                 ;;
 
@@ -192,6 +206,7 @@ function phase_users_run() {
         users_no_pass["$arg_username"]="$arg_no_pass"
         users_passwords["$arg_username"]="$arg_pass"
         users_sudo["$arg_username"]="$arg_should_sudo"
+        users_sudo_no_pass["$arg_username"]="$arg_sudo_no_pass"
         users_keys["$arg_username"]="$arg_ssh_key"
 
         ((cur_user_add_arg++))
@@ -224,6 +239,7 @@ function phase_users_run() {
         local user_no_pass="${users_no_pass["$add_user"]}"
         local user_pass="${users_passwords["$add_user"]}"
         local user_should_sudo="${users_sudo["$add_user"]}"
+        local user_sudo_no_pass="${users_sudo_no_pass["$add_user"]}"
         local user_ssh_key="${users_keys["$add_user"]}"
 
         if ! add_user "$add_user" "$user_no_pass" "$not_ask" "$user_pass"; then
@@ -237,7 +253,7 @@ function phase_users_run() {
             fi
 
             echo_green "Add user $add_user to sudoers..."
-            if ! add_user_to_sudoers "$add_user" "$not_ask"; then
+            if ! add_user_to_sudoers "$add_user" "$user_sudo_no_pass" "$not_ask"; then
                 return 1
             fi
         fi
@@ -263,21 +279,23 @@ function phase_users_help() {
         Can be multiple time.
         Script parse every own sub arguments while get -- argument
         Sub args:
-          --name     - name of user. required
-          --sudo     - if passed add user to sudo group and sudoers. Default no add to sudo.
-          --password - if passed use PASSWORD as password. If not passed 
-                       and not use --remove-password ask run passwd as not interactive
+          --name            - name of user. required
+          --sudo            - if passed add user to sudo group and sudoers.
+          --sudo-no-pass    - if passed remove ask sudo password for user.
+          --password        - if passed use PASSWORD as password. If not passed 
+                              and not use --remove-password ask run passwd as not interactive
           --remove-password - if passed remove password for user.
-          --ssh-pub-key - path to ssh public key to add for user (should suffix .pub) or autorised keys file
+          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) or autorised keys file
     You can use next envs for add users.
     every env should has prefix ADD_USER_\${INDEX}_ when INDEX index for user started from 0 
     Script can try to get env ADD_USER_\${INDEX}_NAME and if next index env is not found stop adding
     Envs:
-      ADD_USER_\${INDEX}_NAME        - user name
-      ADD_USER_\${INDEX}_SUDO        - if has  'true' value add to sudo, othervise not add 
-      ADD_USER_\${INDEX}_PASSWORD    - password for set
-      ADD_USER_\${INDEX}_NO_PASSWORD - if has true value - remove password
-      ADD_USER_\${INDEX}_SSH_KEY     - path to ssh pub key (should suffix .pub) or autorised keys file
+      ADD_USER_\${INDEX}_NAME         - user name
+      ADD_USER_\${INDEX}_SUDO         - if has '$CONST_SHOULD_SUDO' value add to sudo, othervise not add 
+      ADD_USER_\${INDEX}_SUDO_NO_PASS - if has '$CONST_SUDO_NO_PASS' value add to sudo, othervise not add 
+      ADD_USER_\${INDEX}_PASSWORD     - password for set
+      ADD_USER_\${INDEX}_NO_PASSWORD  - if has '$CONST_REMOVE_PASSWORD' value - remove password
+      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) or autorised keys file
 "
 }
 

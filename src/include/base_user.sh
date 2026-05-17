@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 
 export CONST_REMOVE_PASSWORD="true"
+export CONST_SUDO_NO_PASS="true"
 
 # shellcheck disable=SC2329
 function update_passwd_for_user() {
@@ -104,7 +105,8 @@ function add_user_to_group() {
 # shellcheck disable=SC2329
 function add_user_to_sudoers() {
     local name="$1"
-    local not_ask="${2-no}"
+    local no_password="${2-no}"
+    local not_ask="${3-no}"
 
     if [ -z "$name" ]; then
         echo_red "user name did not pass"
@@ -112,6 +114,9 @@ function add_user_to_sudoers() {
     fi
 
     local sudoers_str="$name    ALL=(ALL:ALL) ALL"
+    if [[ "$no_password" == "$CONST_SUDO_NO_PASS" ]]; then
+        sudoers_str="$name    ALL=(ALL) NOPASSWD: ALL"
+    fi
 
     local sudoers_path="/etc/sudoers"
 

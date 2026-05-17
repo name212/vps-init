@@ -6,11 +6,41 @@ set -Eeuo pipefail
 PHASES_WITH_INDEX["sshd"]="05"
 
 # shellcheck disable=SC2329
+function sshd_fix_privilegies_separation() {
+    local run_dir="/run/sshd"
+
+    if ! mkdir -p "$run_dir"; then 
+        echo_red "Cannot create $run_dir dir"
+        return 1
+    fi
+
+    if ! chmod 755 "$run_dir"; then
+        echo_red "Cannot chmod $run_dir dir"
+        return 1
+    fi
+
+    local tmpfiles_dir="/etc/tmpfiles.d/"
+
+    if ! mkdir -p "$tmpfiles_dir"; then 
+        echo_red "Cannot create $tmpfiles_dir dir"
+        return 1
+    fi
+
+    echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
+    return 0
+}
+
+# shellcheck disable=SC2329
 function sshd_disable_systemd_socket() {
     echo_green "Enable sshd service..."
     if ! systemctl enable --now ssh.service; then
         echo_red "Cannot enable ssh.service"
         return 1
+    fi
+
+    echo_green "Create missing privilege separation directory..."
+    if ! sshd_fix_privilegies_separation; then
+        return 1 
     fi
 
     echo_green "SSHD service enabled! Restart..."
