@@ -1,7 +1,7 @@
 run-with-cleanup = $(1) && $(2) || (ret=$$?; $(2) && exit $$ret)
 
 build:
-	./hack/build.sh
+	@./hack/build.sh
 
 check/host-passed:
 	@[ ! -z "$$host" ] || { echo "host not passed"; exit 1; }

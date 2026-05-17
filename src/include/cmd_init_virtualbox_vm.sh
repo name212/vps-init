@@ -4,6 +4,7 @@ set -Eeuo pipefail
 
 COMMANDS_LIST+=("init_virtualbox_vm")
 
+# shellcheck disable=SC2329
 function validate_arg_mac_address() {
     local val="$1"
     local passed="$2"
@@ -199,7 +200,7 @@ EOF
         echo_green "Netplan applyed! Verify internet connection with ping $remote_host"
         echo_green "Sleep 5 seconds before check..."
         sleep 5
-        
+
         if ! ping -W 4 -c 4 "$remote_host"; then
             echo_red "Host $remote_host not accessable!"
             return 1
