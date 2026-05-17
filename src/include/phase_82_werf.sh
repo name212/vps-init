@@ -9,13 +9,13 @@ PHASES_WITH_INDEX["werf"]="82"
 function phase_werf_run() {
     echo_green "Install werf..."
 
-    local not_ask=""
-    not_ask="$(parse_not_ask "$@")"
-
     if command -v werf &> /dev/null; then
         echo_green "Werf already installed!"
         return 0
     fi
+
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
 
     local url="https://werf.io/install.sh"
 
