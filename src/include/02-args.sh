@@ -222,6 +222,32 @@ function validate_arg_number() {
 }
 
 # shellcheck disable=SC2329
+function validate_arg_ipv4() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo "Arg not passed"
+        return 1
+    fi
+
+    if [ -z "$val" ]; then
+        echo "Empty arg val"
+        return 1 
+    fi
+
+    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+
+    if [[ "$val" =~ $regexp ]]; then
+        echo -n "$val"
+        return 0
+    fi 
+
+    echo -n "Incorrect IPv4 $val"
+    return 1
+}
+
+# shellcheck disable=SC2329
 function get_env_value_or_default() {
     local var_name="$1"
     local default_val="${2-}"
