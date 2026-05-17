@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["werf"]="98"
+PHASES_WITH_INDEX["werf"]="82"
 
 # shellcheck disable=SC2329
 function phase_werf_run() {

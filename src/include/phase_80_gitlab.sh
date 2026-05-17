@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["gitlab"]="97"
+PHASES_WITH_INDEX["gitlab"]="80"
 
 # shellcheck disable=SC2329
 function gitlab_prepare_runner_service() {
@@ -141,13 +141,11 @@ function phase_gitlab_run() {
 
     echo_green "Restart gitlab runner service..."
 
-    local service_name="gitlab-runner.service"
-
-    if ! gitlab_prepare_runner_service "$service_name" "$username" "$not_ask"; then
+    if ! gitlab_prepare_runner_service "$CONST_GITLAB_SERVICE_NAME" "$username" "$not_ask"; then
         return 1
     fi
 
-    if systemctl is-active "$service_name"; then
+    if systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
         echo_green "Restart gitlab runner service..."
         if ! systemctl restart gitlab-runner.service; then
             echo_red "Cannot restart gitlab runner service!"
@@ -164,4 +162,9 @@ function phase_gitlab_help() {
     Install and prepare gitlab runner.
     No Options.
 "
+}
+
+# shellcheck disable=SC2329
+function phase_gitlab_disable_env() {
+    echo -n "DISABLE_GITLAB"
 }

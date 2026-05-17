@@ -2,22 +2,36 @@
 
 set -Eeuo pipefail
 
-# shellcheck disable=SC2329
-function phase_gitlab_disable_env() {
-    echo -n "DISABLE_GITLAB"
-}
+COMMANDS_LIST+=("gitlab_register_runner")
+
+export CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
 
 # shellcheck disable=SC2329
-function register_gitlab_runner() {
-    local runner_config="$1"
-
-    if [ ! -f "$runner_config" ]; then
-        echo_red "$runner_config file not exists!"
+function cmd_gitlab_register_runner_run() {
+    if ! command -v gitlab-runner &> /dev/null; then
+        echo_red "gitlab runner is not installed!"
+        echo_red "Please init server or install with --phase gitlab first."
         return 1
     fi
 
-    # shellcheck disable=SC2046
-    export $(grep -v '^#' "$runner_config" | xargs -d '\n')
+    if ! systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
+        echo_red "gitlab runner service is not active!"
+        echo_red "Please init server or install with --phase gitlab first."
+        return 1
+    fi
+
+    local runner_config=""
+
+    if ! runner_config="$(extract_argument "--gtlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+        echo_red "Gitlab runner config: $runner_config"
+        return 1
+    fi
+
+    if [ -n "$runner_config" ]; then
+        echo_green "Load runner config $runner_config"
+        # shellcheck disable=SC1090
+        set -a && source "$runner_config" && set +a
+    fi
 
     local errors=""
 
@@ -75,4 +89,22 @@ function register_gitlab_runner() {
     fi
     
     echo_green "Runner ${runner_name} registered!"
+}
+
+# shellcheck disable=SC2329
+function cmd_gitlab_register_runner_help() {
+    echo -n "
+    Register gitlab runner.
+    Options:
+      --gtlab-runner-config PATH
+         Path to configuration to register runner.
+         Should be sh script with export next variables:
+           GITLAB_RUNNER_URL   - url to register gitlab runner.
+           GITLAB_RUNNER_TOKEN - token to register runner
+           GITLAB_RUNNER_DESC  - name or description of new runner
+           GITLAB_RUNNER_TAGS  - comma-separated tags of runner.
+         All parameters is required.
+         Can be provided with env GITLAB_RUNNER_CONFIG
+    Also you can provide envs without config.
+"
 }

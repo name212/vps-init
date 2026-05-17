@@ -5,6 +5,7 @@ set -Eeuo pipefail
 bin_name="$0"
 
 declare -A PHASES_WITH_INDEX=()
+declare -a COMMANDS_LIST=()
 
 # Start src/include/01-base_echo.sh
 
@@ -743,22 +744,36 @@ function add_pubkey_for_user() {
 
 # Start src/include/cmd_gitlab_register.sh
 
-# shellcheck disable=SC2329
-function phase_gitlab_disable_env() {
-    echo -n "DISABLE_GITLAB"
-}
+COMMANDS_LIST+=("gitlab_register_runner")
+
+export CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
 
 # shellcheck disable=SC2329
-function register_gitlab_runner() {
-    local runner_config="$1"
-
-    if [ ! -f "$runner_config" ]; then
-        echo_red "$runner_config file not exists!"
+function cmd_gitlab_register_runner_run() {
+    if ! command -v gitlab-runner &> /dev/null; then
+        echo_red "gitlab runner is not installed!"
+        echo_red "Please init server or install with --phase gitlab first."
         return 1
     fi
 
-    # shellcheck disable=SC2046
-    export $(grep -v '^#' "$runner_config" | xargs -d '\n')
+    if ! systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
+        echo_red "gitlab runner service is not active!"
+        echo_red "Please init server or install with --phase gitlab first."
+        return 1
+    fi
+
+    local runner_config=""
+
+    if ! runner_config="$(extract_argument "--gtlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+        echo_red "Gitlab runner config: $runner_config"
+        return 1
+    fi
+
+    if [ -n "$runner_config" ]; then
+        echo_green "Load runner config $runner_config"
+        # shellcheck disable=SC1090
+        set -a && source "$runner_config" && set +a
+    fi
 
     local errors=""
 
@@ -818,6 +833,24 @@ function register_gitlab_runner() {
     echo_green "Runner ${runner_name} registered!"
 }
 
+# shellcheck disable=SC2329
+function cmd_gitlab_register_runner_help() {
+    echo -n "
+    Register gitlab runner.
+    Options:
+      --gtlab-runner-config PATH
+         Path to configuration to register runner.
+         Should be sh script with export next variables:
+           GITLAB_RUNNER_URL   - url to register gitlab runner.
+           GITLAB_RUNNER_TOKEN - token to register runner
+           GITLAB_RUNNER_DESC  - name or description of new runner
+           GITLAB_RUNNER_TAGS  - comma-separated tags of runner.
+         All parameters is required.
+         Can be provided with env GITLAB_RUNNER_CONFIG
+    Also you can provide envs without config.
+"
+}
+
 # End src/include/cmd_gitlab_register.sh
 
 # Start src/include/phase_01_base_pkgs.sh
@@ -850,6 +883,7 @@ function phase_base_pkgs_run() {
         "tzdata"
         "gnupg"
         "apt-transport-https"
+        "chrony"
     )
 
     if check_packages_installed "${packages[@]}"; then
@@ -1578,10 +1612,10 @@ function phase_docker_disable_env() {
 
 # End src/include/phase_06_docker.sh
 
-# Start src/include/phase_97_gitlab.sh
+# Start src/include/phase_80_gitlab.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["gitlab"]="97"
+PHASES_WITH_INDEX["gitlab"]="80"
 
 # shellcheck disable=SC2329
 function gitlab_prepare_runner_service() {
@@ -1719,13 +1753,11 @@ function phase_gitlab_run() {
 
     echo_green "Restart gitlab runner service..."
 
-    local service_name="gitlab-runner.service"
-
-    if ! gitlab_prepare_runner_service "$service_name" "$username" "$not_ask"; then
+    if ! gitlab_prepare_runner_service "$CONST_GITLAB_SERVICE_NAME" "$username" "$not_ask"; then
         return 1
     fi
 
-    if systemctl is-active "$service_name"; then
+    if systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
         echo_green "Restart gitlab runner service..."
         if ! systemctl restart gitlab-runner.service; then
             echo_red "Cannot restart gitlab runner service!"
@@ -1744,12 +1776,44 @@ function phase_gitlab_help() {
 "
 }
 
-# End src/include/phase_97_gitlab.sh
+# shellcheck disable=SC2329
+function phase_gitlab_disable_env() {
+    echo -n "DISABLE_GITLAB"
+}
 
-# Start src/include/phase_98_werf.sh
+# End src/include/phase_80_gitlab.sh
+
+# Start src/include/phase_81_gitlab_register.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["werf"]="98"
+PHASES_WITH_INDEX["gitlab_register"]="81"
+
+# shellcheck disable=SC2329
+function phase_gitlab_register_run() {
+    echo_green "Gitlab register runner..."
+    if ! cmd_gitlab_register_runner_run "$@"; then
+        return 1
+    fi
+    echo_green "Gitlab runner registered!"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function phase_gitlab_register_help() {
+    cmd_gitlab_register_runner_help
+}
+
+# shellcheck disable=SC2329
+function phase_gitlab_register_disable_env() {
+    echo -n "DISABLE_GITLAB_REGISTER_RUNNER"
+}
+
+# End src/include/phase_81_gitlab_register.sh
+
+# Start src/include/phase_82_werf.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["werf"]="82"
 
 # shellcheck disable=SC2329
 function phase_werf_run() {
@@ -1785,7 +1849,7 @@ function phase_werf_disable_env() {
     echo -n "DISABLE_WERF"
 }
 
-# End src/include/phase_98_werf.sh
+# End src/include/phase_82_werf.sh
 
 # Start src/include/phase_99_aliases.sh
 
@@ -1842,7 +1906,7 @@ function phase_run_func() {
 # shellcheck disable=SC2120
 function usage() {
      echo "
-Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
+Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
   Init server.
   Global parameters
     --not-ask
@@ -1857,7 +1921,8 @@ Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
     -h|--help
       Show this message.
   
-  If passed --phase only run only one phase.
+  If passed 'phase' as first arg and name of phase as second
+  only run only one phase.
   Otherwise, run all phases. For disable some phase 
   you can use disable env variable (see phase params).  
   
@@ -1867,7 +1932,7 @@ Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
     for p in "$@"; do
         local help_fun="phase_${p}_help"
         if ! declare -F "$help_fun" > /dev/null; then
-            echo_red "Help function not found for $p"
+            echo_red "Help function not found for phase $p"
             exit 1
         fi
         echo ""
@@ -1875,6 +1940,62 @@ Usage: $bin_name [--phase PHASE_FOR_RUN] [args...]
         "$help_fun"
         echo "    $(disable_help "$p")"
     done
+
+    if [[ "${#COMMANDS_LIST[@]}" == "0" ]]; then
+        return 0
+    fi
+
+    echo ""
+
+    echo "
+  If passed 'cmd' as first argument and name os command as second
+  will run command
+
+  Commands available:
+"
+    for cm in "${COMMANDS_LIST[@]}"; do
+        local cmd_help_fun="cmd_${cm}_help"
+        if ! declare -F "$cmd_help_fun" > /dev/null; then
+            echo_red "Help function not found for command $cm"
+            exit 1
+        fi
+        echo ""
+        echo "  Command $cm"
+        "$cmd_help_fun"
+    done
+}
+
+function run_passed_command() {
+    local cmd_name="${1-}"
+    
+    local found=""
+    for cmd in "${COMMANDS_LIST[@]}"; do
+        if [[ "$cmd_name" == "$cmd" ]]; then
+            found="true"
+            break
+        fi
+    done
+
+    if [[ "$found" != "true" ]]; then
+        echo_red "Command '$cmd_name' not found!"
+        return 1
+    fi
+
+    local run_func="cmd_${cmd_name}_run"
+
+    if ! declare -F "$run_func" > /dev/null; then
+        echo_red "Run function $run_func for command $cmd_name not found!"
+        return 1
+    fi
+
+    shift
+
+    if ! "$run_func" "$@"; then
+        echo_red "Command $cmd_name failed" 
+        return 1
+    fi
+
+    return 0
 }
 
 function main() {
@@ -1911,25 +2032,6 @@ function main() {
         fi
     done
 
-    local got_phase_to_run=""
-
-    local old_hostname=""
-    if ! old_hostname="$(hostnamectl hostname)"; then
-         old_hostname="ERROR GET"
-    fi
-
-    if [[ "${1-}" == "--phase" ]]; then
-        got_phase_to_run="${2-}"
-        if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
-            usage "${phases[@]}"
-            echo_red "Not found phase $got_phase_to_run"
-            exit 1
-        fi
-
-        shift
-        shift
-    fi
-
     local not_ask=""
     not_ask="$(parse_not_ask "$@")" || true
 
@@ -1945,6 +2047,47 @@ function main() {
         # shellcheck disable=SC1090
         set -a && source "$config" && set +a
     fi
+
+    local got_phase_to_run=""
+
+    case "${1-}" in
+        "phase")
+            got_phase_to_run="${2-}"
+
+            if [ -z "$got_phase_to_run" ]; then
+                usage "${phases[@]}"
+                echo_red "Phase not provided"
+                exit 1
+            fi
+        
+            if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
+                usage "${phases[@]}"
+                echo_red "Not found phase $got_phase_to_run"
+                exit 1
+            fi
+
+            shift
+            shift
+        ;;
+
+        "cmd")
+            local got_command_to_run="${2-}"
+            if [ -z "$got_command_to_run" ]; then
+                usage "${phases[@]}"
+                echo_red "Command not provided"
+                exit 1
+            fi
+
+            shift
+            shift
+
+            if ! run_passed_command "$got_command_to_run" "$@"; then
+                exit 1
+            fi
+
+            exit 0
+        ;;
+    esac
 
     local -a phases_to_run=()
 
@@ -1963,6 +2106,11 @@ function main() {
     if [[ "${#phases_to_run[@]}" == "0" ]]; then
         echo_red "No one phase to run found!"
         exit 1
+    fi
+
+    local old_hostname=""
+    if ! old_hostname="$(hostnamectl hostname)"; then
+         old_hostname="ERROR GET"
     fi
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"

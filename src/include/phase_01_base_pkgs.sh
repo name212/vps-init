@@ -30,6 +30,7 @@ function phase_base_pkgs_run() {
         "tzdata"
         "gnupg"
         "apt-transport-https"
+        "chrony"
     )
 
     if check_packages_installed "${packages[@]}"; then
