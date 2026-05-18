@@ -42,6 +42,35 @@ function update_passwd_for_user() {
     return 0
 }
 
+function get_user_home(){
+    local name="$1"
+
+    local user_passwd=""
+    if ! user_passwd="$(getent passwd "$name")"; then
+        echo_red "cannot get passwd ent for $name"
+        return 1
+    fi
+
+    local user_home=""
+    if ! user_home="$(cut -d: -f6 <<<"$user_passwd")"; then 
+        echo_red "cannot extract home for $name"
+        return 1
+    fi
+
+    if [ -z "$user_home" ]; then
+        echo_red "User home not foend for $name"
+        return 1
+    fi
+
+    if [ ! -d "$user_home" ]; then
+        echo_red "User home $user_home is not directory for $name"
+        return 1
+    fi
+
+    echo -n "$user_home"
+    return 0
+}
+
 # shellcheck disable=SC2329
 function add_user() {
     local name="$1"
@@ -184,17 +213,11 @@ function add_pubkey_for_user() {
         return 0
     fi
 
-    local user_passwd=""
-    if ! user_passwd="$(getent passwd "$name")"; then
-        echo_red "cannot get passwd ent for $name"
-        return 1
-    fi
-
     local user_home=""
-    if ! user_home="$(cut -d: -f6 <<<"$user_passwd")"; then 
-        echo_red "cannot extract home for $name"
+    if ! user_home="$(get_user_home "$name")"; then 
+        echo_red "$user_home"
         return 1
-    fi
+    fi 
 
     local ssh_dir="${user_home}/.ssh"
 

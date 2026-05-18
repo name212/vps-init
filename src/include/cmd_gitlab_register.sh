@@ -47,13 +47,14 @@ function cmd_gitlab_register_runner_run() {
         errors="${errors} GITLAB_RUNNER_DESC not provided in config"
     fi
 
-    if [ -z "$GITLAB_RUNNER_TAGS" ]; then 
-        errors="${errors} GITLAB_RUNNER_TAGS not provided in config"
-    fi
-
     if [ -n "$errors" ]; then
         echo_red "$errors"
         return 1
+    fi
+
+    local executor="shell"
+    if [ -n "${GITLAB_RUNNER_EXECUTOR-}" ]; then 
+        executor="${GITLAB_RUNNER_EXECUTOR}"
     fi
 
     local runners=""
@@ -77,10 +78,8 @@ function cmd_gitlab_register_runner_run() {
         "$GITLAB_RUNNER_TOKEN"
         "--description" 
         "$runner_name"
-        "--tag-list"
-        "$GITLAB_RUNNER_TAGS"
         "--executor" 
-        "shell"
+        "$executor"
     )
 
     if ! gitlab-runner register "${register_args[@]}"; then
@@ -99,10 +98,10 @@ function cmd_gitlab_register_runner_help() {
       --gtlab-runner-config PATH
          Path to configuration to register runner.
          Should be sh script with export next variables:
-           GITLAB_RUNNER_URL   - url to register gitlab runner.
-           GITLAB_RUNNER_TOKEN - token to register runner
-           GITLAB_RUNNER_DESC  - name or description of new runner
-           GITLAB_RUNNER_TAGS  - comma-separated tags of runner.
+           GITLAB_RUNNER_URL       - url to register gitlab runner.
+           GITLAB_RUNNER_TOKEN     - token to register runner
+           GITLAB_RUNNER_DESC      - name or description of new runner
+           GITLAB_RUNNER_EXECUTOR  - executor of runner. Default shell
          All parameters is required.
          Can be provided with env GITLAB_RUNNER_CONFIG
     Also you can provide envs without config.

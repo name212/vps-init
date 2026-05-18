@@ -112,6 +112,21 @@ function phase_gitlab_run() {
         return 1
     fi
 
+    local user_home=""
+    if ! user_home="$(get_user_home "$username")"; then 
+        echo_red "$user_home"
+        return 1
+    fi
+
+    local bash_logout_file="${user_home}/.bash_logout"
+
+    if [ -f "$bash_logout_file" ]; then
+        echo_green "Remove $bash_logout_file ..."
+        if ! delete_file "$bash_logout_file"; then
+            return 1
+        fi
+    fi
+
     local package="gitlab-runner"
 
     if ! check_packages_installed "$package"; then
