@@ -565,6 +565,36 @@ function update_passwd_for_user() {
 }
 
 # shellcheck disable=SC2329
+function get_user_home(){
+    local name="$1"
+
+    local user_passwd=""
+    if ! user_passwd="$(getent passwd "$name")"; then
+        echo_red "cannot get passwd ent for $name"
+        return 1
+    fi
+
+    local user_home=""
+    if ! user_home="$(cut -d: -f6 <<<"$user_passwd")"; then 
+        echo_red "cannot extract home for $name"
+        return 1
+    fi
+
+    if [ -z "$user_home" ]; then
+        echo_red "User home not foend for $name"
+        return 1
+    fi
+
+    if [ ! -d "$user_home" ]; then
+        echo_red "User home $user_home is not directory for $name"
+        return 1
+    fi
+
+    echo -n "$user_home"
+    return 0
+}
+
+# shellcheck disable=SC2329
 function add_user() {
     local name="$1"
     local remove_password="${2-false}"
@@ -706,17 +736,11 @@ function add_pubkey_for_user() {
         return 0
     fi
 
-    local user_passwd=""
-    if ! user_passwd="$(getent passwd "$name")"; then
-        echo_red "cannot get passwd ent for $name"
-        return 1
-    fi
-
     local user_home=""
-    if ! user_home="$(cut -d: -f6 <<<"$user_passwd")"; then 
-        echo_red "cannot extract home for $name"
+    if ! user_home="$(get_user_home "$name")"; then 
+        echo_red "$user_home"
         return 1
-    fi
+    fi 
 
     local ssh_dir="${user_home}/.ssh"
 
@@ -820,13 +844,14 @@ function cmd_gitlab_register_runner_run() {
         errors="${errors} GITLAB_RUNNER_DESC not provided in config"
     fi
 
-    if [ -z "$GITLAB_RUNNER_TAGS" ]; then 
-        errors="${errors} GITLAB_RUNNER_TAGS not provided in config"
-    fi
-
     if [ -n "$errors" ]; then
         echo_red "$errors"
         return 1
+    fi
+
+    local executor="shell"
+    if [ -n "${GITLAB_RUNNER_EXECUTOR-}" ]; then 
+        executor="${GITLAB_RUNNER_EXECUTOR}"
     fi
 
     local runners=""
@@ -850,10 +875,8 @@ function cmd_gitlab_register_runner_run() {
         "$GITLAB_RUNNER_TOKEN"
         "--description" 
         "$runner_name"
-        "--tag-list"
-        "$GITLAB_RUNNER_TAGS"
         "--executor" 
-        "shell"
+        "$executor"
     )
 
     if ! gitlab-runner register "${register_args[@]}"; then
@@ -872,10 +895,10 @@ function cmd_gitlab_register_runner_help() {
       --gtlab-runner-config PATH
          Path to configuration to register runner.
          Should be sh script with export next variables:
-           GITLAB_RUNNER_URL   - url to register gitlab runner.
-           GITLAB_RUNNER_TOKEN - token to register runner
-           GITLAB_RUNNER_DESC  - name or description of new runner
-           GITLAB_RUNNER_TAGS  - comma-separated tags of runner.
+           GITLAB_RUNNER_URL       - url to register gitlab runner.
+           GITLAB_RUNNER_TOKEN     - token to register runner
+           GITLAB_RUNNER_DESC      - name or description of new runner
+           GITLAB_RUNNER_EXECUTOR  - executor of runner. Default shell
          All parameters is required.
          Can be provided with env GITLAB_RUNNER_CONFIG
     Also you can provide envs without config.
@@ -2046,6 +2069,21 @@ function phase_gitlab_run() {
     
     if ! add_user "$username" "$CONST_REMOVE_PASSWORD" "$not_ask" ""; then
         return 1
+    fi
+
+    local user_home=""
+    if ! user_home="$(get_user_home "$username")"; then 
+        echo_red "$user_home"
+        return 1
+    fi
+
+    local bash_logout_file="${user_home}/.bash_logout"
+
+    if [ -f "$bash_logout_file" ]; then
+        echo_green "Remove $bash_logout_file ..."
+        if ! delete_file "$bash_logout_file"; then
+            return 1
+        fi
     fi
 
     local package="gitlab-runner"

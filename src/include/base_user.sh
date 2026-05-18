@@ -42,6 +42,7 @@ function update_passwd_for_user() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function get_user_home(){
     local name="$1"
 
