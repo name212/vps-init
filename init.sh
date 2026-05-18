@@ -907,9 +907,9 @@ function cmd_gitlab_register_runner_help() {
 
 # End src/include/cmd_gitlab_register.sh
 
-# Start src/include/cmd_init_virtualbox_vm.sh
+# Start src/include/cmd_virtualbox_init_vm_itself.sh
 
-COMMANDS_LIST+=("init_virtualbox_vm")
+COMMANDS_LIST+=("virtualbox_init_vm_itself")
 
 # shellcheck disable=SC2329
 function validate_arg_mac_address() {
@@ -951,7 +951,7 @@ function validate_arg_mac_address() {
 }
 
 # shellcheck disable=SC2329
-function cmd_init_virtualbox_vm_run() {
+function cmd_virtualbox_init_vm_itself_run() {
     echo_green "Init virtualbox vm..."
 
     local package="openssh-server"
@@ -1129,9 +1129,10 @@ EOF
 }
 
 # shellcheck disable=SC2329
-function cmd_init_virtualbox_vm_help() {
+function cmd_virtualbox_init_vm_itself_help() {
     echo -n "
-    Init virtual box vm.
+    Init virtualbox vm itself.
+    This command SHOULD run in vm!
     Install sshd and init interfaces with static ip for vm.
     Options:
       --virtualbox-nat-mac MAC_ADDRESS
@@ -1150,7 +1151,7 @@ function cmd_init_virtualbox_vm_help() {
 "
 }
 
-# End src/include/cmd_init_virtualbox_vm.sh
+# End src/include/cmd_virtualbox_init_vm_itself.sh
 
 # Start src/include/phase_01_base_pkgs.sh
 
