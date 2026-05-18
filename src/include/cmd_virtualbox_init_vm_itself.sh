@@ -45,6 +45,13 @@ function validate_arg_mac_address() {
 
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_itself_run() {
+    if command -v vboxmanage &> /dev/null; then
+        echo_red "vboxmanage executable found!"
+        echo_red "Probably you run virtualbox_init_vm_itself command outside vm"
+        echo_red "If you want to init vm from host, use virtualbox_init_vm"
+        return 1
+    fi
+
     echo_green "Init virtualbox vm..."
 
     local package="openssh-server"
