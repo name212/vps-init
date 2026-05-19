@@ -14,7 +14,7 @@ function sshd_fix_privilegies_separation() {
         return 1
     fi
 
-    if ! chmod 755 "$run_dir"; then
+    if ! chmod 0755 "$run_dir"; then
         echo_red "Cannot chmod $run_dir dir"
         return 1
     fi
