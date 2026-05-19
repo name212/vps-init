@@ -355,6 +355,7 @@ function ask_user_raw() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function remove_begin_spaces() {
     local content="$1"
     while [[ "$content" == [[:space:]]* ]]; do
@@ -414,6 +415,9 @@ function replace_file() {
     fi
 
     echo_green "--- End diff ---"
+    
+    # prevent to breack output
+    sleep 1
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
         echo_green "$title delete source $src"
@@ -510,6 +514,42 @@ function download_script_and_run() {
 }
 
 # End src/include/base_download.sh
+
+# Start src/include/base_jq.sh
+
+# shellcheck disable=SC2329
+function jq_get_key_or_empty() { 
+    local raw_out="$1"
+    local key="$2"
+    local required="${3-false}"
+
+    local val=""
+    local exit_code="128"
+
+    val="$(jq -er "$key" <<<"$raw_out")"
+    exit_code="$?"
+
+    case "$exit_code" in
+        "0")
+            echo -n "$val"
+            return 0
+        ;;
+
+        "1")
+            if [[ "$required" == "true" ]]; then
+                echo "Key not found $key"
+                return 1
+            fi
+
+            echo -n ""
+            return 0
+    esac
+
+    echo "Cannot get json key $key"
+    return 1
+}
+
+# End src/include/base_jq.sh
 
 # Start src/include/base_pkg.sh
 
@@ -850,6 +890,46 @@ function add_pubkey_for_user() {
     return 0
 }
 
+# shellcheck disable=SC2329
+function get_loginable_users() {
+    local passwd_out=""
+    if ! passwd_out="$(getent passwd)"; then
+        echo_red "Failed to call getent for get loginable users"
+        return 1
+    fi
+
+    local users_passwd_list=""
+    if ! users_passwd_list="$(grep -E -v '(false|nologin)$' <<<"$passwd_out")"; then
+        echo -n ""
+        return 0
+    fi
+
+    local users_raw_list=""
+    if ! users_raw_list="$(cut -d: -f1 <<<"$users_passwd_list")"; then
+        echo_red "Failed to ectract users names loginable users"
+        return 1
+    fi
+
+
+    local -a users_list=()
+    IFS=$'\n' read -rd '' -a users_list <<< "$users_raw_list"
+
+    local -a prepared_users=()
+
+    for uu in "${users_list[@]}"; do
+        if [ -z "$uu" ]; then
+            continue
+        fi
+        prepared_users+=("$uu")
+    done
+
+    # shellcheck disable=SC2155
+    local res="$(IFS=":"; echo "${prepared_users[*]}")"
+
+    echo -n "$res"
+    return 0
+}
+
 # End src/include/base_user.sh
 
 # Start src/include/cmd_gitlab_register.sh
@@ -1087,37 +1167,35 @@ function cmd_virtualbox_init_vm_itself_run() {
 
     if [[ $remove_sudo_pass == "$CONST_FLAG_SET" || "$ssh_key" != "" ]]; then
         echo_green "Users should initialize. Get loginable users..."
-        local passwd_out=""
-        if ! passwd_out="$(getent passwd)"; then
-            echo_red "Failed to call getent"
+
+        local users_raw_list=""
+        if ! users_raw_list="$(get_loginable_users)"; then
+            echo_red "Failed to get loginable users"
             return 1
         fi
 
-        local users_raw_list=""
-        if users_raw_list="$(grep -E -v '(false|nologin)$' <<<"$passwd_out")"; then
-            local -a users_list=()
-            IFS=$'\n' read -rd '' -a users_list <<< "$users_raw_list"
+        local -a users_list=()
+        IFS=":" read -ra users_list <<< "$users_raw_list"
+        
+        for user_to_append in "${users_list[@]}"; do 
+            if [[ "$user_to_append" == "root" ]]; then
+                echo_green "Skip root user"
+                continue
+            fi
 
-            for user_to_append in "${users_list[@]}"; do 
-                if [[ "$user_to_append" == "root" ]]; then
-                    echo_green "Skip root user"
-                    continue
-                fi
+            local user_home=""
+            if ! user_home="$(get_user_home "$user_to_append")"; then
+                echo_yellow "Not found user home for $user_to_append Skip"
+                continue
+            fi
 
-                local user_home=""
-                if ! user_home="$(get_user_home "$user_to_append")"; then
-                    echo_yellow "Not found user home for $user_to_append Skip"
-                    continue
-                fi
+            if [[ $user_home == "/home"* ]]; then
+                users_to_initialize+=("$user_to_append")
+                continue
+            fi
 
-                if [[ $user_home == "/home"* ]]; then
-                    users_to_initialize+=("$user_home")
-                    continue
-                fi
-
-                echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
-            done
-        fi
+            echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
+        done
     fi
 
     if [[ "$ssh_key" != "" && "${#users_to_initialize[@]}" != "0" ]]; then
@@ -1263,6 +1341,13 @@ EOF
 
     echo_green "Virtualbox vm initialized!"
 
+    if [[ "${#users_to_initialize[@]}" != "0" ]]; then
+        echo_green "You can try to verify ssh connection with:"
+        for ssh_user in "${users_to_initialize[@]}"; do
+            echo_green "ssh ${ssh_user}@$ip_static"
+        done
+    fi
+
     return 0
 }
 
@@ -1302,6 +1387,7 @@ function cmd_virtualbox_init_vm_itself_help() {
 
 COMMANDS_LIST+=("virtualbox_init_vm")
 
+# shellcheck disable=SC2329
 function virtualbox_extract_not_quoted_value() { 
     local input="$1"
 
@@ -1326,6 +1412,7 @@ function virtualbox_extract_not_quoted_value() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function virtualbox_extract_value_for_key_human() { 
     local raw_out="$1"
     local key="$2"
@@ -1354,6 +1441,7 @@ function virtualbox_extract_value_for_key_human() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function virtualbox_extract_value_for_key() { 
     local raw_out="$1"
     local key="$2"
@@ -1380,6 +1468,7 @@ function virtualbox_extract_value_for_key() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function virtualbox_extract_mac_address() { 
     local raw_out="$1"
     local index="$2"
@@ -1394,38 +1483,6 @@ function virtualbox_extract_mac_address() {
 
     echo -n "$mac"
     return 0
-}
-
-
-function virtualbox_jq() { 
-    local raw_out="$1"
-    local key="$2"
-    local required="${3-false}"
-
-    local val=""
-    local exit_code="128"
-
-    val="$(jq -er "$key" <<<"$raw_out")"
-    exit_code="$?"
-
-    case "$exit_code" in
-        "0")
-            echo -n "$val"
-            return 0
-        ;;
-
-        "1")
-            if [[ "$required" == "true" ]]; then
-                echo "Key not found $key"
-                return 1
-            fi
-
-            echo -n ""
-            return 0
-    esac
-
-    echo "Cannot get json key $key"
-    return 1
 }
 
 # shellcheck disable=SC2329
@@ -1452,6 +1509,7 @@ function validate_arg_octet() {
     return 1
 }
 
+# shellcheck disable=SC2329
 function virtualbox_extract_host_iface() {
     local user_passed_ip="${1-}"
     local passed_iface="${2-}"
@@ -1567,6 +1625,7 @@ function virtualbox_extract_host_iface() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function virtualbox_get_vm_info_json() {
     local vm_name="$1"
     local raw_out=""
@@ -1738,7 +1797,23 @@ function virtualbox_stop_vm() {
         return 1 
     fi
 
-    return 0
+    local attempts=5
+
+    for i in $(seq 1 $attempts); do
+        if virtualbox_vm_is_running "$vm_name"; then
+            echo_yellow "Waiting 5 seconds to stop vm $vm_name Attempt $i"
+            sleep 5 
+            continue
+        fi
+        return 0
+    done
+
+    if ! virtualbox_vm_is_running "$vm_name"; then
+        return 0
+    fi
+
+    echo_red "Vm $vm_name is not stopped after $attempts attempts"
+    return 1
 }
 
 # shellcheck disable=SC2329
@@ -1749,12 +1824,24 @@ function virtualbox_start_vm() {
         return 0
     fi
 
-    if ! vboxmanage startvm "$vm_name"; then
-        echo_red "Cannot start vm $vm_name"
-        return 1 
+    local attempts=5
+
+    for i in $(seq 1 $attempts); do
+        if ! vboxmanage startvm "$vm_name"; then
+            echo_yellow "Waiting 5 seconds to start vm $vm_name Attempt $1"
+            sleep 5
+            continue
+        fi
+
+        return 0 
+    done
+
+    if vboxmanage startvm "$vm_name"; then
+        return 0
     fi
 
-    return 0
+    echo_red "Vm $vm_name is not started after $attempts attempts"
+    return 1
 }
 
 # shellcheck disable=SC2329
@@ -1815,6 +1902,8 @@ function virtualbox_prepare_viso() {
 
     local init_file="${vm_dir}/init.sh"
 
+    # bash not correct handle shebang and set 
+    # when write file! 
     {
         echo -n "#"
         echo '!/usr/bin/env bash'
@@ -1824,26 +1913,20 @@ function virtualbox_prepare_viso() {
 
     cat <<EOF >> "$init_file"
 run_dir=\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-run_dir="\$(realpath "\$(dirname \$run_dir)")"
+run_dir="\$(realpath "\$run_dir")"
 
 bundle_file="\${run_dir}/init_bundle.sh"
 chmod 755 "\$bundle_file"
 
-"\$bundle_file" \\
+"\$bundle_file" cmd virtualbox_init_vm_itself \\
   --virtualbox-nat-mac "$nat_mac" \\
   --virtualbox-static-mac "$static_mac" \\
   --virtualbox-static-ip "$ip_static" \\
-  --virtualbox-ssh-key "\${run_dir}/authorized_keys"
+  --virtualbox-ssh-key "\${run_dir}/authorized_keys" \\
+  --virtualbox-sudo-no-password
 
 if [[ \$? != "0" ]]; then
     echo "Failed!"
-    exit 1
-fi
-
-echo "Unmount /dev/sr0"
-
-if ! unmout /dev/sr0; then
-    echo "Failed to unmount /dev/sr0"
     exit 1
 fi
 
@@ -1958,7 +2041,7 @@ function virtualbox_unmount_cleanup_after_init() {
     fi
 
     local opticals_str=""
-    if ! opticals_str="$(virtualbox_jq "$vm_info_json" '.opticals | join(";")' "false")"; then
+    if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
         echo_red "Cannot get opticals from vm info: $vm_info_json"
         return 1
     fi
@@ -2027,7 +2110,6 @@ function virtualbox_mount_opticals() {
 
     return 0
 }
-
 
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_run() {
@@ -2105,7 +2187,7 @@ function cmd_virtualbox_init_vm_run() {
     fi
 
     local opticals_str=""
-    if ! opticals_str="$(virtualbox_jq "$vm_info_json" '.opticals | join(";")' "false")"; then
+    if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
         echo_red "Cannot get opticals from vm info: $vm_info_json"
         return 1
     fi
@@ -2118,23 +2200,23 @@ function cmd_virtualbox_init_vm_run() {
     local host_mac=""
     local host_adapter=""
 
-    if ! nat_mac="$(virtualbox_jq "$vm_info_json" ".ifaces.nat.mac" "true")"; then
+    if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
         echo_red "Cannot extract NAT mac: $nat_mac"
         return 1
     fi
 
-    if ! nat_index="$(virtualbox_jq "$vm_info_json" ".ifaces.nat.indx" "true")"; then
+    if ! nat_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.indx" "true")"; then
         echo_red "Cannot extract NAT index: $nat_index"
         return 1
     fi
 
-    if ! host_mac="$(virtualbox_jq "$vm_info_json" ".ifaces.host.mac" "false")"; then
+    if ! host_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.mac" "false")"; then
         echo_red "Cannot extract hostonly mac: $host_mac"
         return 1
     fi
 
     if [ -n "$host_mac" ]; then
-        if ! host_adapter="$(virtualbox_jq "$vm_info_json" ".ifaces.host.adapter" "true")"; then
+        if ! host_adapter="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.adapter" "true")"; then
             echo_red "Cannot extract hostonly adapter: $host_adapter"
             return 1
         fi
@@ -2202,7 +2284,7 @@ function cmd_virtualbox_init_vm_run() {
             return 1
         fi
 
-        if ! host_mac="$(virtualbox_jq "$vm_info_json_after_add" ".ifaces.host.mac" "false")"; then
+        if ! host_mac="$(jq_get_key_or_empty "$vm_info_json_after_add" ".ifaces.host.mac" "false")"; then
             echo_red "Cannot extract hostonly mac: $host_mac"
             return 1
         fi
@@ -2243,7 +2325,7 @@ function cmd_virtualbox_init_vm_run() {
     echo_green "Vm started and init viso mount"
     echo_green "Please run in vm for initialize:"
     echo_green "sudo -i"
-    echo_green "mkdir -p /root/init && mount /dev/sr0 /root/init && /root/init/init.sh"
+    echo_green "mkdir -p /root/init && mount /dev/sr0 /root/init && /root/init/init.sh | tee /root/init.log"
     echo_green "After init please verify connection"
 
     if ask_user "Vm init and initialize? Do you want to cleanup?"; then
@@ -2261,23 +2343,43 @@ function cmd_virtualbox_init_vm_run() {
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_help() {
     echo -n "
-    Init virtualbox vm itself.
-    This command SHOULD run in vm!
-    Install sshd and init interfaces with static ip for vm.
+    Init virtualbox vm.
+    This command SHOULD run on host!
+    Find hostonly adapter in vm and add if not found.
+    Find Hostonly adapter for connect, if have multiple,
+    ask user for choice adapter. 
+    Also get last octet for assign address and get
+    interfaces mac's.
+    Prepare virtual iso image with init scripts, mount it
+    and start vm.
+    After start vm you need mount sr0 interface and run
+    init.sh script that called cmd virtualbox_init_vm_itself command
+    with consumed params.
+    Init script install sshd, prepare users (copy public keys for users
+    and remove sudo passwords for users) and call netplan
+    with init interfaces. After all unmount sr0
+    This command waiting for user init vm and run cleanup
+    (stop vm, remove init optical from vm and start vm).
     Options:
-      --virtualbox-nat-mac MAC_ADDRESS
-         MAC address for nat interface.
-         MAC address can simple 12 len string without : separator
-         or 17 len string with separators.
-         Can be set with env VIRTUALBOX_NAT_MAC
-      --virtualbox-static-mac MAC_ADDRESS
-         MAC address for static interface.
-         MAC address can simple 12 len string without : separator
-         or 17 len string with separators.
-         Can be set with env VIRTUALBOX_STATIC_MAC
-      --virtualbox-static-ip IP_ADDRESS
-         IP address for set to static interface.
-         Can be set with env VIRTUALBOX_STATIC_IP
+      --virtualbox-vm-name NAME
+         Name for init vm.
+         Can be set with env VIRTUALBOX_VM_NAME
+      --virtualbox-attach-address IP_ADDRESS
+         Full ipv4 address to set to hostonly interface.
+         Optional. 
+         If not passed get hostonly interface to connect 
+         and get last octet for fill full address.
+         If passed find hostonly interface to connect
+         and check that address in subnet (script means
+         that adapter has /24 network).
+         Can be set with env VIRTUALBOX_ATTACH_ADDRESS
+      --virtualbox-ssh-key PATH
+         Path to ssh public key to set for all logable users,
+         expected of root.
+         Optional. 
+         If not pass, prepare empty file for init viso.
+         virtualbox_init_vm_itself checks that file exists and not empty.
+         Can be set with env VIRTUALBOX_SSH_KEY
 "
 }
 

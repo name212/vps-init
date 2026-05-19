@@ -69,6 +69,7 @@ function ask_user_raw() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function remove_begin_spaces() {
     local content="$1"
     while [[ "$content" == [[:space:]]* ]]; do

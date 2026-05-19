@@ -125,37 +125,35 @@ function cmd_virtualbox_init_vm_itself_run() {
 
     if [[ $remove_sudo_pass == "$CONST_FLAG_SET" || "$ssh_key" != "" ]]; then
         echo_green "Users should initialize. Get loginable users..."
-        local passwd_out=""
-        if ! passwd_out="$(getent passwd)"; then
-            echo_red "Failed to call getent"
+
+        local users_raw_list=""
+        if ! users_raw_list="$(get_loginable_users)"; then
+            echo_red "Failed to get loginable users"
             return 1
         fi
 
-        local users_raw_list=""
-        if users_raw_list="$(grep -E -v '(false|nologin)$' <<<"$passwd_out")"; then
-            local -a users_list=()
-            IFS=$'\n' read -rd '' -a users_list <<< "$users_raw_list"
+        local -a users_list=()
+        IFS=":" read -ra users_list <<< "$users_raw_list"
+        
+        for user_to_append in "${users_list[@]}"; do 
+            if [[ "$user_to_append" == "root" ]]; then
+                echo_green "Skip root user"
+                continue
+            fi
 
-            for user_to_append in "${users_list[@]}"; do 
-                if [[ "$user_to_append" == "root" ]]; then
-                    echo_green "Skip root user"
-                    continue
-                fi
+            local user_home=""
+            if ! user_home="$(get_user_home "$user_to_append")"; then
+                echo_yellow "Not found user home for $user_to_append Skip"
+                continue
+            fi
 
-                local user_home=""
-                if ! user_home="$(get_user_home "$user_to_append")"; then
-                    echo_yellow "Not found user home for $user_to_append Skip"
-                    continue
-                fi
+            if [[ $user_home == "/home"* ]]; then
+                users_to_initialize+=("$user_to_append")
+                continue
+            fi
 
-                if [[ $user_home == "/home"* ]]; then
-                    users_to_initialize+=("$user_home")
-                    continue
-                fi
-
-                echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
-            done
-        fi
+            echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
+        done
     fi
 
     if [[ "$ssh_key" != "" && "${#users_to_initialize[@]}" != "0" ]]; then
@@ -300,6 +298,13 @@ EOF
     fi
 
     echo_green "Virtualbox vm initialized!"
+
+    if [[ "${#users_to_initialize[@]}" != "0" ]]; then
+        echo_green "You can try to verify ssh connection with:"
+        for ssh_user in "${users_to_initialize[@]}"; do
+            echo_green "ssh ${ssh_user}@$ip_static"
+        done
+    fi
 
     return 0
 }
