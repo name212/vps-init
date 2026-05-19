@@ -49,6 +49,9 @@ function replace_file() {
     fi
 
     echo_green "--- End diff ---"
+    
+    # prevent to breack output
+    sleep 1
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
         echo_green "$title delete source $src"

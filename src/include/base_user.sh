@@ -272,3 +272,43 @@ function add_pubkey_for_user() {
 
     return 0
 }
+
+# shellcheck disable=SC2329
+function get_loginable_users() {
+    local passwd_out=""
+    if ! passwd_out="$(getent passwd)"; then
+        echo_red "Failed to call getent for get loginable users"
+        return 1
+    fi
+
+    local users_passwd_list=""
+    if ! users_passwd_list="$(grep -E -v '(false|nologin)$' <<<"$passwd_out")"; then
+        echo -n ""
+        return 0
+    fi
+
+    local users_raw_list=""
+    if ! users_raw_list="$(cut -d: -f1 <<<"$users_passwd_list")"; then
+        echo_red "Failed to ectract users names loginable users"
+        return 1
+    fi
+
+
+    local -a users_list=()
+    IFS=$'\n' read -rd '' -a users_list <<< "$users_raw_list"
+
+    local -a prepared_users=()
+
+    for uu in "${users_list[@]}"; do
+        if [ -z "$uu" ]; then
+            continue
+        fi
+        prepared_users+=("$uu")
+    done
+
+    # shellcheck disable=SC2155
+    local res="$(IFS=":"; echo "${prepared_users[*]}")"
+
+    echo -n "$res"
+    return 0
+}

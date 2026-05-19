@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-COMMANDS_LIST+=("init_virtualbox_vm")
+COMMANDS_LIST+=("virtualbox_init_vm_itself")
 
 # shellcheck disable=SC2329
 function validate_arg_mac_address() {
@@ -44,7 +44,14 @@ function validate_arg_mac_address() {
 }
 
 # shellcheck disable=SC2329
-function cmd_init_virtualbox_vm_run() {
+function cmd_virtualbox_init_vm_itself_run() {
+    if command -v vboxmanage &> /dev/null; then
+        echo_red "vboxmanage executable found!"
+        echo_red "Probably you run virtualbox_init_vm_itself command outside vm"
+        echo_red "If you want to init vm from host, use virtualbox_init_vm"
+        return 1
+    fi
+
     echo_green "Init virtualbox vm..."
 
     local package="openssh-server"
@@ -91,6 +98,80 @@ function cmd_init_virtualbox_vm_run() {
     if [[ "$ip_static" == "$gateway" ]]; then
         echo_red "IP $ip_static should not gateway $gateway"
         return 1
+    fi
+
+    local ssh_key=""
+    if ! ssh_key="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo_red "SSH key: $$ssh_key"
+        return 1
+    fi
+
+    if [ -n "$ssh_key" ]; then
+        if [ ! -s "$ssh_key" ]; then
+            ssh_key=""
+        fi
+    fi
+
+    local remove_sudo_pass=""
+    if ! remove_sudo_pass="$(extract_argument "--virtualbox-sudo-no-password" "VIRTUALBOX_SUDO_NO_PASSWORD" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo_red "Remove sudo pass: $$remove_sudo_pass"
+        return 1
+    fi
+
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
+
+    local -a users_to_initialize=()
+
+    if [[ $remove_sudo_pass == "$CONST_FLAG_SET" || "$ssh_key" != "" ]]; then
+        echo_green "Users should initialize. Get loginable users..."
+
+        local users_raw_list=""
+        if ! users_raw_list="$(get_loginable_users)"; then
+            echo_red "Failed to get loginable users"
+            return 1
+        fi
+
+        local -a users_list=()
+        IFS=":" read -ra users_list <<< "$users_raw_list"
+        
+        for user_to_append in "${users_list[@]}"; do 
+            if [[ "$user_to_append" == "root" ]]; then
+                echo_green "Skip root user"
+                continue
+            fi
+
+            local user_home=""
+            if ! user_home="$(get_user_home "$user_to_append")"; then
+                echo_yellow "Not found user home for $user_to_append Skip"
+                continue
+            fi
+
+            if [[ $user_home == "/home"* ]]; then
+                users_to_initialize+=("$user_to_append")
+                continue
+            fi
+
+            echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
+        done
+    fi
+
+    if [[ "$ssh_key" != "" && "${#users_to_initialize[@]}" != "0" ]]; then
+        for init_user in "${users_to_initialize[@]}"; do
+            echo_green "Init ssh key $ssh_key for user $init_user"
+            if ! add_pubkey_for_user "$init_user" "$ssh_key" "$not_ask"; then
+                echo_red "Failed to initialize ssh key for $init_user"
+            fi
+        done
+    fi
+
+    if [[ $remove_sudo_pass == "$CONST_FLAG_SET" && "${#users_to_initialize[@]}" != "0" ]]; then
+        for init_user_pass in "${users_to_initialize[@]}"; do
+            echo_green "Remove sudo pass for user $init_user_pass"
+            if ! add_user_to_sudoers "$init_user" "$CONST_SUDO_NO_PASS" "$not_ask"; then
+                echo_red "Failed to remove sudo pass for $init_user"
+            fi
+        done
     fi
 
     echo_green "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
@@ -218,13 +299,21 @@ EOF
 
     echo_green "Virtualbox vm initialized!"
 
+    if [[ "${#users_to_initialize[@]}" != "0" ]]; then
+        echo_green "You can try to verify ssh connection with:"
+        for ssh_user in "${users_to_initialize[@]}"; do
+            echo_green "ssh ${ssh_user}@$ip_static"
+        done
+    fi
+
     return 0
 }
 
 # shellcheck disable=SC2329
-function cmd_init_virtualbox_vm_help() {
+function cmd_virtualbox_init_vm_itself_help() {
     echo -n "
-    Init virtual box vm.
+    Init virtualbox vm itself.
+    This command SHOULD run in vm!
     Install sshd and init interfaces with static ip for vm.
     Options:
       --virtualbox-nat-mac MAC_ADDRESS
@@ -240,5 +329,12 @@ function cmd_init_virtualbox_vm_help() {
       --virtualbox-static-ip IP_ADDRESS
          IP address for set to static interface.
          Can be set with env VIRTUALBOX_STATIC_IP
+      --virtualbox-ssh-key PATH
+         If passed and file not empty copy this file
+         to all /home/\$USER/.ssh/authorized_keys
+         Can be set with env VIRTUALBOX_SSH_KEY
+      --virtualbox-sudo-no-password
+         If passed remove sudo password for all users found in /home 
+         Can be set with env VIRTUALBOX_SUDO_NO_PASSWORD
 "
 }
