@@ -491,6 +491,7 @@ function virtualbox_prepare_viso() {
 
     local -a files_to_viso=()
 
+    # shellcheck disable=SC2154
     if ! cp "$bin_name" "$bundle_file"; then
         echo_red "Cannot copy init script $bin_name to $vm_dir"
         return 1
@@ -533,7 +534,6 @@ run_dir=\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 run_dir="\$(realpath "\$run_dir")"
 
 bundle_file="\${run_dir}/init_bundle.sh"
-chmod 755 "\$bundle_file"
 
 "\$bundle_file" cmd virtualbox_init_vm_itself \\
   --virtualbox-nat-mac "$nat_mac" \\
