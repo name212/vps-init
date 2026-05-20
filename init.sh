@@ -2887,7 +2887,7 @@ function sshd_fix_privilegies_separation() {
         return 1
     fi
 
-    if ! chmod 755 "$run_dir"; then
+    if ! chmod 0755 "$run_dir"; then
         echo_red "Cannot chmod $run_dir dir"
         return 1
     fi
@@ -2900,6 +2900,24 @@ function sshd_fix_privilegies_separation() {
     fi
 
     echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
+
+    echo_green "Restart sshd after fix privilegies separation..."
+    if ! systemctl restart ssh.service; then
+        echo_red "!!! SSHD was not restarted !!!"
+        return 1
+    fi
+
+    echo_green "Verify sshd config after fix privilegies separation..."
+    if ! sshd -t; then
+        echo_yellow "Test sshd config failed after fix privilegies separation. Sleep 5 seconds before next attempt"
+        sleep 5
+        
+        if ! sshd -t; then
+            echo_red "Test sshd config after fix privilegies separation after second attempt!"
+            return 1
+        fi
+    fi
+
     return 0
 }
 
@@ -2909,11 +2927,6 @@ function sshd_disable_systemd_socket() {
     if ! systemctl enable --now ssh.service; then
         echo_red "Cannot enable ssh.service"
         return 1
-    fi
-
-    echo_green "Create missing privilege separation directory..."
-    if ! sshd_fix_privilegies_separation; then
-        return 1 
     fi
 
     echo_green "SSHD service enabled! Restart..."
@@ -2933,6 +2946,11 @@ function sshd_disable_systemd_socket() {
     if ! systemctl disable --now ssh.socket; then
         echo_red "Cannot disabe ssh.socket"
         return 1
+    fi
+
+    echo_green "Create missing privilege separation directory..."
+    if ! sshd_fix_privilegies_separation; then
+        return 1 
     fi
 
     return 0
