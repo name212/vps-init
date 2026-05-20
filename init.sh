@@ -3248,7 +3248,7 @@ function phase_docker_disable_env() {
 
 # End src/include/phase_06_docker.sh
 
-# Start src/include/phase_1o_atop.sh
+# Start src/include/phase_10_atop.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["atop"]="10"
@@ -3279,7 +3279,7 @@ function phase_atop_disable_env() {
     echo -n "DISABLE_ATOP"
 }
 
-# End src/include/phase_1o_atop.sh
+# End src/include/phase_10_atop.sh
 
 # Start src/include/phase_80_gitlab.sh
 
