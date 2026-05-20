@@ -617,6 +617,32 @@ function remove_packages() {
 
 # End src/include/base_pkg.sh
 
+# Start src/include/base_systemd.sh
+
+# shellcheck disable=SC2329
+function systemd_disable_all() {
+    for srv in "$@"; do
+        if ! systemctl is-active "$srv"; then
+            continue
+        fi
+
+        echo_green "systemd service $srv is active. Disable..."
+        if ! systemctl disable --now "$srv"; then
+            echo_red "Cannot disable $srv"
+            return 1
+        fi
+
+        if ! systemctl stop "$srv"; then
+            echo_red "Cannot stop $srv"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# End src/include/base_systemd.sh
+
 # Start src/include/base_user.sh
 
 export CONST_REMOVE_PASSWORD="true"
@@ -3222,6 +3248,39 @@ function phase_docker_disable_env() {
 
 # End src/include/phase_06_docker.sh
 
+# Start src/include/phase_1o_atop.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["atop"]="10"
+
+# shellcheck disable=SC2329
+function phase_atop_run() {
+    echo_green "Disable atop..."
+
+    if ! systemd_disable_all "atop.service" "atop-rotate.timer" "atopacct.service"; then
+        return 1
+    fi
+
+    echo_green "Atop disabled!"
+
+    return 0 
+}
+
+# shellcheck disable=SC2329
+function phase_atop_help() {
+    echo -n "
+    Disable atop services.
+    No options. 
+"
+ }
+
+# shellcheck disable=SC2329
+function phase_atop_disable_env() {
+    echo -n "DISABLE_ATOP"
+}
+
+# End src/include/phase_1o_atop.sh
+
 # Start src/include/phase_80_gitlab.sh
 
 # shellcheck disable=SC2034
@@ -3513,7 +3572,7 @@ function phase_flint_run() {
 function phase_flint_help() {
     echo -n "
     Install flint.
-      No options.
+    No options.
 "
 }
 

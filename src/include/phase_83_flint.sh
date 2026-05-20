@@ -37,7 +37,7 @@ function phase_flint_run() {
 function phase_flint_help() {
     echo -n "
     Install flint.
-      No options.
+    No options.
 "
 }
 
