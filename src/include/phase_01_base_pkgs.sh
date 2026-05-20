@@ -7,6 +7,18 @@ PHASES_WITH_INDEX["base_pkgs"]="01"
 
 # shellcheck disable=SC2329
 function phase_base_pkgs_run() {
+    echo_green "Upgrade all..."
+
+    if ! apt update; then
+        echo_red "Cannot run apt update"
+        return 1
+    fi
+
+    if ! apt upgrade -y; then
+        echo_red "Cannot run apt upgrade"
+        return 1
+    fi
+
     echo_green "Install base packages..."
 
     local packages=(
