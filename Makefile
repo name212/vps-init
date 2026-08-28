@@ -3,6 +3,11 @@ run-with-cleanup = $(1) && $(2) || (ret=$$?; $(2) && exit $$ret)
 build:
 	@./hack/build.sh
 
+build/lib: export DEST_FILE = lib.sh
+build/lib: export BUILD_AS_LIB = true
+build/lib:
+	@./hack/build.sh
+
 check/host-passed:
 	@[ ! -z "$$host" ] || { echo "host not passed"; exit 1; }
 
