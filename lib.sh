@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
+# This file not include main, only functions.
+# To use in our scripts source this file and call functions
+
 set -Eeuo pipefail
-
-bin_name="$0"
-
-declare -A PHASES_WITH_INDEX=()
-declare -a COMMANDS_LIST=()
 
 # Start src/include/01-base_echo.sh
 
