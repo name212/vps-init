@@ -2337,13 +2337,6 @@ function cmd_virtualbox_init_vm_run() {
         return 1
     fi 
     
-    if ! command -v vbox-img &> /dev/null; then
-        echo_red "vbox-img executable not found!"
-        echo_red "Probably you run virtualbox_init_vm command inside vm"
-        echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
-        return 1
-    fi
-
     if ! command -v jq &> /dev/null; then
         echo_red "virtualbox_init_vm command require jq"
         echo_red "Please install jq"
@@ -2372,6 +2365,15 @@ function cmd_virtualbox_init_vm_run() {
     if ! skip_vsio="$(extract_argument "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
         echo_red "Skip VSIO flag parse error"
         return 1
+    fi
+
+    if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
+        if ! command -v vbox-img &> /dev/null; then
+            echo_red "vbox-img executable not found!"
+            echo_red "Probably you run virtualbox_init_vm command inside vm"
+            echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
+            return 1
+        fi
     fi
 
     if [ -n "$attach_address" ]; then
