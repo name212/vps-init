@@ -768,6 +768,12 @@ function cmd_virtualbox_init_vm_run() {
         return 1
     fi
 
+    local skip_vsio=""
+    if ! skip_vsio="$(extract_argument "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo_red "Skip VSIO flag parse error"
+        return 1
+    fi
+
     if [ -n "$attach_address" ]; then
         if ! attach_address="$(validate_arg_ipv4 "$attach_address" "$CONST_ARG_PASSED")"; then
             echo_red "Attach address incorrect: $attach_address"
@@ -803,23 +809,48 @@ function cmd_virtualbox_init_vm_run() {
         return 1
     fi
 
-    local opticals_str=""
-    if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-        echo_red "Cannot get opticals from vm info: $vm_info_json"
-        return 1
-    fi
-
-    local -a opticals_to_unmount=()
-    IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
-
     local nat_mac=""
     local nat_index=""
     local host_mac=""
     local host_adapter=""
 
-    if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
+    if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "false")"; then
         echo_red "Cannot extract NAT mac: $nat_mac"
         return 1
+    fi
+
+    if [ -z "$nat_mac" ]; then
+        echo_yellow "NAT interface not found! Create..."
+
+        local host_index=""
+        if ! host_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.indx" "false")"; then
+            echo_red "Cannot extract index for host iface"
+            return 1
+        fi
+        
+        if [ -n "$host_indx" ]; then
+            nat_index="$(($host_index + 1))"
+            echo_green "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
+        else
+            nat_index="1"
+            echo_green "Host interface not found. NAT iface will create with index $nat_index"
+        fi
+
+        if ! vboxmanage modifyvm "$vm_name" "--nic$nat_index" nat; then
+            echo_red "Cannot add NAT interface"
+            return 1
+        fi
+
+        nat_index=""
+        if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
+            echo_red "Cannot get vm info after add NAT: $vm_info_json"
+            return 1
+        fi
+
+        if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
+            echo_red "Cannot extract NAT mac: $nat_mac"
+            return 1
+        fi
     fi
 
     if ! nat_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.indx" "true")"; then
@@ -911,49 +942,60 @@ function cmd_virtualbox_init_vm_run() {
     echo_green "  NAT mac:          $nat_mac"
     echo_green "  Host adapter mac: $host_mac"
     echo_green "  Attach address:   $attach_address"
-    echo_green "  Opticals:         ${opticals_to_unmount[*]}"
 
-    echo_green "Prepare vsio..."
-
-    local viso_file=""
-    if ! viso_file="$(virtualbox_prepare_viso "$vm_name" "$nat_mac" "$host_mac" "$attach_address" "$ssh_key_file")"; then
-        echo_red "Cannot prepare viso: $viso_file"
-        return 1
-    fi
-
-    echo_green "Unmount opticals..."
-
-    if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
-        return 1
-    fi
-
-    echo_green "Mount init viso..."
-
-    if ! virtualbox_mount_opticals "$vm_name" "$viso_file"; then
-        return 1
-    fi
-
-    echo_green "Start vm..."
-
-    if ! virtualbox_start_vm "$vm_name"; then
-        return 1
-    fi
-
-    echo_green "Vm started and init viso mount"
-    echo_green "Please run in vm for initialize:"
-    echo_green "sudo -i"
-    echo_green "mkdir -p /root/init && mount /dev/sr0 /root/init && /root/init/init.sh | tee /root/init.log"
-    echo_green "After init please verify connection"
-
-    if ask_user "Vm init and initialize? Do you want to cleanup?"; then
-        if ! virtualbox_unmount_cleanup_after_init "$vm_name" "$viso_file"; then
-            echo_yellow "^^^ Cleanup failed"
+    if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
+        local opticals_str=""
+        if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
+            echo_red "Cannot get opticals from vm info: $vm_info_json"
+            return 1
         fi
-        echo_green "Virtualbox vm initialized!"
-        return 0
+
+        local -a opticals_to_unmount=()
+        IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
+        
+        echo_green "Prepare vsio..."
+
+        local viso_file=""
+        if ! viso_file="$(virtualbox_prepare_viso "$vm_name" "$nat_mac" "$host_mac" "$attach_address" "$ssh_key_file")"; then
+            echo_red "Cannot prepare viso: $viso_file"
+            return 1
+        fi
+
+        echo_green "Unmount opticals '${opticals_to_unmount[*]}' ..."
+
+        if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
+            return 1
+        fi
+
+        echo_green "Mount init viso..."
+
+        if ! virtualbox_mount_opticals "$vm_name" "$viso_file"; then
+            return 1
+        fi
+
+        echo_green "Start vm..."
+
+        if ! virtualbox_start_vm "$vm_name"; then
+            return 1
+        fi
+
+        echo_green "Vm started and init viso mount"
+        echo_green "Please run in vm for initialize:"
+        echo_green "sudo -i"
+        echo_green "mkdir -p /root/init && mount /dev/sr0 /root/init && /root/init/init.sh | tee /root/init.log"
+        echo_green "After init please verify connection"
+
+        if ask_user "Vm init and initialize? Do you want to cleanup?"; then
+            if ! virtualbox_unmount_cleanup_after_init "$vm_name" "$viso_file"; then
+                echo_yellow "^^^ Cleanup failed"
+            fi
+            echo_green "Virtualbox vm initialized!"
+            return 0
+        fi
+
+        echo_yellow "Virtualbox vm initialized but not cleanuped!"
     fi
 
-    echo_yellow "Virtualbox vm initialized but not cleanuped!"
     return 0
 }
 
@@ -997,5 +1039,10 @@ function cmd_virtualbox_init_vm_help() {
          If not pass, prepare empty file for init viso.
          virtualbox_init_vm_itself checks that file exists and not empty.
          Can be set with env VIRTUALBOX_SSH_KEY
+      --virtualbox-skip-prepare-init-iso
+         If pass optical drive with init not preparead and mount
+         Optional. 
+         Can be set with env VIRTUALBOX_SKIP_PREPARE_INIT_ISO
+
 "
 }
