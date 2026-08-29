@@ -2545,7 +2545,7 @@ function cmd_virtualbox_init_vm_run() {
     echo_green "  Host adapter mac: $host_mac"
     echo_green "  Attach address:   $attach_address"
 
-    export VIRTUAL_BOX_HOST_NET_ATTACHED_ADDRESS="$attach_address"
+    export VIRTUALBOX_HOST_NET_ATTACHED_ADDRESS="$attach_address"
 
     if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
         local opticals_str=""
