@@ -47,9 +47,6 @@ function write_file() {
 }
 
 header="src/main_header.sh"
-if [ -n "$BUILD_AS_LIB" ]; then
-    header="src/lib_header.sh"
-fi
 
 echo "Write $header to $destination"
 cat "$header" > "$destination"
