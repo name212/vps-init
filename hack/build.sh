@@ -60,6 +60,8 @@ for fl in $(find src/include -name "*.sh" -type f | sort); do
     write_file "$fl" "$destination"
 done
 
-write_file "src/main.sh" "$destination"
+if [ -z "$BUILD_AS_LIB" ]; then
+    write_file "src/main.sh" "$destination"
+fi
 
 chmod 755 "$destination"
