@@ -18,9 +18,13 @@ function phase_run_func() {
 
 # shellcheck disable=SC2120
 function usage() {
-     echo "
+    local init_msg="Init server."
+    if [ -n "$INIT_MSG_HELP" ]; then
+        init_msg="Init router."
+    fi
+    echo "
 Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
-  Init server.
+  $init_msg
   Global parameters
     --not-ask
       If passed will not ask user about actions.
