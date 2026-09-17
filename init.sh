@@ -4218,7 +4218,7 @@ function main() {
             exit 1
         fi
         
-        echo_green "Phase ${ph} successed!"
+        echo_green "Phase ${ph} succeeded!"
         echo ""
     done
 
