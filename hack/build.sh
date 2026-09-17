@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 function echo_red(){
     echo -e "\033[1;31m$1\033[0m" >&2
 }
@@ -17,6 +19,8 @@ destination="init.sh"
 if [ -n "$DEST_FILE" ]; then
     destination="$DEST_FILE"
 fi
+
+echo_green "Working in '$$WORKING_DIR'; Destination - '$destination' "
 
 declare -A skip_build=()
 
