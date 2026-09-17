@@ -600,6 +600,16 @@ function apt_update() {
 }
 
 # shellcheck disable=SC2329
+function apt_upgrage() {
+    if ! apt upgrade -y; then 
+        echo_red "Cannot run apt upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
 function apt_install() {
     if ! apt install -y "$@"; then
         return 1
@@ -620,6 +630,16 @@ function apt_search() {
 # shellcheck disable=SC2329
 function apt_remove() {
     if ! apt purge -y --auto-remove "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_upgrage() {
+    if ! apk upgrade; then 
+        echo_red "Cannot run apk upgrade!"
         return 1
     fi
 

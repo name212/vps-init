@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+WORKING_DIR=$(pwd)
 
 function echo_red(){
     echo -e "\033[1;31m$1\033[0m" >&2

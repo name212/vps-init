@@ -10,15 +10,15 @@ declare -a COMMANDS_LIST=()
 # Start src/include/01-base_echo.sh
 
 function echo_red(){
-    echo -e "\033[1;31m$1\033[0m"
+    echo -e "\033[1;31m$1\033[0m" >&2
 }
 
 function echo_green (){
-    echo -e "\033[1;32m$1\033[0m"
+    echo -e "\033[1;32m$1\033[0m" >&2
 }
 
 function echo_yellow (){
-    echo -e "\033[1;33m$1\033[0m"
+    echo -e "\033[1;33m$1\033[0m" >&2
 }
 
 # End src/include/01-base_echo.sh
@@ -245,6 +245,20 @@ function validate_arg_number() {
 }
 
 # shellcheck disable=SC2329
+function validate_arg_ipv4_func() {
+    local val="$1"
+    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+
+    if [[ "$val" =~ $regexp ]]; then
+        echo -n "$val"
+        return 0
+    fi 
+
+    echo -n "Incorrect IPv4 $val"
+    return 1
+}
+
+# shellcheck disable=SC2329
 function validate_arg_ipv4() {
     local val="$1"
     local passed="$2"
@@ -259,15 +273,33 @@ function validate_arg_ipv4() {
         return 1 
     fi
 
-    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+    if ! validate_arg_ipv4_func "$val"; then
+        return 1
+    fi
 
-    if [[ "$val" =~ $regexp ]]; then
-        echo -n "$val"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function validate_arg_ipv4_optional() {
+    local val="$1"
+    local passed="$2"
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo -n ""
         return 0
-    fi 
+    fi
 
-    echo -n "Incorrect IPv4 $val"
-    return 1
+    if [ -z "$val" ]; then
+        echo "Empty arg val"
+        return 1 
+    fi
+
+    if ! validate_arg_ipv4_func "$val"; then
+        return 1
+    fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -553,15 +585,153 @@ function jq_get_key_or_empty() {
 
 # Start src/include/base_pkg.sh
 
+if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
+    export SYS_PACKAGES_ENGINE="apt"
+fi
+
 # shellcheck disable=SC2329
-function install_packages() {
-    echo_green "Install apt packages $* ..."
+function apt_update() {
     if ! apt update; then 
         echo_red "Cannot run apt update!"
         return 1
     fi
 
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_upgrage() {
+    if ! apt upgrade -y; then 
+        echo_red "Cannot run apt upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_install() {
     if ! apt install -y "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_search() {
+    if dpkg-query -s "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apt_remove() {
+    if ! apt purge -y --auto-remove "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_upgrage() {
+    if ! apk upgrade; then 
+        echo_red "Cannot run apk upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_update() {
+    if ! apk update; then 
+        echo_red "Cannot run apk update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_install() {
+    if ! apk add --no-cache "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_search() {
+    if apk info -e "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apk_remove() {
+    if ! apk del "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_package_cmd() {
+    local cmd_name="$1"
+    case "$SYS_PACKAGES_ENGINE" in
+        "apt")
+            true
+        ;;
+
+        "apk")
+            true
+        ;;
+
+        *)
+            echo_red "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
+            return 1
+        ;;
+    esac
+
+    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
+
+    if ! declare -F "$res" > /dev/null; then
+        echo_red "Internal error: '$res' func not declared!"
+        return 1
+    fi
+
+    echo -n "$res"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function install_packages() {
+    echo_green "Install apt packages $* ..."
+
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local install_fun=""
+    if ! install_fun="$(get_package_cmd install)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then 
+        echo_red "Cannot run update indexes!"
+        return 1
+    fi
+
+    if ! "$install_fun" "$@"; then
         echo_red "Cannot run apt install!"
         return 1
     fi
@@ -571,10 +741,15 @@ function install_packages() {
 
 # shellcheck disable=SC2329
 function check_packages_installed() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
     local all="true"
     while [[ $# -gt 0 ]]; do
         local name="$1"
-        if ! dpkg-query -s "$name" &> /dev/null; then
+        if ! "$search_fun" "$name"; then
             echo_green "$name not installed..."
             all="false"
         fi
@@ -590,11 +765,21 @@ function check_packages_installed() {
 
 # shellcheck disable=SC2329
 function remove_packages() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local remove_fun=""
+    if ! remove_fun="$(get_package_cmd remove)"; then
+        return 1
+    fi
+
     local -a for_remove=()
 
     while [[ $# -gt 0 ]]; do
         local name="$1"
-        if dpkg-query -s "$name" &> /dev/null; then
+        if "$search_fun" "$name"; then
             for_remove+=("$name")
         fi
         shift
@@ -607,7 +792,7 @@ function remove_packages() {
 
     echo_green "Remove packages ${for_remove[*]}"
     
-    if ! apt purge -y --auto-remove "${for_remove[@]}"; then
+    if ! "$remove_fun" "${for_remove[@]}"; then
         echo_red "Some packages not removed!"
         return 1
     fi
@@ -616,6 +801,32 @@ function remove_packages() {
 }
 
 # End src/include/base_pkg.sh
+
+# Start src/include/base_service.sh
+
+export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+export CONST_SYS_SERVICE_ENGINE_INITD="service"
+
+declare -A _SYS_SERVICE_ENGINES_MAP=()
+_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
+_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_INITD"]="true"
+
+if [ -z "${SYS_SERVICE_ENGINE:-}" ]; then
+    export SYS_SERVICE_ENGINE="$CONST_SYS_SERVICE_ENGINE_SYSTEMD"
+fi
+
+# shellcheck disable=SC2329
+function get_sys_service_engine() {
+    if [[ -v _SYS_SERVICE_ENGINES_MAP["$SYS_SERVICE_ENGINE"] ]]; then
+        echo -n "$SYS_SERVICE_ENGINE"
+        return 0
+    fi
+
+    echo_red "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
+    return 1
+}
+
+# End src/include/base_service.sh
 
 # Start src/include/base_systemd.sh
 
@@ -2146,13 +2357,6 @@ function cmd_virtualbox_init_vm_run() {
         return 1
     fi 
     
-    if ! command -v vbox-img &> /dev/null; then
-        echo_red "vbox-img executable not found!"
-        echo_red "Probably you run virtualbox_init_vm command inside vm"
-        echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
-        return 1
-    fi
-
     if ! command -v jq &> /dev/null; then
         echo_red "virtualbox_init_vm command require jq"
         echo_red "Please install jq"
@@ -2175,6 +2379,21 @@ function cmd_virtualbox_init_vm_run() {
     if ! ssh_key_file="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
         echo_red "SSH key file incorrect: $ssh_key_file"
         return 1
+    fi
+
+    local skip_vsio=""
+    if ! skip_vsio="$(extract_argument "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo_red "Skip VSIO flag parse error"
+        return 1
+    fi
+
+    if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
+        if ! command -v vbox-img &> /dev/null; then
+            echo_red "vbox-img executable not found!"
+            echo_red "Probably you run virtualbox_init_vm command inside vm"
+            echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
+            return 1
+        fi
     fi
 
     if [ -n "$attach_address" ]; then
@@ -2212,23 +2431,48 @@ function cmd_virtualbox_init_vm_run() {
         return 1
     fi
 
-    local opticals_str=""
-    if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-        echo_red "Cannot get opticals from vm info: $vm_info_json"
-        return 1
-    fi
-
-    local -a opticals_to_unmount=()
-    IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
-
     local nat_mac=""
     local nat_index=""
     local host_mac=""
     local host_adapter=""
 
-    if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
+    if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "false")"; then
         echo_red "Cannot extract NAT mac: $nat_mac"
         return 1
+    fi
+
+    if [ -z "$nat_mac" ]; then
+        echo_yellow "NAT interface not found! Create..."
+
+        local host_index=""
+        if ! host_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.indx" "false")"; then
+            echo_red "Cannot extract index for host iface"
+            return 1
+        fi
+        
+        if [ -n "$host_indx" ]; then
+            nat_index="$(($host_index + 1))"
+            echo_green "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
+        else
+            nat_index="1"
+            echo_green "Host interface not found. NAT iface will create with index $nat_index"
+        fi
+
+        if ! vboxmanage modifyvm "$vm_name" "--nic$nat_index" nat; then
+            echo_red "Cannot add NAT interface"
+            return 1
+        fi
+
+        nat_index=""
+        if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
+            echo_red "Cannot get vm info after add NAT: $vm_info_json"
+            return 1
+        fi
+
+        if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
+            echo_red "Cannot extract NAT mac: $nat_mac"
+            return 1
+        fi
     fi
 
     if ! nat_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.indx" "true")"; then
@@ -2320,49 +2564,62 @@ function cmd_virtualbox_init_vm_run() {
     echo_green "  NAT mac:          $nat_mac"
     echo_green "  Host adapter mac: $host_mac"
     echo_green "  Attach address:   $attach_address"
-    echo_green "  Opticals:         ${opticals_to_unmount[*]}"
 
-    echo_green "Prepare vsio..."
+    export VIRTUALBOX_HOST_NET_ATTACHED_ADDRESS="$attach_address"
 
-    local viso_file=""
-    if ! viso_file="$(virtualbox_prepare_viso "$vm_name" "$nat_mac" "$host_mac" "$attach_address" "$ssh_key_file")"; then
-        echo_red "Cannot prepare viso: $viso_file"
-        return 1
-    fi
-
-    echo_green "Unmount opticals..."
-
-    if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
-        return 1
-    fi
-
-    echo_green "Mount init viso..."
-
-    if ! virtualbox_mount_opticals "$vm_name" "$viso_file"; then
-        return 1
-    fi
-
-    echo_green "Start vm..."
-
-    if ! virtualbox_start_vm "$vm_name"; then
-        return 1
-    fi
-
-    echo_green "Vm started and init viso mount"
-    echo_green "Please run in vm for initialize:"
-    echo_green "sudo -i"
-    echo_green "mkdir -p /root/init && mount /dev/sr0 /root/init && /root/init/init.sh | tee /root/init.log"
-    echo_green "After init please verify connection"
-
-    if ask_user "Vm init and initialize? Do you want to cleanup?"; then
-        if ! virtualbox_unmount_cleanup_after_init "$vm_name" "$viso_file"; then
-            echo_yellow "^^^ Cleanup failed"
+    if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
+        local opticals_str=""
+        if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
+            echo_red "Cannot get opticals from vm info: $vm_info_json"
+            return 1
         fi
-        echo_green "Virtualbox vm initialized!"
-        return 0
+
+        local -a opticals_to_unmount=()
+        IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
+        
+        echo_green "Prepare vsio..."
+
+        local viso_file=""
+        if ! viso_file="$(virtualbox_prepare_viso "$vm_name" "$nat_mac" "$host_mac" "$attach_address" "$ssh_key_file")"; then
+            echo_red "Cannot prepare viso: $viso_file"
+            return 1
+        fi
+
+        echo_green "Unmount opticals '${opticals_to_unmount[*]}' ..."
+
+        if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
+            return 1
+        fi
+
+        echo_green "Mount init viso..."
+
+        if ! virtualbox_mount_opticals "$vm_name" "$viso_file"; then
+            return 1
+        fi
+
+        echo_green "Start vm..."
+
+        if ! virtualbox_start_vm "$vm_name"; then
+            return 1
+        fi
+
+        echo_green "Vm started and init viso mount"
+        echo_green "Please run in vm for initialize:"
+        echo_green "sudo -i"
+        echo_green "mkdir -p /root/init && mount /dev/sr0 /root/init && /root/init/init.sh | tee /root/init.log"
+        echo_green "After init please verify connection"
+
+        if ask_user "Vm init and initialize? Do you want to cleanup?"; then
+            if ! virtualbox_unmount_cleanup_after_init "$vm_name" "$viso_file"; then
+                echo_yellow "^^^ Cleanup failed"
+            fi
+            echo_green "Virtualbox vm initialized!"
+            return 0
+        fi
+
+        echo_yellow "Virtualbox vm initialized but not cleanuped!"
     fi
 
-    echo_yellow "Virtualbox vm initialized but not cleanuped!"
     return 0
 }
 
@@ -2406,6 +2663,11 @@ function cmd_virtualbox_init_vm_help() {
          If not pass, prepare empty file for init viso.
          virtualbox_init_vm_itself checks that file exists and not empty.
          Can be set with env VIRTUALBOX_SSH_KEY
+      --virtualbox-skip-prepare-init-iso
+         If pass optical drive with init not preparead and mount
+         Optional. 
+         Can be set with env VIRTUALBOX_SKIP_PREPARE_INIT_ISO
+
 "
 }
 
@@ -2916,6 +3178,53 @@ function phase_hostname_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["sshd"]="05"
 
+declare -A _SSH_RESTART_FUNC=()
+_SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
+_SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd_initd_restart"
+
+function sshd_systemd_restart() {
+    if ! systemctl restart ssh.service; then
+        return 1
+    fi
+
+    return 0
+}
+
+function sshd_initd_restart() {
+    if ! service sshd restart; then
+        return 1
+    fi
+
+    return 0
+}
+
+function sshd_restart() {
+    local service_engine=""
+    if ! service_engine="$(get_sys_service_engine)"; then
+        echo_red "Cannot resolve system service engine"
+        return 1
+    fi
+
+    local restart_fun=""
+    if [[ -v _SSH_RESTART_FUNC["$service_engine"] ]]; then
+        restart_fun="${_SSH_RESTART_FUNC["$service_engine"]}"
+    else
+        echo_red "Restart sshd func not found for service engine '$service_engine'"
+        return 1
+    fi
+
+    if ! declare -F "$restart_fun" > /dev/null; then
+        echo_red "Internal error: '$restart_fun' func not declared!"
+        return 1
+    fi
+
+    if ! "$restart_fun"; then
+        return 1
+    fi
+
+    return 0
+}
+
 # shellcheck disable=SC2329
 function sshd_fix_privilegies_separation() {
     local run_dir="/run/sshd"
@@ -2940,7 +3249,7 @@ function sshd_fix_privilegies_separation() {
     echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
 
     echo_green "Restart sshd after fix privilegies separation..."
-    if ! systemctl restart ssh.service; then
+    if ! sshd_restart; then
         echo_red "!!! SSHD was not restarted !!!"
         return 1
     fi
@@ -2969,7 +3278,7 @@ function sshd_disable_systemd_socket() {
 
     echo_green "SSHD service enabled! Restart..."
 
-    if ! systemctl restart ssh.service; then
+    if ! sshd_restart; then
         echo_red "!!! SSHD was not restarted !!!"
         return 1
     fi
@@ -3016,7 +3325,7 @@ function sshd_verify_and_restart() {
 
     echo_green "SSHD config is valid! Restart..."
 
-    if ! systemctl restart ssh.service; then
+    if ! sshd_restart; then
         echo_red "!!! SSHD was not restarted !!!"
         return 1
     fi
@@ -3052,7 +3361,7 @@ function sshd_apply_setting() {
             echo_red "Cannot remove port file config $conf_file"
         fi
 
-        if ! systemctl restart ssh.service; then
+        if ! sshd_restart; then
             echo_red "!!! SSHD was not restarted !!!"
         fi
 
@@ -3065,9 +3374,15 @@ function sshd_apply_setting() {
 # shellcheck disable=SC2329
 function phase_sshd_run() {
     local port=""
+    local bind_address=""
 
     if ! port="$(extract_argument "--sshd-port" "SSHD_PORT" "$CONST_NOT_FLAG" "validate_arg_number" "$@")"; then
-        echo_red "SSHD port: $port"
+        echo_red "Incorrect sshd port"
+        return 1
+    fi
+
+    if ! bind_address="$(extract_argument "--sshd-bind-address" "SSHD_BIND_ADDRESS" "$CONST_NOT_FLAG" "validate_arg_ipv4_optional" "$@")"; then
+        echo_red "Incorrect bind sshd address"
         return 1
     fi
 
@@ -3078,8 +3393,16 @@ function phase_sshd_run() {
 
     local base_cfgs_dir="/etc/ssh/sshd_config.d"
 
-    if ! sshd_disable_systemd_socket; then
+    local service_engine=""
+    if ! service_engine="$(get_sys_service_engine)"; then
+        echo_red "Cannot resolve system service engine"
         return 1
+    fi
+
+    if [[ "$service_engine" == "$CONST_SYS_SERVICE_ENGINE_SYSTEMD" ]]; then
+        if ! sshd_disable_systemd_socket; then
+            return 1
+        fi
     fi
 
     echo_green "Prepare sshd. Apply new port..."
@@ -3092,12 +3415,32 @@ function phase_sshd_run() {
         return 1
     fi
 
-    echo_green "Prepare sshd. New port applyer!"
+    echo_green "Prepare sshd. New port apply!"
     echo_green "Please verify that ssh available on port $port"
 
     if ! ask_user "SSH available? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
         return 1
+    fi
+
+    if [ -n "$bind_address" ]; then
+        echo_green "Prepare sshd. Set bind address..."
+
+        local bind_setting="ListenAddress $bind_address"
+        local bind_file="${base_cfgs_dir}/99_z_bind.conf"
+
+        if ! sshd_apply_setting "$bind_setting" "$bind_file"; then
+            echo_red "Cannot apply sshd port setting '$bind_setting'"
+            return 1
+        fi
+
+        echo_green "Prepare sshd. Bind address apply!"
+        echo_green "Please verify that ssh available on port $port"
+
+        if ! ask_user "SSH available? Continue?" "$not_ask"; then
+            echo_red "Disallow continue"
+            return 1
+        fi
     fi
 
     echo_green "Prepare sshd. Disable root login..."
@@ -3125,7 +3468,7 @@ function phase_sshd_run() {
     fi
 
     echo_green "Prepare sshd. Root login disabled!"
-    echo_green "Please verify that ssh not avaiable with root"
+    echo_green "Please verify that ssh not available with root"
 
     if ! ask_user "SSH not available with root? Continue?" "$not_ask"; then
         echo_red "Disallow continue"
@@ -3143,7 +3486,7 @@ function phase_sshd_run() {
     fi
 
     echo_green "Prepare sshd. Password auth disabled!"
-    echo_green "Please verify that ssh not avaiable with password auth"
+    echo_green "Please verify that ssh not available with password auth"
     echo_green "Can be verify with command:" 
     echo_green "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
 
@@ -3163,6 +3506,10 @@ function phase_sshd_help() {
       --sshd-port PORT
          Replace to new port.
          Can be provided with env SSHD_PORT
+      --sshd-bind-address ADDRESS
+         Bind sshd to passed address if passed.
+         Can be provided with env SSHD_BIND_ADDRESS
+         Optional.
 "
 }
 
@@ -3637,9 +3984,13 @@ function phase_run_func() {
 
 # shellcheck disable=SC2120
 function usage() {
-     echo "
+    local init_msg="Init server."
+    if [ -n "${INIT_MSG_HELP:-}" ]; then
+        init_msg="$INIT_MSG_HELP"
+    fi
+    echo "
 Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
-  Init server.
+  $init_msg
   Global parameters
     --not-ask
       If passed will not ask user about actions.
