@@ -2,7 +2,10 @@
 
 set -Eeuo pipefail
 
-WORKING_DIR=$(pwd)
+WORKING_DIR="$(pwd)"
+WORKING_DIR="$(realpath "$WORKING_DIR")"
+
+base_working="$(basename "$WORKING_DIR")"
 
 function echo_red(){
     echo -e "\033[1;31m$1\033[0m" >&2
@@ -56,11 +59,11 @@ function write_file() {
     content="$(sed 's/#!\/usr\/bin\/env bash//g' "$fl" | sed 's/set -Eeuo pipefail//g')"
     content="$(remove_begin_spaces "$content")"
     {
-        echo "# Start $fl"
+        echo "# Start ${base_working}/${fl}"
         echo ""
         echo "$content"
         echo ""
-        echo "# End $fl"
+        echo "# End ${base_working}/${fl}"
         echo ""
     } >> "$dest"
 }
