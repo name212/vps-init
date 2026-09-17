@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -Eeuo pipefail
+
 WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 function echo_red(){
@@ -16,7 +18,7 @@ function echo_yellow (){
 
 destination="init.sh"
 
-if [ -n "$DEST_FILE" ]; then
+if [ -n "${DEST_FILE:-}" ]; then
     destination="$DEST_FILE"
 fi
 
@@ -24,7 +26,8 @@ echo_green "Working in '$WORKING_DIR'; Destination - '$destination' "
 
 declare -A skip_build=()
 
-if [ -n "$SKIP_FILES" ]; then
+if [ -n "${SKIP_FILES:-}" ]; then
+    echo_yellow "Skip files passed. Calculate"
     declare -a list_skip_build=()
     IFS=',' read -r -a list_skip_build <<< "$SKIP_FILES"
     for sk in "${list_skip_build[@]}"; do
@@ -70,13 +73,13 @@ cat "$header" > "$destination"
 for fl in $(find src/include -name "*.sh" -type f | sort); do
     bs="$(basename "$fl")"
     if [[ -v skip_build["$bs"] ]]; then
-        echo_yellow "!!!! Skip add $fl to $destination because it in skip !!!"
+        echo_yellow "Skip add $fl to $destination because it in skip"
         continue
     fi
     write_file "$fl" "$destination"
 done
 
-if [ -z "$BUILD_AS_LIB" ]; then
+if [ -z "${BUILD_AS_LIB:-}" ]; then
     write_file "src/main.sh" "$destination"
 fi
 
