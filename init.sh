@@ -4258,7 +4258,7 @@ function main() {
 
     local old_hostname=""
     if ! old_hostname="$(hostnamectl hostname)"; then
-         old_hostname="ERROR GET"
+         old_hostname="host"
     fi
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
@@ -4289,7 +4289,7 @@ function main() {
 
     local new_hostname=""
     if ! new_hostname="$(hostnamectl hostname)"; then
-         new_hostname="ERROR GET"
+         new_hostname="host"
     fi
 
     echo_green "Init server $old_hostname done! New hostname: $new_hostname"
