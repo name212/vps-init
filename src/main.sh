@@ -19,8 +19,8 @@ function phase_run_func() {
 # shellcheck disable=SC2120
 function usage() {
     local init_msg="Init server."
-    if [ -n "$INIT_MSG_HELP" ]; then
-        init_msg="Init router."
+    if [ -n "${INIT_MSG_HELP:-}" ]; then
+        init_msg="$INIT_MSG_HELP"
     fi
     echo "
 Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
