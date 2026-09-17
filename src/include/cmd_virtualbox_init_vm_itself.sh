@@ -268,22 +268,22 @@ EOF
         return 1
     fi
 
-    echo_green "Applly netplan..."
+    echo_green "Apply netplan..."
 
     if ! netplan apply; then
-        echo_red "Netplan config does not applyed! Backups in $backup_netplan"
+        echo_red "Netplan config does not applied! Backups in $backup_netplan"
         return 1
     fi
 
     local remote_host="google.com"
 
     if command -v ping &> /dev/null; then
-        echo_green "Netplan applyed! Verify internet connection with ping $remote_host"
+        echo_green "Netplan applied! Verify internet connection with ping $remote_host"
         echo_green "Sleep 5 seconds before check..."
         sleep 5
 
         if ! ping -W 4 -c 4 "$remote_host"; then
-            echo_red "Host $remote_host not accessable!"
+            echo_red "Host $remote_host not accessible!"
             return 1
         fi
         echo_green "Internet connection success!" 

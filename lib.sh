@@ -73,7 +73,7 @@ function disable_help() {
     local env_name="$(disable_env "$phase")"
 
     if [ -n "$env_name" ]; then
-        echo "Can be desabled with set env ${env_name}=true"
+        echo "Can be disabled with set env ${env_name}=true"
         return 0
     fi
 
@@ -331,6 +331,7 @@ function ask_user() {
 
     local answer=""
 
+    # shellcheck disable=SC2162
     read -p "${prompt} [y/n]: " answer
 
     if [[ "$answer" == "y" ]]; then
@@ -348,6 +349,7 @@ function ask_user_choice() {
 
     local answer=""
 
+    # shellcheck disable=SC2162
     read -p "${prompt}: " answer
 
     for to_check in "$@"; do
@@ -369,6 +371,7 @@ function ask_user_raw() {
     
     local answer=""
 
+    # shellcheck disable=SC2162
     read -p "${prompt}: " answer
 
     if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
@@ -448,7 +451,7 @@ function replace_file() {
 
     echo_green "--- End diff ---"
     
-    # prevent to breack output
+    # prevent to break output
     sleep 1
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
@@ -600,7 +603,7 @@ function apt_update() {
 }
 
 # shellcheck disable=SC2329
-function apt_upgrage() {
+function apt_upgrade() {
     if ! apt upgrade -y; then 
         echo_red "Cannot run apt upgrade!"
         return 1
@@ -637,7 +640,7 @@ function apt_remove() {
 }
 
 # shellcheck disable=SC2329
-function apk_upgrage() {
+function apk_upgrade() {
     if ! apk upgrade; then 
         echo_red "Cannot run apk upgrade!"
         return 1
@@ -710,6 +713,29 @@ function get_package_cmd() {
 
     echo -n "$res"
     return 0
+}
+
+# shellcheck disable=SC2329
+function upgrade_all_packages() {
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local upgrade_fun=""
+    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then
+        echo_red "Cannot run update"
+        return 1
+    fi
+
+    if ! "$upgrade_fun"; then
+        echo_red "Cannot run apt upgrade"
+        return 1
+    fi
 }
 
 # shellcheck disable=SC2329
@@ -913,7 +939,7 @@ function get_user_home(){
     fi
 
     if [ -z "$user_home" ]; then
-        echo_red "User home not foend for $name"
+        echo_red "User home not found for $name"
         return 1
     fi
 
@@ -1143,7 +1169,7 @@ function get_loginable_users() {
 
     local users_raw_list=""
     if ! users_raw_list="$(cut -d: -f1 <<<"$users_passwd_list")"; then
-        echo_red "Failed to ectract users names loginable users"
+        echo_red "Failed to extract users names loginable users"
         return 1
     fi
 
@@ -1191,7 +1217,7 @@ function cmd_gitlab_register_runner_run() {
 
     local runner_config=""
 
-    if ! runner_config="$(extract_argument "--gtlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+    if ! runner_config="$(extract_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
         echo_red "Gitlab runner config: $runner_config"
         return 1
     fi
@@ -1264,7 +1290,7 @@ function cmd_gitlab_register_runner_help() {
     echo -n "
     Register gitlab runner.
     Options:
-      --gtlab-runner-config PATH
+      --gitlab-runner-config PATH
          Path to configuration to register runner.
          Should be sh script with export next variables:
            GITLAB_RUNNER_URL       - url to register gitlab runner.
@@ -1547,22 +1573,22 @@ EOF
         return 1
     fi
 
-    echo_green "Applly netplan..."
+    echo_green "Apply netplan..."
 
     if ! netplan apply; then
-        echo_red "Netplan config does not applyed! Backups in $backup_netplan"
+        echo_red "Netplan config does not applied! Backups in $backup_netplan"
         return 1
     fi
 
     local remote_host="google.com"
 
     if command -v ping &> /dev/null; then
-        echo_green "Netplan applyed! Verify internet connection with ping $remote_host"
+        echo_green "Netplan applied! Verify internet connection with ping $remote_host"
         echo_green "Sleep 5 seconds before check..."
         sleep 5
 
         if ! ping -W 4 -c 4 "$remote_host"; then
-            echo_red "Host $remote_host not accessable!"
+            echo_red "Host $remote_host not accessible!"
             return 1
         fi
         echo_green "Internet connection success!" 
@@ -1714,7 +1740,7 @@ function virtualbox_extract_mac_address() {
 
     local mac=""
     if ! mac="$(virtualbox_extract_value_for_key "$raw_out" "$key")"; then
-        echo_red "Cannot extract mac-addres for $key: $mac"
+        echo_red "Cannot extract mac-address for $key: $mac"
         return 1
     fi
 
@@ -1841,7 +1867,7 @@ function virtualbox_extract_host_iface() {
     if [ -z "$choiced_ip" ]; then
         local octet=""
         if ! octet="$(ask_user_raw "Enter last octet number to assign address" "validate_arg_octet")"; then
-            echo_red "Invalid inputed octet: $octet"
+            echo_red "Invalid input octet: $octet"
             return 1
         fi
 
@@ -2036,7 +2062,7 @@ function virtualbox_stop_vm() {
 
     local attempts=5
 
-    for i in $(seq 1 $attempts); do
+    for i in $(seq 1 "$attempts"); do
         if virtualbox_vm_is_running "$vm_name"; then
             echo_yellow "Waiting 5 seconds to stop vm $vm_name Attempt $i"
             sleep 5 
@@ -2063,7 +2089,7 @@ function virtualbox_start_vm() {
 
     local attempts=5
 
-    for i in $(seq 1 $attempts); do
+    for i in $(seq 1 "$attempts"); do
         if ! vboxmanage startvm "$vm_name"; then
             echo_yellow "Waiting 5 seconds to start vm $vm_name Attempt $1"
             sleep 5
@@ -2451,6 +2477,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
         
         if [ -n "$host_indx" ]; then
+            # shellcheck disable=SC2004
             nat_index="$(($host_index + 1))"
             echo_green "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
         else
@@ -2498,7 +2525,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot exctract output for host interface"
+            echo_red "Cannot extract output for host interface"
             return 1
         fi
 
@@ -2521,7 +2548,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot exctract output for host interface"
+            echo_red "Cannot extract output for host interface"
             return 1
         fi
 
@@ -2538,6 +2565,7 @@ function cmd_virtualbox_init_vm_run() {
         host_adapter="${host_iface_part[1]}"
         attach_address="${host_iface_part[2]}"
 
+        # shellcheck disable=SC2004
         local iface_indx="$(($nat_index + 1))"
 
         echo_green "Attach $host_adapter with index $iface_indx ..."
@@ -2617,7 +2645,7 @@ function cmd_virtualbox_init_vm_run() {
             return 0
         fi
 
-        echo_yellow "Virtualbox vm initialized but not cleanuped!"
+        echo_yellow "Virtualbox vm initialized but not cleaned!"
     fi
 
     return 0
@@ -2664,7 +2692,7 @@ function cmd_virtualbox_init_vm_help() {
          virtualbox_init_vm_itself checks that file exists and not empty.
          Can be set with env VIRTUALBOX_SSH_KEY
       --virtualbox-skip-prepare-init-iso
-         If pass optical drive with init not preparead and mount
+         If pass optical drive with init not prepared and mount
          Optional. 
          Can be set with env VIRTUALBOX_SKIP_PREPARE_INIT_ISO
 
@@ -2673,22 +2701,52 @@ function cmd_virtualbox_init_vm_help() {
 
 # End src/include/cmd_virtualbox_init_vm.sh
 
-# Start src/include/phase_01_base_pkgs.sh
+# Start src/include/phase_01_upgrade_pkgs.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["base_pkgs"]="01"
+PHASES_WITH_INDEX["upgrade_pkgs"]="01"
 
 # shellcheck disable=SC2329
-function phase_base_pkgs_run() {
-    echo_green "Upgrade all..."
+function phase_upgrade_pkgs_run() {
+    echo_green "Upgrade packages..."
 
-    if ! apt update; then
-        echo_red "Cannot run apt update"
+    if ! upgrade_all_packages; then
+        echo_red "Packages not upgraded"
         return 1
     fi
 
-    if ! apt upgrade -y; then
-        echo_red "Cannot run apt upgrade"
+    echo_green "All packages upgraded!"
+}
+
+# shellcheck disable=SC2329
+function phase_upgrade_pkgs_help() {
+    echo -n "
+    Upgrade all packages before run.
+    No options.
+"
+}
+
+# shellcheck disable=SC2329
+function phase_upgrade_pkgs_disable_env() {
+    echo -n "DISABLE_UPGRADE_ALL"
+}
+
+# End src/include/phase_01_upgrade_pkgs.sh
+
+# Start src/include/phase_02_base_pkgs.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["base_pkgs"]="02"
+
+# shellcheck disable=SC2329
+function phase_base_pkgs_run() {
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then
+        echo_red "Cannot run update"
         return 1
     fi
 
@@ -2744,12 +2802,12 @@ function phase_base_pkgs_disable_env() {
     echo -n ""
 }
 
-# End src/include/phase_01_base_pkgs.sh
+# End src/include/phase_02_base_pkgs.sh
 
-# Start src/include/phase_02_remove_upgrade.sh
+# Start src/include/phase_03_remove_upgrade.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["remove_upgrade"]="02"
+PHASES_WITH_INDEX["remove_upgrade"]="03"
 
 # shellcheck disable=SC2329
 function phase_remove_upgrade_run() {
@@ -2790,14 +2848,14 @@ function phase_remove_upgrade_disable_env() {
     echo -n "DISABLE_REMOVE_UPGRADE"
 }
 
-# End src/include/phase_02_remove_upgrade.sh
+# End src/include/phase_03_remove_upgrade.sh
 
-# Start src/include/phase_03_add_users.sh
+# Start src/include/phase_04_add_users.sh
 
 export CONST_SHOULD_SUDO="true"
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["users"]="03"
+PHASES_WITH_INDEX["users"]="04"
 
 # shellcheck disable=SC2329
 function users_validate_pub_key() {
@@ -3077,17 +3135,17 @@ function phase_users_help() {
           --password        - if passed use PASSWORD as password. If not passed 
                               and not use --remove-password ask run passwd as not interactive
           --remove-password - if passed remove password for user.
-          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) or autorised keys file
+          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) or authorized keys file
     You can use next envs for add users.
     every env should has prefix ADD_USER_\${INDEX}_ when INDEX index for user started from 0 
     Script can try to get env ADD_USER_\${INDEX}_NAME and if next index env is not found stop adding
     Envs:
       ADD_USER_\${INDEX}_NAME         - user name
-      ADD_USER_\${INDEX}_SUDO         - if has '$CONST_SHOULD_SUDO' value add to sudo, othervise not add 
-      ADD_USER_\${INDEX}_SUDO_NO_PASS - if has '$CONST_SUDO_NO_PASS' value add to sudo, othervise not add 
+      ADD_USER_\${INDEX}_SUDO         - if has '$CONST_SHOULD_SUDO' value add to sudo, otherwise not add 
+      ADD_USER_\${INDEX}_SUDO_NO_PASS - if has '$CONST_SUDO_NO_PASS' value add to sudo, otherwise not add 
       ADD_USER_\${INDEX}_PASSWORD     - password for set
       ADD_USER_\${INDEX}_NO_PASSWORD  - if has '$CONST_REMOVE_PASSWORD' value - remove password
-      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) or autorised keys file
+      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) or authorized keys file
 "
 }
 
@@ -3096,12 +3154,12 @@ function phase_users_disable_env() {
     echo -n "DISABLE_USERS"
 }
 
-# End src/include/phase_03_add_users.sh
+# End src/include/phase_04_add_users.sh
 
-# Start src/include/phase_04_change_hostname.sh
+# Start src/include/phase_05_change_hostname.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["hostname"]="04"
+PHASES_WITH_INDEX["hostname"]="05"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {
@@ -3160,7 +3218,7 @@ function phase_hostname_help() {
     echo "
     Change hostname
     Options:
-      --new-hostname hostaname
+      --new-hostname hostanme
         Set new hostname.
         Can be provided with env NEW_HOSTNAME
 "
@@ -3171,17 +3229,21 @@ function phase_hostname_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }
 
-# End src/include/phase_04_change_hostname.sh
+# End src/include/phase_05_change_hostname.sh
 
-# Start src/include/phase_05_sshd.sh
+# Start src/include/phase_06_sshd.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["sshd"]="05"
+PHASES_WITH_INDEX["sshd"]="06"
 
+# shellcheck disable=SC2034
 declare -A _SSH_RESTART_FUNC=()
+# shellcheck disable=SC2034
 _SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
+# shellcheck disable=SC2034
 _SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd_initd_restart"
 
+# shellcheck disable=SC2329
 function sshd_systemd_restart() {
     if ! systemctl restart ssh.service; then
         return 1
@@ -3190,6 +3252,7 @@ function sshd_systemd_restart() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function sshd_initd_restart() {
     if ! service sshd restart; then
         return 1
@@ -3198,6 +3261,7 @@ function sshd_initd_restart() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function sshd_restart() {
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
@@ -3226,7 +3290,7 @@ function sshd_restart() {
 }
 
 # shellcheck disable=SC2329
-function sshd_fix_privilegies_separation() {
+function sshd_fix_privilege_separation() {
     local run_dir="/run/sshd"
 
     if ! mkdir -p "$run_dir"; then 
@@ -3248,19 +3312,19 @@ function sshd_fix_privilegies_separation() {
 
     echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
 
-    echo_green "Restart sshd after fix privilegies separation..."
+    echo_green "Restart sshd after fix privilege separation..."
     if ! sshd_restart; then
         echo_red "!!! SSHD was not restarted !!!"
         return 1
     fi
 
-    echo_green "Verify sshd config after fix privilegies separation..."
+    echo_green "Verify sshd config after fix privilege separation..."
     if ! sshd -t; then
-        echo_yellow "Test sshd config failed after fix privilegies separation. Sleep 5 seconds before next attempt"
+        echo_yellow "Test sshd config failed after fix privilege separation. Sleep 5 seconds before next attempt"
         sleep 5
         
         if ! sshd -t; then
-            echo_red "Test sshd config after fix privilegies separation after second attempt!"
+            echo_red "Test sshd config after fix privilege separation after second attempt!"
             return 1
         fi
     fi
@@ -3291,12 +3355,12 @@ function sshd_disable_systemd_socket() {
 
     echo_green "Disable sshd systemd socket..."
     if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disabe ssh.socket"
+        echo_red "Cannot disable ssh.socket"
         return 1
     fi
 
     echo_green "Create missing privilege separation directory..."
-    if ! sshd_fix_privilegies_separation; then
+    if ! sshd_fix_privilege_separation; then
         return 1 
     fi
 
@@ -3518,12 +3582,12 @@ function phase_sshd_disable_env() {
     echo -n "DISABLE_PREPARE_SSHD"
 }
 
-# End src/include/phase_05_sshd.sh
+# End src/include/phase_06_sshd.sh
 
-# Start src/include/phase_06_docker.sh
+# Start src/include/phase_07_docker.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["docker"]="06"
+PHASES_WITH_INDEX["docker"]="07"
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
@@ -3561,6 +3625,7 @@ function phase_docker_run() {
 
     echo_green "Add the docker repository to apt sources..."
 
+# shellcheck disable=SC1091
     tee /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
@@ -3593,7 +3658,7 @@ function phase_docker_disable_env() {
     echo -n "DISABLE_DOCKER"
 }
 
-# End src/include/phase_06_docker.sh
+# End src/include/phase_07_docker.sh
 
 # Start src/include/phase_10_atop.sh
 
@@ -3954,7 +4019,7 @@ EOF
 # shellcheck disable=SC2329
 function phase_aliases_help() {
     echo -n "
-    Add aditional aliases
+    Add additional aliases
     No Options.
 "
 }

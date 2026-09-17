@@ -17,7 +17,7 @@ function apt_update() {
 }
 
 # shellcheck disable=SC2329
-function apt_upgrage() {
+function apt_upgrade() {
     if ! apt upgrade -y; then 
         echo_red "Cannot run apt upgrade!"
         return 1
@@ -54,7 +54,7 @@ function apt_remove() {
 }
 
 # shellcheck disable=SC2329
-function apk_upgrage() {
+function apk_upgrade() {
     if ! apk upgrade; then 
         echo_red "Cannot run apk upgrade!"
         return 1
@@ -137,7 +137,7 @@ function upgrade_all_packages() {
     fi
 
     local upgrade_fun=""
-    if ! upgrade_fun="$(get_package_cmd upgrage)"; then
+    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
         return 1
     fi
 

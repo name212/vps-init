@@ -5,10 +5,14 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["sshd"]="06"
 
+# shellcheck disable=SC2034
 declare -A _SSH_RESTART_FUNC=()
+# shellcheck disable=SC2034
 _SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
+# shellcheck disable=SC2034
 _SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd_initd_restart"
 
+# shellcheck disable=SC2329
 function sshd_systemd_restart() {
     if ! systemctl restart ssh.service; then
         return 1
@@ -17,6 +21,7 @@ function sshd_systemd_restart() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function sshd_initd_restart() {
     if ! service sshd restart; then
         return 1
@@ -25,6 +30,7 @@ function sshd_initd_restart() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function sshd_restart() {
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
@@ -53,7 +59,7 @@ function sshd_restart() {
 }
 
 # shellcheck disable=SC2329
-function sshd_fix_privilegies_separation() {
+function sshd_fix_privilege_separation() {
     local run_dir="/run/sshd"
 
     if ! mkdir -p "$run_dir"; then 
@@ -75,19 +81,19 @@ function sshd_fix_privilegies_separation() {
 
     echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
 
-    echo_green "Restart sshd after fix privilegies separation..."
+    echo_green "Restart sshd after fix privilege separation..."
     if ! sshd_restart; then
         echo_red "!!! SSHD was not restarted !!!"
         return 1
     fi
 
-    echo_green "Verify sshd config after fix privilegies separation..."
+    echo_green "Verify sshd config after fix privilege separation..."
     if ! sshd -t; then
-        echo_yellow "Test sshd config failed after fix privilegies separation. Sleep 5 seconds before next attempt"
+        echo_yellow "Test sshd config failed after fix privilege separation. Sleep 5 seconds before next attempt"
         sleep 5
         
         if ! sshd -t; then
-            echo_red "Test sshd config after fix privilegies separation after second attempt!"
+            echo_red "Test sshd config after fix privilege separation after second attempt!"
             return 1
         fi
     fi
@@ -118,12 +124,12 @@ function sshd_disable_systemd_socket() {
 
     echo_green "Disable sshd systemd socket..."
     if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disabe ssh.socket"
+        echo_red "Cannot disable ssh.socket"
         return 1
     fi
 
     echo_green "Create missing privilege separation directory..."
-    if ! sshd_fix_privilegies_separation; then
+    if ! sshd_fix_privilege_separation; then
         return 1 
     fi
 

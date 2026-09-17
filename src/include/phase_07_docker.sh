@@ -41,6 +41,7 @@ function phase_docker_run() {
 
     echo_green "Add the docker repository to apt sources..."
 
+# shellcheck disable=SC1091
     tee /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu

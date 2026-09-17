@@ -50,7 +50,7 @@ function replace_file() {
 
     echo_green "--- End diff ---"
     
-    # prevent to breack output
+    # prevent to break output
     sleep 1
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then

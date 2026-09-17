@@ -13,6 +13,7 @@ function ask_user() {
 
     local answer=""
 
+    # shellcheck disable=SC2162
     read -p "${prompt} [y/n]: " answer
 
     if [[ "$answer" == "y" ]]; then
@@ -30,6 +31,7 @@ function ask_user_choice() {
 
     local answer=""
 
+    # shellcheck disable=SC2162
     read -p "${prompt}: " answer
 
     for to_check in "$@"; do
@@ -51,6 +53,7 @@ function ask_user_raw() {
     
     local answer=""
 
+    # shellcheck disable=SC2162
     read -p "${prompt}: " answer
 
     if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then

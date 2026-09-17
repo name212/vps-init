@@ -62,7 +62,7 @@ function phase_hostname_help() {
     echo "
     Change hostname
     Options:
-      --new-hostname hostaname
+      --new-hostname hostanme
         Set new hostname.
         Can be provided with env NEW_HOSTNAME
 "

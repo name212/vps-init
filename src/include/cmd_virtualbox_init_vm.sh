@@ -94,7 +94,7 @@ function virtualbox_extract_mac_address() {
 
     local mac=""
     if ! mac="$(virtualbox_extract_value_for_key "$raw_out" "$key")"; then
-        echo_red "Cannot extract mac-addres for $key: $mac"
+        echo_red "Cannot extract mac-address for $key: $mac"
         return 1
     fi
 
@@ -221,7 +221,7 @@ function virtualbox_extract_host_iface() {
     if [ -z "$choiced_ip" ]; then
         local octet=""
         if ! octet="$(ask_user_raw "Enter last octet number to assign address" "validate_arg_octet")"; then
-            echo_red "Invalid inputed octet: $octet"
+            echo_red "Invalid input octet: $octet"
             return 1
         fi
 
@@ -416,7 +416,7 @@ function virtualbox_stop_vm() {
 
     local attempts=5
 
-    for i in $(seq 1 $attempts); do
+    for i in $(seq 1 "$attempts"); do
         if virtualbox_vm_is_running "$vm_name"; then
             echo_yellow "Waiting 5 seconds to stop vm $vm_name Attempt $i"
             sleep 5 
@@ -443,7 +443,7 @@ function virtualbox_start_vm() {
 
     local attempts=5
 
-    for i in $(seq 1 $attempts); do
+    for i in $(seq 1 "$attempts"); do
         if ! vboxmanage startvm "$vm_name"; then
             echo_yellow "Waiting 5 seconds to start vm $vm_name Attempt $1"
             sleep 5
@@ -831,6 +831,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
         
         if [ -n "$host_indx" ]; then
+            # shellcheck disable=SC2004
             nat_index="$(($host_index + 1))"
             echo_green "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
         else
@@ -878,7 +879,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot exctract output for host interface"
+            echo_red "Cannot extract output for host interface"
             return 1
         fi
 
@@ -901,7 +902,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot exctract output for host interface"
+            echo_red "Cannot extract output for host interface"
             return 1
         fi
 
@@ -918,6 +919,7 @@ function cmd_virtualbox_init_vm_run() {
         host_adapter="${host_iface_part[1]}"
         attach_address="${host_iface_part[2]}"
 
+        # shellcheck disable=SC2004
         local iface_indx="$(($nat_index + 1))"
 
         echo_green "Attach $host_adapter with index $iface_indx ..."
@@ -997,7 +999,7 @@ function cmd_virtualbox_init_vm_run() {
             return 0
         fi
 
-        echo_yellow "Virtualbox vm initialized but not cleanuped!"
+        echo_yellow "Virtualbox vm initialized but not cleaned!"
     fi
 
     return 0
@@ -1044,7 +1046,7 @@ function cmd_virtualbox_init_vm_help() {
          virtualbox_init_vm_itself checks that file exists and not empty.
          Can be set with env VIRTUALBOX_SSH_KEY
       --virtualbox-skip-prepare-init-iso
-         If pass optical drive with init not preparead and mount
+         If pass optical drive with init not prepared and mount
          Optional. 
          Can be set with env VIRTUALBOX_SKIP_PREPARE_INIT_ISO
 

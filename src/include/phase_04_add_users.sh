@@ -285,17 +285,17 @@ function phase_users_help() {
           --password        - if passed use PASSWORD as password. If not passed 
                               and not use --remove-password ask run passwd as not interactive
           --remove-password - if passed remove password for user.
-          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) or autorised keys file
+          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) or authorized keys file
     You can use next envs for add users.
     every env should has prefix ADD_USER_\${INDEX}_ when INDEX index for user started from 0 
     Script can try to get env ADD_USER_\${INDEX}_NAME and if next index env is not found stop adding
     Envs:
       ADD_USER_\${INDEX}_NAME         - user name
-      ADD_USER_\${INDEX}_SUDO         - if has '$CONST_SHOULD_SUDO' value add to sudo, othervise not add 
-      ADD_USER_\${INDEX}_SUDO_NO_PASS - if has '$CONST_SUDO_NO_PASS' value add to sudo, othervise not add 
+      ADD_USER_\${INDEX}_SUDO         - if has '$CONST_SHOULD_SUDO' value add to sudo, otherwise not add 
+      ADD_USER_\${INDEX}_SUDO_NO_PASS - if has '$CONST_SUDO_NO_PASS' value add to sudo, otherwise not add 
       ADD_USER_\${INDEX}_PASSWORD     - password for set
       ADD_USER_\${INDEX}_NO_PASSWORD  - if has '$CONST_REMOVE_PASSWORD' value - remove password
-      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) or autorised keys file
+      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) or authorized keys file
 "
 }
 

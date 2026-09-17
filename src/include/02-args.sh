@@ -50,7 +50,7 @@ function disable_help() {
     local env_name="$(disable_env "$phase")"
 
     if [ -n "$env_name" ]; then
-        echo "Can be desabled with set env ${env_name}=true"
+        echo "Can be disabled with set env ${env_name}=true"
         return 0
     fi
 

@@ -59,7 +59,7 @@ function get_user_home(){
     fi
 
     if [ -z "$user_home" ]; then
-        echo_red "User home not foend for $name"
+        echo_red "User home not found for $name"
         return 1
     fi
 
@@ -289,7 +289,7 @@ function get_loginable_users() {
 
     local users_raw_list=""
     if ! users_raw_list="$(cut -d: -f1 <<<"$users_passwd_list")"; then
-        echo_red "Failed to ectract users names loginable users"
+        echo_red "Failed to extract users names loginable users"
         return 1
     fi
 
