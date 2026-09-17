@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+function echo_red(){
+    echo -e "\033[1;31m$1\033[0m" >&2
+}
+
+function echo_green (){
+    echo -e "\033[1;32m$1\033[0m" >&2
+}
+
+function echo_yellow (){
+    echo -e "\033[1;33m$1\033[0m" >&2
+}
+
 destination="init.sh"
 
 if [ -n "$DEST_FILE" ]; then
@@ -29,11 +41,11 @@ function write_file() {
     local dest="$2"
 
     if [ ! -f "$fl" ]; then
-        echo "$fl not found"
+        echo_red "$fl not found"
         exit 1
     fi
 
-    echo "Write $fl to $dest"
+    echo_green "Write $fl to $dest"
     content="$(sed 's/#!\/usr\/bin\/env bash//g' "$fl" | sed 's/set -Eeuo pipefail//g')"
     content="$(remove_begin_spaces "$content")"
     {
@@ -48,13 +60,13 @@ function write_file() {
 
 header="src/main_header.sh"
 
-echo "Write $header to $destination"
+echo_green "Write $header to $destination"
 cat "$header" > "$destination"
 
 for fl in $(find src/include -name "*.sh" -type f | sort); do
     bs="$(basename "$fl")"
     if [[ -v skip_build["$bs"] ]]; then
-        echo "!!!! Skip add $fl to $destination because it in skip !!!"
+        echo_yellow "!!!! Skip add $fl to $destination because it in skip !!!"
         continue
     fi
     write_file "$fl" "$destination"
