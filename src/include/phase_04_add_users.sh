@@ -5,7 +5,7 @@ set -Eeuo pipefail
 export CONST_SHOULD_SUDO="true"
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["users"]="03"
+PHASES_WITH_INDEX["users"]="04"
 
 # shellcheck disable=SC2329
 function users_validate_pub_key() {

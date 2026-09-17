@@ -130,6 +130,29 @@ function get_package_cmd() {
 }
 
 # shellcheck disable=SC2329
+function upgrade_all_packages() {
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local upgrade_fun=""
+    if ! upgrade_fun="$(get_package_cmd upgrage)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then
+        echo_red "Cannot run update"
+        return 1
+    fi
+
+    if ! "$upgrade_fun"; then
+        echo_red "Cannot run apt upgrade"
+        return 1
+    fi
+}
+
+# shellcheck disable=SC2329
 function install_packages() {
     echo_green "Install apt packages $* ..."
 

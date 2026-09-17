@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["sshd"]="05"
+PHASES_WITH_INDEX["sshd"]="06"
 
 declare -A _SSH_RESTART_FUNC=()
 _SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
