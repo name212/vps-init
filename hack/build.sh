@@ -20,7 +20,7 @@ if [ -n "$DEST_FILE" ]; then
     destination="$DEST_FILE"
 fi
 
-echo_green "Working in '$$WORKING_DIR'; Destination - '$destination' "
+echo_green "Working in '$WORKING_DIR'; Destination - '$destination' "
 
 declare -A skip_build=()
 
