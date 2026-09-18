@@ -22,7 +22,7 @@ function cmd_gitlab_register_runner_run() {
 
     local runner_config=""
 
-    if ! runner_config="$(extract_argument "--gtlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+    if ! runner_config="$(extract_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
         echo_red "Gitlab runner config: $runner_config"
         return 1
     fi
@@ -95,7 +95,7 @@ function cmd_gitlab_register_runner_help() {
     echo -n "
     Register gitlab runner.
     Options:
-      --gtlab-runner-config PATH
+      --gitlab-runner-config PATH
          Path to configuration to register runner.
          Should be sh script with export next variables:
            GITLAB_RUNNER_URL       - url to register gitlab runner.

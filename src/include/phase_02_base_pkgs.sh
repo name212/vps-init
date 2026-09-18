@@ -3,19 +3,17 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["base_pkgs"]="01"
+PHASES_WITH_INDEX["base_pkgs"]="02"
 
 # shellcheck disable=SC2329
 function phase_base_pkgs_run() {
-    echo_green "Upgrade all..."
-
-    if ! apt update; then
-        echo_red "Cannot run apt update"
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
         return 1
     fi
 
-    if ! apt upgrade -y; then
-        echo_red "Cannot run apt upgrade"
+    if ! "$update_fun"; then
+        echo_red "Cannot run update"
         return 1
     fi
 

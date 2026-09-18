@@ -24,7 +24,7 @@ EOF
 # shellcheck disable=SC2329
 function phase_aliases_help() {
     echo -n "
-    Add aditional aliases
+    Add additional aliases
     No Options.
 "
 }

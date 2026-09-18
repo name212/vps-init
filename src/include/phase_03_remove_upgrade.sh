@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["remove_upgrade"]="02"
+PHASES_WITH_INDEX["remove_upgrade"]="03"
 
 # shellcheck disable=SC2329
 function phase_remove_upgrade_run() {

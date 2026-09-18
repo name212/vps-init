@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["hostname"]="04"
+PHASES_WITH_INDEX["hostname"]="05"
 
 # shellcheck disable=SC2329
 function phase_hostname_run() {
@@ -62,7 +62,7 @@ function phase_hostname_help() {
     echo "
     Change hostname
     Options:
-      --new-hostname hostaname
+      --new-hostname hostanme
         Set new hostname.
         Can be provided with env NEW_HOSTNAME
 "

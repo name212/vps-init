@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["docker"]="06"
+PHASES_WITH_INDEX["docker"]="07"
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
@@ -41,6 +41,7 @@ function phase_docker_run() {
 
     echo_green "Add the docker repository to apt sources..."
 
+# shellcheck disable=SC1091
     tee /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
