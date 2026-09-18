@@ -7,7 +7,7 @@ bin_name="$0"
 declare -A PHASES_WITH_INDEX=()
 declare -a COMMANDS_LIST=()
 
-# Start vps-init/src/include/01-base_echo.sh
+# Start vps-init/src/include/01_base_echo.sh
 
 function echo_red(){
     echo -e "\033[1;31m$1\033[0m" >&2
@@ -21,9 +21,9 @@ function echo_yellow (){
     echo -e "\033[1;33m$1\033[0m" >&2
 }
 
-# End vps-init/src/include/01-base_echo.sh
+# End vps-init/src/include/01_base_echo.sh
 
-# Start vps-init/src/include/02-args.sh
+# Start vps-init/src/include/02_args.sh
 
 export CONST_FLAG_SET="true"
 export CONST_NO_VALIDATE="no_validate"
@@ -316,9 +316,9 @@ function get_env_value_or_default() {
     return 0
 }
 
-# End vps-init/src/include/02-args.sh
+# End vps-init/src/include/02_args.sh
 
-# Start vps-init/src/include/03-base_input.sh
+# Start vps-init/src/include/03_base_input.sh
 
 # shellcheck disable=SC2329
 function ask_user() {
@@ -399,9 +399,9 @@ function remove_begin_spaces() {
     echo -n "$content"
 }
 
-# End vps-init/src/include/03-base_input.sh
+# End vps-init/src/include/03_base_input.sh
 
-# Start vps-init/src/include/04-base_fs.sh
+# Start vps-init/src/include/04_base_fs.sh
 
 # shellcheck disable=SC2329
 function delete_file() {
@@ -480,9 +480,9 @@ function replace_file() {
     return 0
 }
 
-# End vps-init/src/include/04-base_fs.sh
+# End vps-init/src/include/04_base_fs.sh
 
-# Start vps-init/src/include/base_download.sh
+# Start vps-init/src/include/05-base_download.sh
 
 # shellcheck disable=SC2329
 function download_url(){
@@ -548,9 +548,9 @@ function download_script_and_run() {
     return 0
 }
 
-# End vps-init/src/include/base_download.sh
+# End vps-init/src/include/05-base_download.sh
 
-# Start vps-init/src/include/base_jq.sh
+# Start vps-init/src/include/06_base_jq.sh
 
 # shellcheck disable=SC2329
 function jq_get_key_or_empty() { 
@@ -584,9 +584,9 @@ function jq_get_key_or_empty() {
     return 1
 }
 
-# End vps-init/src/include/base_jq.sh
+# End vps-init/src/include/06_base_jq.sh
 
-# Start vps-init/src/include/base_pkg.sh
+# Start vps-init/src/include/07_base_pkg.sh
 
 if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
     export SYS_PACKAGES_ENGINE="apt"
@@ -826,9 +826,9 @@ function remove_packages() {
     return 0
 }
 
-# End vps-init/src/include/base_pkg.sh
+# End vps-init/src/include/07_base_pkg.sh
 
-# Start vps-init/src/include/base_service.sh
+# Start vps-init/src/include/08_base_service.sh
 
 export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
 export CONST_SYS_SERVICE_ENGINE_INITD="service"
@@ -852,9 +852,9 @@ function get_sys_service_engine() {
     return 1
 }
 
-# End vps-init/src/include/base_service.sh
+# End vps-init/src/include/08_base_service.sh
 
-# Start vps-init/src/include/base_systemd.sh
+# Start vps-init/src/include/09_base_systemd.sh
 
 # shellcheck disable=SC2329
 function systemd_disable_all() {
@@ -878,9 +878,9 @@ function systemd_disable_all() {
     return 0
 }
 
-# End vps-init/src/include/base_systemd.sh
+# End vps-init/src/include/09_base_systemd.sh
 
-# Start vps-init/src/include/base_user.sh
+# Start vps-init/src/include/10_base_user.sh
 
 export CONST_REMOVE_PASSWORD="true"
 export CONST_SUDO_NO_PASS="true"
@@ -1193,7 +1193,7 @@ function get_loginable_users() {
     return 0
 }
 
-# End vps-init/src/include/base_user.sh
+# End vps-init/src/include/10_base_user.sh
 
 # Start vps-init/src/include/cmd_gitlab_register.sh
 
@@ -4033,6 +4033,17 @@ function phase_aliases_disable_env() {
 
 # Start vps-init/src/main.sh
 
+function get_hostname() {
+    local hst=""
+    if ! hst="$(uname -n)"; then
+        hst="host"
+    fi
+
+    echo -n "$hst"
+
+    return 0
+}
+
 function phase_run_func() {
     local phase="$1"
 
@@ -4053,6 +4064,8 @@ function usage() {
     if [ -n "${INIT_MSG_HELP:-}" ]; then
         init_msg="$INIT_MSG_HELP"
     fi
+
+    # shellcheck disable=SC2154
     echo "
 Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
   $init_msg
@@ -4256,10 +4269,8 @@ function main() {
         exit 1
     fi
 
-    local old_hostname=""
-    if ! old_hostname="$(hostnamectl hostname)"; then
-         old_hostname="host"
-    fi
+    # shellcheck disable=SC2155
+    local old_hostname="$(get_hostname)"
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
     if ! ask_user "Start init ${old_hostname} ?" "$not_ask"; then
@@ -4287,10 +4298,8 @@ function main() {
         echo ""
     done
 
-    local new_hostname=""
-    if ! new_hostname="$(hostnamectl hostname)"; then
-         new_hostname="host"
-    fi
+    # shellcheck disable=SC2155
+    local new_hostname="$(get_hostname)"
 
     echo_green "Init server $old_hostname done! New hostname: $new_hostname"
     return 0

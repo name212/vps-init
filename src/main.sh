@@ -2,6 +2,17 @@
 
 set -Eeuo pipefail
 
+function get_hostname() {
+    local hst=""
+    if ! hst="$(uname -n)"; then
+        hst="host"
+    fi
+
+    echo -n "$hst"
+
+    return 0
+}
+
 function phase_run_func() {
     local phase="$1"
 
@@ -22,6 +33,8 @@ function usage() {
     if [ -n "${INIT_MSG_HELP:-}" ]; then
         init_msg="$INIT_MSG_HELP"
     fi
+
+    # shellcheck disable=SC2154
     echo "
 Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
   $init_msg
@@ -225,10 +238,8 @@ function main() {
         exit 1
     fi
 
-    local old_hostname=""
-    if ! old_hostname="$(hostnamectl hostname)"; then
-         old_hostname="host"
-    fi
+    # shellcheck disable=SC2155
+    local old_hostname="$(get_hostname)"
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
     if ! ask_user "Start init ${old_hostname} ?" "$not_ask"; then
@@ -256,10 +267,8 @@ function main() {
         echo ""
     done
 
-    local new_hostname=""
-    if ! new_hostname="$(hostnamectl hostname)"; then
-         new_hostname="host"
-    fi
+    # shellcheck disable=SC2155
+    local new_hostname="$(get_hostname)"
 
     echo_green "Init server $old_hostname done! New hostname: $new_hostname"
     return 0
