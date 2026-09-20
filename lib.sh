@@ -495,7 +495,7 @@ function calc_diff_str() {
 }
 
 # shellcheck disable=SC2329
-function files_has_diff() {
+function files_has_not_diff() {
     local src="${1:-}"
     local dest="${2:-}"
     local title="${3:-Unknown}"
@@ -611,7 +611,7 @@ function replace_file() {
 
     local ret_diff="0"
 
-    if files_has_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
+    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
         ret_diff="0"
     else
         ret_diff="$?"

@@ -77,7 +77,7 @@ function calc_diff_str() {
 }
 
 # shellcheck disable=SC2329
-function files_has_diff() {
+function files_has_not_diff() {
     local src="${1:-}"
     local dest="${2:-}"
     local title="${3:-Unknown}"
