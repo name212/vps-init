@@ -16,48 +16,38 @@ function delete_file() {
 function replace_file() {
     local src="$1"
     local dest="$2"
-    local title="${3-No title}"
-    local remove_src="${4-true}"
-    local not_ask="${5-false}"
+    local title="${3-Unknown}"
+    local remove_src="${4:-true}"
+    local not_ask="${5:-false}"
 
-    if [ -z "$src" ]; then
-        echo_red "Source file not passed"
-        return 1
-    fi
+    local ret_diff="0"
 
-    if [ ! -f "$src" ]; then
-        echo_red "Source file $src is not file"
-        return 1
-    fi
-
-    if [ -z "$dest" ]; then
-        echo_red "Dest file not passed"
-        return 1
-    fi
-
-    echo_green "--- $title from $src ---"
-    cat "$src"
-    echo_green "--- End file ---"
-    echo ""
-    
-    echo_green "--- Diff ---"
-    if [ ! -f "$dest" ]; then
-        echo_green "Add new file with content:"
-        cat "$src"
+    if files_has_diff "$src" "$dest" "$title"; then
+        ret_diff="0"
     else
-        diff "$src" "$dest" || true
+        ret_diff="$?"
     fi
 
-    echo_green "--- End diff ---"
+    if [[ "$ret_diff" == "255" ]]; then
+        echo_red "Internal diff error"
+        return 1
+    fi
+
+    if [[ "$ret_diff" == "0" ]]; then
+        echo_green "No diff. Skip"
+        return 0
+    fi
     
     # prevent to break output
     sleep 1
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
-        echo_green "$title delete source $src"
-        if ! rm "$src"; then
-            echo_yellow "$title source file $src not deleted!"
-            return 0
+        if [[ "$remove_src" == "true" ]]; then
+            echo_green "$title delete source $src"
+            if ! rm "$src"; then
+                echo_yellow "$title source file $src not deleted!"
+                return 0
+            fi
         fi
         echo_red "Disallow replace $dest"
         return 1

@@ -9,16 +9,34 @@ declare -a COMMANDS_LIST=()
 
 # Start vps-init/src/include/01_base_echo.sh
 
+# shellcheck disable=SC2329
 function echo_red(){
     echo -e "\033[1;31m$1\033[0m" >&2
 }
 
+# shellcheck disable=SC2329
 function echo_green (){
     echo -e "\033[1;32m$1\033[0m" >&2
 }
 
+# shellcheck disable=SC2329
 function echo_yellow (){
     echo -e "\033[1;33m$1\033[0m" >&2
+}
+
+# shellcheck disable=SC2329
+function echo_error(){
+    echo_red "$1"
+}
+
+# shellcheck disable=SC2329
+function echo_info (){
+    echo_green "$1"
+}
+
+# shellcheck disable=SC2329
+function echo_warn (){
+    echo_yellow "$1"
 }
 
 # End vps-init/src/include/01_base_echo.sh
@@ -401,7 +419,161 @@ function remove_begin_spaces() {
 
 # End vps-init/src/include/03_base_input.sh
 
-# Start vps-init/src/include/04_base_fs.sh
+# Start vps-init/src/include/04_base_diff.sh
+
+export CONST_OUT_DIFF_OR_HAS_DIFF="true"
+export CONST_DIFF_ADD_ARGS=("--color=always")
+
+# shellcheck disable=SC2329
+function out_diff() {
+    local diff_str="${1:-}"
+    local src_str="${2:-}"
+    local dest_str="${3:-}"
+    local title="${4:-Unknown}"
+    local has_diff=""
+
+    echo_green "--- Diff for: $title ---"
+
+    if [ -n "$diff_str" ]; then
+        echo_yellow "--- Changes: ---"
+        echo "$diff_str"
+        has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
+    elif [ -n "$src_str" ] && [ -z "$dest_str" ]; then
+        echo_green "--- Add new: ---"
+        echo "$src_str"
+        has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
+    elif [ -z "$src_str" ] && [ -n "$dest_str" ]; then
+        echo_red "--- Remove old: ---"
+        echo "$dest_str"
+        has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
+    else
+        echo_green "--- No diff ---"
+    fi
+
+    echo_green "--- End diff for $title ---"
+
+    if [[ "$has_diff" == "$CONST_OUT_DIFF_OR_HAS_DIFF" ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function calc_diff_str() {
+    local src="${1:-}"
+    local dst="${2:-}"
+    local title="${3:-Unknown}"
+
+    local diff_out=""
+    local diff_ret="0"
+
+    # shellcheck disable=SC2090
+    if diff_out="$(diff "${CONST_DIFF_ADD_ARGS[@]}" <(echo "$dst") <(echo "$src"))"; then
+        diff_ret="0"
+    else
+        diff_ret="$?"
+    fi
+
+    out_diff "$diff_out" "" "" "$title"
+    return "$diff_ret"
+}
+
+# shellcheck disable=SC2329
+function files_has_diff() {
+    local src="${1:-}"
+    local dest="${2:-}"
+    local title="${3:-Unknown}"
+
+    title="'${title}' from file '$src' to '$dest'"
+
+    if [ -z "$src" ]; then
+        echo_red "Source file not passed"
+        return 255
+    fi
+
+    if [ -z "$dest" ]; then
+        echo_red "Dest file not passed"
+        return 255
+    fi
+
+    local diff_out=""
+
+     if [ -f "$src" ] && [ ! -f "$dest" ]; then
+        local src_str=""
+        if ! src_str="$(cat "$src")"; then
+            echo_red "Cannot read source '$src'"
+            return 255
+        fi
+
+        out_diff "$diff_out" "$src_str" "" "$title"
+        return $?
+    fi
+
+    if [ ! -f "$src" ] && [ -f "$dest" ]; then
+        local dest_str=""
+        if ! dest_str="$(cat "$dest")"; then
+            echo_red "Cannot read dest '$dest'"
+            return 255
+        fi
+
+        out_diff "$diff_out" "" "$dest_str" "$title"
+        return $?
+    fi
+
+    local ret_diff="0"
+
+    # shellcheck disable=SC2090
+    if diff_out="$(diff "${CONST_DIFF_ADD_ARGS[@]}" "$dest" "$src")"; then
+        diff_out=""
+    else
+        ret_diff="$?"
+    fi
+
+    out_diff "$diff_out" "" "" "$title"
+
+    return $ret_diff
+}
+
+# End vps-init/src/include/04_base_diff.sh
+
+# Start vps-init/src/include/06_base_jq.sh
+
+# shellcheck disable=SC2329
+function jq_get_key_or_empty() { 
+    local raw_out="$1"
+    local key="$2"
+    local required="${3-false}"
+
+    local val=""
+    local exit_code="128"
+
+    val="$(jq -er "$key" <<<"$raw_out")"
+    exit_code="$?"
+
+    case "$exit_code" in
+        "0")
+            echo -n "$val"
+            return 0
+        ;;
+
+        "1")
+            if [[ "$required" == "true" ]]; then
+                echo "Key not found $key"
+                return 1
+            fi
+
+            echo -n ""
+            return 0
+    esac
+
+    echo "Cannot get json key $key"
+    return 1
+}
+
+# End vps-init/src/include/06_base_jq.sh
+
+# Start vps-init/src/include/10_base_fs.sh
 
 # shellcheck disable=SC2329
 function delete_file() {
@@ -417,48 +589,38 @@ function delete_file() {
 function replace_file() {
     local src="$1"
     local dest="$2"
-    local title="${3-No title}"
-    local remove_src="${4-true}"
-    local not_ask="${5-false}"
+    local title="${3-Unknown}"
+    local remove_src="${4:-true}"
+    local not_ask="${5:-false}"
 
-    if [ -z "$src" ]; then
-        echo_red "Source file not passed"
-        return 1
-    fi
+    local ret_diff="0"
 
-    if [ ! -f "$src" ]; then
-        echo_red "Source file $src is not file"
-        return 1
-    fi
-
-    if [ -z "$dest" ]; then
-        echo_red "Dest file not passed"
-        return 1
-    fi
-
-    echo_green "--- $title from $src ---"
-    cat "$src"
-    echo_green "--- End file ---"
-    echo ""
-    
-    echo_green "--- Diff ---"
-    if [ ! -f "$dest" ]; then
-        echo_green "Add new file with content:"
-        cat "$src"
+    if files_has_diff "$src" "$dest" "$title"; then
+        ret_diff="0"
     else
-        diff "$src" "$dest" || true
+        ret_diff="$?"
     fi
 
-    echo_green "--- End diff ---"
+    if [[ "$ret_diff" == "255" ]]; then
+        echo_red "Internal diff error"
+        return 1
+    fi
+
+    if [[ "$ret_diff" == "0" ]]; then
+        echo_green "No diff. Skip"
+        return 0
+    fi
     
     # prevent to break output
     sleep 1
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
-        echo_green "$title delete source $src"
-        if ! rm "$src"; then
-            echo_yellow "$title source file $src not deleted!"
-            return 0
+        if [[ "$remove_src" == "true" ]]; then
+            echo_green "$title delete source $src"
+            if ! rm "$src"; then
+                echo_yellow "$title source file $src not deleted!"
+                return 0
+            fi
         fi
         echo_red "Disallow replace $dest"
         return 1
@@ -480,9 +642,9 @@ function replace_file() {
     return 0
 }
 
-# End vps-init/src/include/04_base_fs.sh
+# End vps-init/src/include/10_base_fs.sh
 
-# Start vps-init/src/include/05-base_download.sh
+# Start vps-init/src/include/11-base_download.sh
 
 # shellcheck disable=SC2329
 function download_url(){
@@ -548,339 +710,9 @@ function download_script_and_run() {
     return 0
 }
 
-# End vps-init/src/include/05-base_download.sh
+# End vps-init/src/include/11-base_download.sh
 
-# Start vps-init/src/include/06_base_jq.sh
-
-# shellcheck disable=SC2329
-function jq_get_key_or_empty() { 
-    local raw_out="$1"
-    local key="$2"
-    local required="${3-false}"
-
-    local val=""
-    local exit_code="128"
-
-    val="$(jq -er "$key" <<<"$raw_out")"
-    exit_code="$?"
-
-    case "$exit_code" in
-        "0")
-            echo -n "$val"
-            return 0
-        ;;
-
-        "1")
-            if [[ "$required" == "true" ]]; then
-                echo "Key not found $key"
-                return 1
-            fi
-
-            echo -n ""
-            return 0
-    esac
-
-    echo "Cannot get json key $key"
-    return 1
-}
-
-# End vps-init/src/include/06_base_jq.sh
-
-# Start vps-init/src/include/07_base_pkg.sh
-
-if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
-    export SYS_PACKAGES_ENGINE="apt"
-fi
-
-# shellcheck disable=SC2329
-function apt_update() {
-    if ! apt update; then 
-        echo_red "Cannot run apt update!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_upgrade() {
-    if ! apt upgrade -y; then 
-        echo_red "Cannot run apt upgrade!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_install() {
-    if ! apt install -y "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_search() {
-    if dpkg-query -s "$1" &> /dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function apt_remove() {
-    if ! apt purge -y --auto-remove "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_upgrade() {
-    if ! apk upgrade; then 
-        echo_red "Cannot run apk upgrade!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_update() {
-    if ! apk update; then 
-        echo_red "Cannot run apk update!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_install() {
-    if ! apk add --no-cache "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_search() {
-    if apk info -e "$1" &> /dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function apk_remove() {
-    if ! apk del "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function get_package_cmd() {
-    local cmd_name="$1"
-    case "$SYS_PACKAGES_ENGINE" in
-        "apt")
-            true
-        ;;
-
-        "apk")
-            true
-        ;;
-
-        *)
-            echo_red "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
-            return 1
-        ;;
-    esac
-
-    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
-
-    if ! declare -F "$res" > /dev/null; then
-        echo_red "Internal error: '$res' func not declared!"
-        return 1
-    fi
-
-    echo -n "$res"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function upgrade_all_packages() {
-    local update_fun=""
-    if ! update_fun="$(get_package_cmd update)"; then
-        return 1
-    fi
-
-    local upgrade_fun=""
-    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
-        return 1
-    fi
-
-    if ! "$update_fun"; then
-        echo_red "Cannot run update"
-        return 1
-    fi
-
-    if ! "$upgrade_fun"; then
-        echo_red "Cannot run apt upgrade"
-        return 1
-    fi
-}
-
-# shellcheck disable=SC2329
-function install_packages() {
-    echo_green "Install apt packages $* ..."
-
-    local update_fun=""
-    if ! update_fun="$(get_package_cmd update)"; then
-        return 1
-    fi
-
-    local install_fun=""
-    if ! install_fun="$(get_package_cmd install)"; then
-        return 1
-    fi
-
-    if ! "$update_fun"; then 
-        echo_red "Cannot run update indexes!"
-        return 1
-    fi
-
-    if ! "$install_fun" "$@"; then
-        echo_red "Cannot run apt install!"
-        return 1
-    fi
-
-    echo_green "Packages $* installed!"
-}
-
-# shellcheck disable=SC2329
-function check_packages_installed() {
-    local search_fun=""
-    if ! search_fun="$(get_package_cmd search)"; then
-        return 1
-    fi
-
-    local all="true"
-    while [[ $# -gt 0 ]]; do
-        local name="$1"
-        if ! "$search_fun" "$name"; then
-            echo_green "$name not installed..."
-            all="false"
-        fi
-        shift
-    done
-
-    if [[ "$all" == "false" ]]; then
-        return 1
-    fi
-    
-    return 0
-}
-
-# shellcheck disable=SC2329
-function remove_packages() {
-    local search_fun=""
-    if ! search_fun="$(get_package_cmd search)"; then
-        return 1
-    fi
-
-    local remove_fun=""
-    if ! remove_fun="$(get_package_cmd remove)"; then
-        return 1
-    fi
-
-    local -a for_remove=()
-
-    while [[ $# -gt 0 ]]; do
-        local name="$1"
-        if "$search_fun" "$name"; then
-            for_remove+=("$name")
-        fi
-        shift
-    done
-
-    if [[ "${#for_remove[@]}" == "0" ]]; then
-        echo_green "All passed packages already removed"
-        return 0
-    fi
-
-    echo_green "Remove packages ${for_remove[*]}"
-    
-    if ! "$remove_fun" "${for_remove[@]}"; then
-        echo_red "Some packages not removed!"
-        return 1
-    fi
-
-    return 0
-}
-
-# End vps-init/src/include/07_base_pkg.sh
-
-# Start vps-init/src/include/08_base_service.sh
-
-export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
-export CONST_SYS_SERVICE_ENGINE_INITD="service"
-
-declare -A _SYS_SERVICE_ENGINES_MAP=()
-_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
-_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_INITD"]="true"
-
-if [ -z "${SYS_SERVICE_ENGINE:-}" ]; then
-    export SYS_SERVICE_ENGINE="$CONST_SYS_SERVICE_ENGINE_SYSTEMD"
-fi
-
-# shellcheck disable=SC2329
-function get_sys_service_engine() {
-    if [[ -v _SYS_SERVICE_ENGINES_MAP["$SYS_SERVICE_ENGINE"] ]]; then
-        echo -n "$SYS_SERVICE_ENGINE"
-        return 0
-    fi
-
-    echo_red "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
-    return 1
-}
-
-# End vps-init/src/include/08_base_service.sh
-
-# Start vps-init/src/include/09_base_systemd.sh
-
-# shellcheck disable=SC2329
-function systemd_disable_all() {
-    for srv in "$@"; do
-        if ! systemctl is-active "$srv"; then
-            continue
-        fi
-
-        echo_green "systemd service $srv is active. Disable..."
-        if ! systemctl disable --now "$srv"; then
-            echo_red "Cannot disable $srv"
-            return 1
-        fi
-
-        if ! systemctl stop "$srv"; then
-            echo_red "Cannot stop $srv"
-            return 1
-        fi
-    done
-
-    return 0
-}
-
-# End vps-init/src/include/09_base_systemd.sh
-
-# Start vps-init/src/include/10_base_user.sh
+# Start vps-init/src/include/20_base_user.sh
 
 export CONST_REMOVE_PASSWORD="true"
 export CONST_SUDO_NO_PASS="true"
@@ -1193,7 +1025,297 @@ function get_loginable_users() {
     return 0
 }
 
-# End vps-init/src/include/10_base_user.sh
+# End vps-init/src/include/20_base_user.sh
+
+# Start vps-init/src/include/21_base_pkg.sh
+
+if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
+    export SYS_PACKAGES_ENGINE="apt"
+fi
+
+# shellcheck disable=SC2329
+function apt_update() {
+    if ! apt update; then 
+        echo_red "Cannot run apt update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_upgrade() {
+    if ! apt upgrade -y; then 
+        echo_red "Cannot run apt upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_install() {
+    if ! apt install -y "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_search() {
+    if dpkg-query -s "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apt_remove() {
+    if ! apt purge -y --auto-remove "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_upgrade() {
+    if ! apk upgrade; then 
+        echo_red "Cannot run apk upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_update() {
+    if ! apk update; then 
+        echo_red "Cannot run apk update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_install() {
+    if ! apk add --no-cache "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_search() {
+    if apk info -e "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apk_remove() {
+    if ! apk del "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_package_cmd() {
+    local cmd_name="$1"
+    case "$SYS_PACKAGES_ENGINE" in
+        "apt")
+            true
+        ;;
+
+        "apk")
+            true
+        ;;
+
+        *)
+            echo_red "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
+            return 1
+        ;;
+    esac
+
+    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
+
+    if ! declare -F "$res" > /dev/null; then
+        echo_red "Internal error: '$res' func not declared!"
+        return 1
+    fi
+
+    echo -n "$res"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function upgrade_all_packages() {
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local upgrade_fun=""
+    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then
+        echo_red "Cannot run update"
+        return 1
+    fi
+
+    if ! "$upgrade_fun"; then
+        echo_red "Cannot run apt upgrade"
+        return 1
+    fi
+}
+
+# shellcheck disable=SC2329
+function install_packages() {
+    echo_green "Install apt packages $* ..."
+
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local install_fun=""
+    if ! install_fun="$(get_package_cmd install)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then 
+        echo_red "Cannot run update indexes!"
+        return 1
+    fi
+
+    if ! "$install_fun" "$@"; then
+        echo_red "Cannot run apt install!"
+        return 1
+    fi
+
+    echo_green "Packages $* installed!"
+}
+
+# shellcheck disable=SC2329
+function check_packages_installed() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local all="true"
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if ! "$search_fun" "$name"; then
+            echo_green "$name not installed..."
+            all="false"
+        fi
+        shift
+    done
+
+    if [[ "$all" == "false" ]]; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# shellcheck disable=SC2329
+function remove_packages() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local remove_fun=""
+    if ! remove_fun="$(get_package_cmd remove)"; then
+        return 1
+    fi
+
+    local -a for_remove=()
+
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if "$search_fun" "$name"; then
+            for_remove+=("$name")
+        fi
+        shift
+    done
+
+    if [[ "${#for_remove[@]}" == "0" ]]; then
+        echo_green "All passed packages already removed"
+        return 0
+    fi
+
+    echo_green "Remove packages ${for_remove[*]}"
+    
+    if ! "$remove_fun" "${for_remove[@]}"; then
+        echo_red "Some packages not removed!"
+        return 1
+    fi
+
+    return 0
+}
+
+# End vps-init/src/include/21_base_pkg.sh
+
+# Start vps-init/src/include/22_base_service.sh
+
+export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+export CONST_SYS_SERVICE_ENGINE_INITD="service"
+
+declare -A _SYS_SERVICE_ENGINES_MAP=()
+_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
+_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_INITD"]="true"
+
+if [ -z "${SYS_SERVICE_ENGINE:-}" ]; then
+    export SYS_SERVICE_ENGINE="$CONST_SYS_SERVICE_ENGINE_SYSTEMD"
+fi
+
+# shellcheck disable=SC2329
+function get_sys_service_engine() {
+    if [[ -v _SYS_SERVICE_ENGINES_MAP["$SYS_SERVICE_ENGINE"] ]]; then
+        echo -n "$SYS_SERVICE_ENGINE"
+        return 0
+    fi
+
+    echo_red "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function systemd_disable_all() {
+    for srv in "$@"; do
+        if ! systemctl is-active "$srv"; then
+            continue
+        fi
+
+        echo_green "systemd service $srv is active. Disable..."
+        if ! systemctl disable --now "$srv"; then
+            echo_red "Cannot disable $srv"
+            return 1
+        fi
+
+        if ! systemctl stop "$srv"; then
+            echo_red "Cannot stop $srv"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# End vps-init/src/include/22_base_service.sh
 
 # Start vps-init/src/include/cmd_gitlab_register.sh
 

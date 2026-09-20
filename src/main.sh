@@ -128,6 +128,14 @@ function run_passed_command() {
     return 0
 }
 
+function run_tests_func() {
+    if replace_file "/tmp/1111" "/home/nick/1.txt" "Test" "false"; then
+        return $?
+    else
+        return $?
+    fi
+}
+
 function main() {
     local -a not_ordered_phases=()
 
@@ -217,6 +225,16 @@ function main() {
 
             exit 0
         ;;
+
+        "__tst")
+            local tst_ret="255"
+            if run_tests_func; then
+                tst_ret="0"
+            else 
+                tst_ret="$?"
+            fi
+            echo_green "Ret code: $tst_ret"
+            exit "$tst_ret"
     esac
 
     local -a phases_to_run=()
