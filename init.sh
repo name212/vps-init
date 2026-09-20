@@ -430,27 +430,42 @@ function out_diff() {
     local src_str="${2:-}"
     local dest_str="${3:-}"
     local title="${4:-Unknown}"
+    local should_out_diff="${5:-"$CONST_OUT_DIFF_OR_HAS_DIFF"}"
     local has_diff=""
 
-    echo_green "--- Diff for: $title ---"
+    local diff_to_out=""
+    local diff_action=""
+    local diff_action_msg=""
 
     if [ -n "$diff_str" ]; then
-        echo_yellow "--- Changes: ---"
-        echo "$diff_str"
+        diff_action="echo_yellow"
+        diff_action_msg="--- Changes: ---"
+        diff_to_out="$diff_str"
         has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
     elif [ -n "$src_str" ] && [ -z "$dest_str" ]; then
-        echo_green "--- Add new: ---"
-        echo "$src_str"
+        diff_action="echo_green"
+        diff_action_msg="--- Add new: ---"
+        diff_to_out="$src_str"
         has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
     elif [ -z "$src_str" ] && [ -n "$dest_str" ]; then
-        echo_red "--- Remove old: ---"
-        echo "$dest_str"
+        diff_action="echo_red" 
+        diff_action_msg="--- Remove old: ---"
+        diff_to_out="$dest_str"
         has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
     else
-        echo_green "--- No diff ---"
+        diff_action="echo_green"
+        diff_action_msg="--- No diff ---"
     fi
 
-    echo_green "--- End diff for $title ---"
+    if [[ "$should_out_diff" == "$CONST_OUT_DIFF_OR_HAS_DIFF" ]]; then
+        echo_green "--- Diff for: $title ---"
+        "$diff_action" "$diff_action_msg"
+        if [ -n "$diff_to_out" ]; then
+            echo "$diff_to_out"
+        fi
+        echo_green "--- End diff for $title ---"
+    fi
+
 
     if [[ "$has_diff" == "$CONST_OUT_DIFF_OR_HAS_DIFF" ]]; then
         return 1
@@ -484,6 +499,7 @@ function files_has_diff() {
     local src="${1:-}"
     local dest="${2:-}"
     local title="${3:-Unknown}"
+    local should_out="${4:-"$CONST_OUT_DIFF_OR_HAS_DIFF"}"
 
     title="'${title}' from file '$src' to '$dest'"
 
@@ -506,7 +522,7 @@ function files_has_diff() {
             return 255
         fi
 
-        out_diff "$diff_out" "$src_str" "" "$title"
+        out_diff "$diff_out" "$src_str" "" "$title" "$should_out"
         return $?
     fi
 
@@ -517,7 +533,7 @@ function files_has_diff() {
             return 255
         fi
 
-        out_diff "$diff_out" "" "$dest_str" "$title"
+        out_diff "$diff_out" "" "$dest_str" "$title" "$should_out"
         return $?
     fi
 
@@ -530,7 +546,7 @@ function files_has_diff() {
         ret_diff="$?"
     fi
 
-    out_diff "$diff_out" "" "" "$title"
+    out_diff "$diff_out" "" "" "$title" "$should_out"
 
     return $ret_diff
 }
@@ -595,7 +611,7 @@ function replace_file() {
 
     local ret_diff="0"
 
-    if files_has_diff "$src" "$dest" "$title"; then
+    if files_has_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
         ret_diff="0"
     else
         ret_diff="$?"
@@ -4281,7 +4297,7 @@ function run_passed_command() {
 }
 
 function run_tests_func() {
-    if replace_file "/tmp/1111" "/home/nick/1.txt" "Test" "false"; then
+    if files_has_diff "/tmp/1111" "/home/nick/1.txt" "Test" "false"; then
         return $?
     else
         return $?

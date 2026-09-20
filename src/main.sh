@@ -129,7 +129,7 @@ function run_passed_command() {
 }
 
 function run_tests_func() {
-    if replace_file "/tmp/1111" "/home/nick/1.txt" "Test" "false"; then
+    if files_has_diff "/tmp/1111" "/home/nick/1.txt" "Test" "false"; then
         return $?
     else
         return $?
