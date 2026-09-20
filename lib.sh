@@ -619,7 +619,6 @@ function replace_file() {
             echo_green "$title delete source $src"
             if ! rm "$src"; then
                 echo_yellow "$title source file $src not deleted!"
-                return 0
             fi
         fi
         echo_red "Disallow replace $dest"
