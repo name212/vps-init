@@ -42,12 +42,29 @@ function update_passwd_for_user() {
     return 0
 }
 
+
+function get_passwd_str_for_user() {
+    local user_name="${1:-}"
+
+    local user_passwd=""
+    if ! user_passwd="$(grep "^${user_name}:" "/etc/passwd")"; then
+        return 1
+    fi
+
+    if [ -z "$user_passwd" ]; then
+        return 1
+    fi
+
+    echo -n "$user_passwd"
+    return 0
+}
+
 # shellcheck disable=SC2329
 function get_user_home(){
     local name="$1"
 
     local user_passwd=""
-    if ! user_passwd="$(getent passwd "$name")"; then
+    if ! user_passwd="$(get_passwd_str_for_user "$name")"; then
         echo_red "cannot get passwd ent for $name"
         return 1
     fi
@@ -86,7 +103,7 @@ function add_user() {
 
     local user_exists="true"
 
-    if ! getent passwd "$name" > /dev/null; then
+    if ! get_passwd_str_for_user "$name" > /dev/null; then
         echo_green "Add user ${name}..."
 
         if ! useradd -m -s /bin/bash "$name"; then
@@ -112,12 +129,28 @@ function add_user() {
     echo_green "User ${name} added or updated!"
 }
 
+function get_group_str() {
+    local group_name="$1"
+    local res_str=""
+
+    if ! res_str="$(grep "^${group_name}:" /etc/group)"; then
+        return 1
+    fi
+
+    if [ -z "$res_str" ]; then
+        return 1
+    fi
+
+    echo -n "$res_str"
+    return 0
+}
+
 # shellcheck disable=SC2329
 function add_user_to_group() {
     local user_name="$1"
     local group_name="$2"
 
-    if getent group "$group_name" | grep -q "\b$user_name\b"; then
+    if get_group_str "$group_name" | grep -q "\b$user_name\b"; then
         echo_green "User $user_name already in group $group_name"
         return 0
     fi
@@ -281,8 +314,8 @@ function add_pubkey_for_user() {
 # shellcheck disable=SC2329
 function get_loginable_users() {
     local passwd_out=""
-    if ! passwd_out="$(getent passwd)"; then
-        echo_red "Failed to call getent for get loginable users"
+    if ! passwd_out="$(cat /etc/passwd)"; then
+        echo_red "Failed to cat /etc/passwd for getting loginable users"
         return 1
     fi
 
