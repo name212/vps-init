@@ -3633,7 +3633,7 @@ function sshd_verify_and_restart() {
         return 1 
     fi
 
-    if ! grep -q "$setting" <<<"$conf_for_check"; then
+    if ! grep -qi "$setting" <<<"$conf_for_check"; then
         echo_red "Cannot found setting '$setting' in sshd config!"
         return 1 
     fi
