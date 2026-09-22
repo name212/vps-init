@@ -2,12 +2,18 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
 bin_name="$0"
 
+# shellcheck disable=SC2034
 declare -A PHASES_WITH_INDEX=()
+# shellcheck disable=SC2034
 declare -a COMMANDS_LIST=()
 
 # Start vps-init/src/include/01_base_echo.sh
+
+# shellcheck disable=SC2034
+CONST_NEW_LINE=$'\n'
 
 # shellcheck disable=SC2329
 function echo_red(){
@@ -3454,6 +3460,11 @@ function phase_hostname_disable_env() {
 PHASES_WITH_INDEX["sshd"]="06"
 
 # shellcheck disable=SC2034
+CONST_BASE_SSHD_CONFIG="/etc/ssh/sshd_config.d"
+# shellcheck disable=SC2034
+CONST_LISTEN_FILE="${CONST_BASE_SSHD_CONFIG}/99_z_listen.conf"
+
+# shellcheck disable=SC2034
 declare -A _SSH_RESTART_FUNC=()
 # shellcheck disable=SC2034
 _SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
@@ -3623,7 +3634,7 @@ function sshd_apply_setting() {
         echo "$setting" > "$conf_file" 
     fi
 
-    if ! grep -q "$setting" "$conf_file"; then
+    if ! grep -qPzo "$setting" "$conf_file"; then
         echo_yellow "Change to new sshd port setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
@@ -3653,6 +3664,76 @@ function sshd_apply_setting() {
 }
 
 # shellcheck disable=SC2329
+function sshd_add_bind_address() {
+    local listen_address="${1:-}"
+    local port="${2:-}"
+    local not_ask="${3-no}"
+
+    if [ -z "$listen_address" ]; then
+        return 0    
+    fi
+
+    local listen_setting=""
+
+    if [[ "$listen_address" == "0.0.0.0" || "$listen_address" == "::" ]]; then
+        listen_setting="ListenAddress 0.0.0.0${CONST_NEW_LINE}ListenAddress ::${CONST_NEW_LINE}"
+    elif [[ -f "$CONST_LISTEN_FILE" ]]; then
+        if ! listen_setting="$(cat "$CONST_LISTEN_FILE")"; then
+            echo_error "Cannot cat '$CONST_LISTEN_FILE'"
+            return 1
+        fi
+
+        if grep -q "ListenAddress 0.0.0.0" <<<"$listen_setting"; then
+            listen_setting=""
+        fi 
+        
+        if grep -q "$listen_address" <<<"$listen_setting"; then
+            echo_info "$listen_address' already exists in '$CONST_LISTEN_FILE'. Skip:"
+            echo_info "$listen_setting"
+            return 0
+        else
+            listen_setting="${listen_setting}${CONST_NEW_LINE}ListenAddress ${listen_address}${CONST_NEW_LINE}"
+        fi
+    else
+        listen_setting="ListenAddress ${listen_address}${CONST_NEW_LINE}"
+    fi
+
+    if [ -z "$listen_setting" ]; then
+        echo_error "Listen settings is empty"
+        return 1
+    fi
+
+    local listen_setting_to_set=""
+    if ! listen_setting_to_set="$(awk -F\; '{print $1|"sort -u"}' <<<"$listen_setting")"; then
+        echo_error "Cannot sort listen settings"
+        return 1
+    fi
+
+    if [ -z "$listen_setting_to_set" ]; then
+        echo_error "Listen settings is empty after sort"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
+
+    if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE"; then
+        echo_error "Cannot apply sshd listing setting:${CONST_NEW_LINE}${listen_setting_to_set}"
+        return 1
+    fi
+
+    echo_green "Prepare sshd. Listen address applied!"
+    cat "$CONST_LISTEN_FILE" || true
+    echo_green "Please verify that ssh available"
+
+    if ! ask_user "SSH available? Continue?" "$not_ask"; then
+        echo_error "Disallow continue"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
 function phase_sshd_run() {
     local port=""
     local bind_address=""
@@ -3662,8 +3743,8 @@ function phase_sshd_run() {
         return 1
     fi
 
-    if ! bind_address="$(extract_argument "--sshd-bind-address" "SSHD_BIND_ADDRESS" "$CONST_NOT_FLAG" "validate_arg_ipv4_optional" "$@")"; then
-        echo_red "Incorrect bind sshd address"
+    if ! bind_address="$(extract_argument "--sshd-listen-address" "SSHD_LISTEN_ADDRESS" "$CONST_NOT_FLAG" "validate_arg_ipv4_optional" "$@")"; then
+        echo_red "Incorrect bind listen sshd address"
         return 1
     fi
 
@@ -3671,8 +3752,6 @@ function phase_sshd_run() {
     not_ask="$(parse_not_ask "$@")"
 
     echo_green "Prepare sshd..."
-
-    local base_cfgs_dir="/etc/ssh/sshd_config.d"
 
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
@@ -3689,7 +3768,7 @@ function phase_sshd_run() {
     echo_green "Prepare sshd. Apply new port..."
 
     local port_setting="Port $port"
-    local port_file="${base_cfgs_dir}/99_z_port.conf"
+    local port_file="${CONST_BASE_SSHD_CONFIG}/99_z_port.conf"
 
     if ! sshd_apply_setting "$port_setting" "$port_file"; then
         echo_red "Cannot apply sshd port setting '$port_setting'"
@@ -3704,24 +3783,8 @@ function phase_sshd_run() {
         return 1
     fi
 
-    if [ -n "$bind_address" ]; then
-        echo_green "Prepare sshd. Set bind address..."
-
-        local bind_setting="ListenAddress $bind_address"
-        local bind_file="${base_cfgs_dir}/99_z_bind.conf"
-
-        if ! sshd_apply_setting "$bind_setting" "$bind_file"; then
-            echo_red "Cannot apply sshd port setting '$bind_setting'"
-            return 1
-        fi
-
-        echo_green "Prepare sshd. Bind address apply!"
-        echo_green "Please verify that ssh available on port $port"
-
-        if ! ask_user "SSH available? Continue?" "$not_ask"; then
-            echo_red "Disallow continue"
-            return 1
-        fi
+    if ! sshd_add_bind_address "$bind_address" "$port" "$not_ask"; then
+        return 1
     fi
 
     echo_green "Prepare sshd. Disable root login..."
@@ -3741,7 +3804,7 @@ function phase_sshd_run() {
     fi
 
     local root_setting="PermitRootLogin no"
-    local root_file="${base_cfgs_dir}/99_z_disable_root.conf"
+    local root_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_root.conf"
 
     if ! sshd_apply_setting "$root_setting" "$root_file"; then
         echo_red "Cannot disable root login '$root_setting'"
@@ -3759,7 +3822,7 @@ function phase_sshd_run() {
     echo_green "Prepare sshd. Disable password auth..."
 
     local pass_setting="PasswordAuthentication no"
-    local pass_file="${base_cfgs_dir}/99_z_disable_pass_auth.conf"
+    local pass_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_pass_auth.conf"
 
     if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
         echo_red "Cannot apply sshd port setting '$pass_setting'"
@@ -3787,9 +3850,9 @@ function phase_sshd_help() {
       --sshd-port PORT
          Replace to new port.
          Can be provided with env SSHD_PORT
-      --sshd-bind-address ADDRESS
+      --sshd-listen-address ADDRESS
          Bind sshd to passed address if passed.
-         Can be provided with env SSHD_BIND_ADDRESS
+         Can be provided with env SSHD_LISTEN_ADDRESS
          Optional.
 "
 }
@@ -4403,11 +4466,7 @@ function run_passed_command() {
 }
 
 function run_tests_func() {
-    if files_has_not_diff "/tmp/1111" "/home/nick/1.txt" "Test" "false"; then
-        return $?
-    else
-        return $?
-    fi
+    return 0
 }
 
 function main() {

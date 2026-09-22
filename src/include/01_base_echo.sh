@@ -2,6 +2,9 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
+CONST_NEW_LINE=$'\n'
+
 # shellcheck disable=SC2329
 function echo_red(){
     echo -e "\033[1;31m$1\033[0m" >&2
