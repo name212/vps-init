@@ -13,6 +13,32 @@ function get_hostname() {
     return 0
 }
 
+function phase_change_order() {
+    local phase="$1"
+    local cur_order="$2"
+
+    local reorder_func="global_reorder_phase"
+
+    if ! declare -F "$reorder_func" > /dev/null; then
+        echo -n "$cur_order"
+        return 0
+    fi
+
+    local new_order=""
+    if ! new_order="$("$reorder_func" "$phase" "$cur_order")"; then
+        echo_error "Cannot call '$reorder_func' to get order for pahse '$phase'"
+        return 1
+    fi
+
+    if [ -z "$new_order" ]; then
+        echo_error "'$reorder_func' returned emmpty order for pahse '$phase'"
+        return 1
+    fi
+
+    echo -n "$new_order"
+    return 0
+}
+
 function phase_run_func() {
     local phase="$1"
 
@@ -141,10 +167,22 @@ function main() {
 
     for pi in "${!PHASES_WITH_INDEX[@]}"; do
         if [ -z "$pi" ]; then
-            echo_red "Got empty phase name!"
+            echo_error "Got empty phase name!"
             exit 1
         fi
-        not_ordered_phases+=("${PHASES_WITH_INDEX[$pi]}:${pi}")
+
+        local phase_index="${PHASES_WITH_INDEX[$pi]}"
+        local index_for_set=""
+        if ! index_for_set="$(phase_change_order "$pi" "$phase_index")"; then
+            exit 1
+        fi
+
+        if [ -z "$index_for_set" ]; then
+            echo_error "Empty index for phase '$pi'"
+            exit 1
+        fi
+
+        not_ordered_phases+=("${index_for_set}:${pi}")
     done
 
     local -a phases_sorted=()
