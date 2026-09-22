@@ -3598,7 +3598,7 @@ function sshd_disable_systemd_socket() {
 # shellcheck disable=SC2329
 function sshd_full_path() {
     local full_p=""
-    if full_p="$(which sshd)"; then
+    if ! full_p="$(which sshd)"; then
         echo_error "Cannot which sshd"
         return 1
     fi
