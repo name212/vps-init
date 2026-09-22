@@ -42,7 +42,7 @@ function update_passwd_for_user() {
     return 0
 }
 
-
+# shellcheck disable=SC2329
 function get_passwd_str_for_user() {
     local user_name="${1:-}"
 
@@ -129,6 +129,7 @@ function add_user() {
     echo_green "User ${name} added or updated!"
 }
 
+# shellcheck disable=SC2329
 function get_group_str() {
     local group_name="$1"
     local res_str=""

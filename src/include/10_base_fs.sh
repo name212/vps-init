@@ -12,7 +12,7 @@ function delete_file() {
     echo_green "$1 deleted"
 }
 
-
+# shellcheck disable=SC2329
 function temp_file_with_content() {
     local content="${1:-}"
 
