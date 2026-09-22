@@ -201,14 +201,19 @@ function add_pubkey_for_user() {
         return 1
     fi
 
-    if [ ! -f "$ssh_key_file" ]; then
-        echo_yellow "$ssh_key_file is not file. Skip add ssh pub key for $name"
-        return 0
+    local ssh_key=""
+
+    if [ -n "$ssh_key_file" ]; then
+         if [ -f "$ssh_key_file" ]; then
+            if ! ssh_key="$(cat "$ssh_key_file")"; then
+                echo_yellow "$ssh_key_file is not file. Skip add ssh pub key for $name"
+                return 0
+            fi
+        else
+            ssh_key="$ssh_key_file"
+        fi
     fi
-
-    # shellcheck disable=SC2155
-    local ssh_key="$(cat "$ssh_key_file")"
-
+   
     if [ -z "$ssh_key" ]; then
         echo_yellow "$ssh_key_file is empty. Skip add ssh pub key for $name"
         return 0

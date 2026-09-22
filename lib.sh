@@ -928,14 +928,19 @@ function add_pubkey_for_user() {
         return 1
     fi
 
-    if [ ! -f "$ssh_key_file" ]; then
-        echo_yellow "$ssh_key_file is not file. Skip add ssh pub key for $name"
-        return 0
+    local ssh_key=""
+
+    if [ -n "$ssh_key_file" ]; then
+         if [ -f "$ssh_key_file" ]; then
+            if ! ssh_key="$(cat "$ssh_key_file")"; then
+                echo_yellow "$ssh_key_file is not file. Skip add ssh pub key for $name"
+                return 0
+            fi
+        else
+            ssh_key="$ssh_key_file"
+        fi
     fi
-
-    # shellcheck disable=SC2155
-    local ssh_key="$(cat "$ssh_key_file")"
-
+   
     if [ -z "$ssh_key" ]; then
         echo_yellow "$ssh_key_file is empty. Skip add ssh pub key for $name"
         return 0
@@ -3002,35 +3007,27 @@ function users_validate_pub_key() {
         return 0
     fi
 
-    local valid=""
-    if ! [[ "$ssh_key" == *.pub ]]; then
-        valid="$valid not .pub"
-    fi
-
-    if [ -n "$valid" ]; then
-        local base=""
-        if base="$(basename "$ssh_key")"; then
-            if [[ "$base" != "authorized_keys" ]]; then
-                valid="$valid not authorized_keys"
-            else
-                valid=""
-            fi
-        fi
-    fi
-
-    if [ -n "$valid" ]; then
-        echo -n "$valid"
-        return 1
-    fi
-
-    if [ ! -f "$ssh_key" ]; then
-        echo -n "not file"
-        return 1
+    if [[ "$ssh_key" == ssh-rsa* ]]; then
+        echo_info "found rsa key string"
+        return 0
     fi
 
     if [ ! -s "$ssh_key" ]; then
-        echo -n "empty file"
+        echo -n "'$ssh_key' is not file not start string 'ssh-rsa' (rsa pub-key)"
         return 1
+    fi
+
+    if [[ "$ssh_key" == *.pub ]]; then
+        echo_info "found pub key file '$ssh_key'"
+        return 0
+    fi
+
+    local base=""
+    if base="$(basename "$ssh_key")"; then
+        if [[ "$base" != "authorized_keys" ]]; then
+            echo -n "'$ssh_key' is not authorized_keys"
+            return 1
+        fi
     fi
 
     return 0
@@ -3261,7 +3258,7 @@ function phase_users_help() {
     echo -n "
     Add users
     Options:
-      --add-user -- --name 'name' [-- --sudo | -- --password 'PASSWORD' | -- --remove-password -- | --ssh-pub-key PATH]
+      --add-user -- --name 'name' [-- --sudo | -- --password 'PASSWORD' | -- --remove-password -- | --ssh-pub-key PATH_OR_KEY]
         Provide user settings.
         Can be multiple time.
         Script parse every own sub arguments while get -- argument
@@ -3272,7 +3269,7 @@ function phase_users_help() {
           --password        - if passed use PASSWORD as password. If not passed 
                               and not use --remove-password ask run passwd as not interactive
           --remove-password - if passed remove password for user.
-          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) or authorized keys file
+          --ssh-pub-key     - path to ssh public key to add for user (should suffix .pub) for authorized keys file or key string
     You can use next envs for add users.
     every env should has prefix ADD_USER_\${INDEX}_ when INDEX index for user started from 0 
     Script can try to get env ADD_USER_\${INDEX}_NAME and if next index env is not found stop adding
@@ -3282,7 +3279,7 @@ function phase_users_help() {
       ADD_USER_\${INDEX}_SUDO_NO_PASS - if has '$CONST_SUDO_NO_PASS' value add to sudo, otherwise not add 
       ADD_USER_\${INDEX}_PASSWORD     - password for set
       ADD_USER_\${INDEX}_NO_PASSWORD  - if has '$CONST_REMOVE_PASSWORD' value - remove password
-      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) or authorized keys file
+      ADD_USER_\${INDEX}_SSH_KEY      - path to ssh pub key (should suffix .pub) for authorized keys file or key string
 "
 }
 
