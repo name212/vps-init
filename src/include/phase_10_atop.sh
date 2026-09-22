@@ -9,7 +9,7 @@ PHASES_WITH_INDEX["atop"]="10"
 function phase_atop_run() {
     echo_green "Disable atop..."
 
-    if ! systemd_disable_all "atop.service" "atop-rotate.timer" "atopacct.service"; then
+    if ! disable_and_stop_services "atop.service" "atop-rotate.timer" "atopacct.service"; then
         return 1
     fi
 
