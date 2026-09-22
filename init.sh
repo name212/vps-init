@@ -3596,16 +3596,39 @@ function sshd_disable_systemd_socket() {
 }
 
 # shellcheck disable=SC2329
+function sshd_full_path() {
+    local full_p=""
+    if full_p="$(which sshd)"; then
+        echo_error "Cannot which sshd"
+        return 1
+    fi
+
+    if [ -z "$full_p" ]; then
+        echo_error "which sshd is empty"
+        return 1
+    fi
+
+    echo -n "$full_p"
+    return 0
+}
+
+# shellcheck disable=SC2329
 function sshd_verify_and_restart() {
     local setting="${1,,}"
 
-    if ! sshd -t; then
-        echo_red "Test sshd config failed!"
+    local sshd_bin=""
+    if ! sshd_bin="$(sshd_full_path)"; then
+        echo_error "Cannot get full path of sshd"
+        return 1
+    fi
+
+    if ! "$sshd_bin" -t; then
+        echo_error "Test sshd config failed!"
         return 1 
     fi
 
     local conf_for_check=""
-    if ! conf_for_check="$(sshd -T)"; then
+    if ! conf_for_check="$("$sshd_bin" -T)"; then
         echo_red "Cannot get sshd config from sshd!"
         return 1 
     fi
