@@ -601,6 +601,28 @@ function delete_file() {
     echo_green "$1 deleted"
 }
 
+
+function temp_file_with_content() {
+    local content="${1:-}"
+
+    local content_tmp_file=""
+    if ! content_tmp_file="$(mktemp)"; then
+        echo_error "Cannot create temp file"
+        return 1
+    fi
+
+    if [ -z "$content_tmp_file" ]; then
+        echo_error "Cannot create temp file"
+        return 1
+    fi
+
+    echo -n "$content" > "$content_tmp_file"
+
+    echo -n "$content_tmp_file"
+
+    return 0
+}
+
 # shellcheck disable=SC2329
 function replace_file() {
     local src="$1"
@@ -652,6 +674,33 @@ function replace_file() {
             echo_yellow "$title source file $src not deleted!"
             return 0
         fi
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function sync_file_content() {
+    local content="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local not_ask="${4:-false}"
+
+    if [ -z "$dest" ]; then
+        echo_error "File for sync not passed"
+        return 1
+    fi
+
+    local temp_file=""
+
+    if ! temp_file="$(temp_file_with_content "$content")"; then
+        echo_error "Cannot create temp file for content"
+        return 1
+    fi
+
+    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
+        echo_error "Cannot sync file '$dest'"
+        return 1
     fi
 
     return 0

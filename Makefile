@@ -9,6 +9,8 @@ build/lib: export BUILD_AS_LIB = true
 build/lib:
 	@./hack/build.sh
 
+build/all: build build/lib
+
 check/host-passed:
 	@[ ! -z "$$host" ] || { echo "host not passed"; exit 1; }
 
