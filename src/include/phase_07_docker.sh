@@ -101,7 +101,7 @@ function phase_docker_run() {
     echo_green "Install docker..."
 
     local additional_packages_str=""
-    if ! additional_packages_str="$(extract_argument "-docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! additional_packages_str="$(extract_argument "--docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
         echo_error "Cannot parse additional packages"
         return 1
     fi
