@@ -86,4 +86,10 @@ if [ -z "${BUILD_AS_LIB:-}" ]; then
     write_file "src/main.sh" "$destination"
 fi
 
+footer_file="src/main_footer.sh"
+
+if [ -s "$footer_file" ]; then
+    write_file "$footer_file" "$destination"
+fi
+
 chmod 755 "$destination"
