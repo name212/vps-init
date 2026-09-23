@@ -5,7 +5,7 @@ set -Eeuo pipefail
 export PROTECTED_PASSED_CONFIG_FILE=""
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["cleanup_config"]="99"
+PHASES_WITH_INDEX["remove_passed_config"]="99"
 
 
 function set_passed_config_file() {
@@ -13,7 +13,7 @@ function set_passed_config_file() {
 }
 
 # shellcheck disable=SC2329
-function phase_cleanup_config_run() {
+function phase_remove_passed_config_run() {
     if [ -z "$PROTECTED_PASSED_CONFIG_FILE" ]; then
         echo_info "Config not passed. Skip remove."
         return 0
@@ -29,18 +29,22 @@ function phase_cleanup_config_run() {
         return 1
     fi
 
+    if [ ! -f "$PROTECTED_PASSED_CONFIG_FILE" ]; then
+        echo_info "$PROTECTED_PASSED_CONFIG_FILE was removed!"
+    fi
+
     return 0
 }
 
 # shellcheck disable=SC2329
-function phase_cleanup_config_help() {
+function phase_remove_passed_config_help() {
     echo -n "
-    Cleanup passed config file. For security reason.
+    Remove passed config file via --config arg for security reason.
     No Options.
 "
 }
 
 # shellcheck disable=SC2329
-function phase_cleanup_config_disable_env() {
+function phase_remove_passed_config_disable_env() {
     echo -n "DISABLE_CLEANUP_PASSED_CONFIG"
 }
