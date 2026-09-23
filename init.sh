@@ -4011,6 +4011,12 @@ function install_docker_via_apt() {
         "docker-compose-plugin"
     )
 
+    for a_pkg in "$@"; do
+        if [ -n "$a_pkg" ]; then
+            packages+=("$a_pkg")
+        fi
+    done
+
     if check_packages_installed "${packages[@]}"; then
         echo_green "Docker already installed!"
         return 0
@@ -4062,6 +4068,12 @@ function install_docker_via_apk() {
         "docker" 
     )
 
+    for a_pkg in "$@"; do
+        if [ -n "$a_pkg" ]; then
+            packages+=("$a_pkg")
+        fi
+    done
+
     if check_packages_installed "${packages[@]}"; then
         echo_green "Docker already installed!"
         return 0
@@ -4076,11 +4088,24 @@ function install_docker_via_apk() {
         echo_error "Cannot enable openssh"
         return 1
     fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
     echo_green "Install docker..."
+
+    local additional_packages_str=""
+    if ! additional_packages_str="$(extract_argument "-docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo_error "Cannot parse additional packages"
+        return 1
+    fi
+
+    local -a additional_pkgs=()
+    if [ -n "$additional_packages_str" ]; then
+        readarray -d ',' -t additional_pkgs <<<"$additional_packages_str"
+    fi
 
     # shellcheck disable=SC2155
     # shellcheck disable=SC2034
@@ -4097,7 +4122,7 @@ function phase_docker_run() {
         return 1
     fi
 
-    if ! "$install_fun"; then
+    if ! "$install_fun" "${additional_pkgs[@]}"; then
         echo_error "Docker is not installed via '$pkg_manager'!"
         return 1
     fi 
@@ -4109,7 +4134,11 @@ function phase_docker_run() {
 function phase_docker_help() {
     echo -n "
     Install docker
-    No options. 
+    Options
+    --docker-install-additional-packages comma-separated-packages
+        Install additional packages for docker (for example luci-app-dockerman for OpenWRT)
+        Optional.
+        Can be provided with env DOCKER_ADDITIONAL_PACKAGES
 "
  }
 
