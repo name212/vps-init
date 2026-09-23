@@ -6,9 +6,7 @@ set -Eeuo pipefail
 PHASES_WITH_INDEX["docker"]="07"
 
 # shellcheck disable=SC2329
-function phase_docker_run() {
-    echo_green "Install docker..."
-
+function install_docker_via_apt() {
     local packages=(
         "docker-ce" 
         "docker-ce-cli" 
@@ -57,6 +55,58 @@ EOF
         echo_red "Docker not installed!"
         return 1
     fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function install_docker_via_apk() {
+    local packages=(
+        "dockerd" 
+        "docker" 
+    )
+
+    if check_packages_installed "${packages[@]}"; then
+        echo_green "Docker already installed!"
+        return 0
+    fi
+
+    if ! install_packages "${packages[@]}"; then
+        echo_red "Docker not installed!"
+        return 1
+    fi
+
+    if ! service_enable_service "dockerd"; then
+        echo_error "Cannot enable openssh"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function phase_docker_run() {
+    echo_green "Install docker..."
+
+    # shellcheck disable=SC2155
+    # shellcheck disable=SC2034
+    local pkg_manager="$(get_package_manager)"
+
+    local install_fun=""
+
+    if [[ "$pkg_manager" == "$SYS_PACKAGES_ENGINE_APT" ]]; then
+        install_fun="install_docker_via_apt"
+    elif [[ "$pkg_manager" == "$SYS_PACKAGES_ENGINE_APK" ]]; then
+        install_fun="install_docker_via_apk"
+    else
+        echo_error "Incorrect package manager '$pkg_manager'"
+        return 1
+    fi
+
+    if ! "$install_fun"; then
+        echo_error "Docker is not installed via '$pkg_manager'!"
+        return 1
+    fi 
 
     echo_green "Docker installed!"
 }

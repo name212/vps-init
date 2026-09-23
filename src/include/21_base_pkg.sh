@@ -2,9 +2,21 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
+export SYS_PACKAGES_ENGINE_APT="apt"
+# shellcheck disable=SC2034
+export SYS_PACKAGES_ENGINE_APK="apk"
+
 if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
-    export SYS_PACKAGES_ENGINE="apt"
+    export SYS_PACKAGES_ENGINE="$SYS_PACKAGES_ENGINE_APT"
 fi
+
+
+# shellcheck disable=SC2329
+function get_package_manager() {
+    echo -n "$SYS_PACKAGES_ENGINE"
+}
+
 
 # shellcheck disable=SC2329
 function apt_update() {
@@ -104,11 +116,11 @@ function apk_remove() {
 function get_package_cmd() {
     local cmd_name="$1"
     case "$SYS_PACKAGES_ENGINE" in
-        "apt")
+        "$SYS_PACKAGES_ENGINE_APT")
             true
         ;;
 
-        "apk")
+        "$SYS_PACKAGES_ENGINE_APK")
             true
         ;;
 
