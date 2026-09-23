@@ -26,12 +26,12 @@ function phase_change_order() {
 
     local new_order=""
     if ! new_order="$("$reorder_func" "$phase" "$cur_order")"; then
-        echo_error "Cannot call '$reorder_func' to get order for pahse '$phase'"
+        echo_error "Cannot call '$reorder_func' to get order for phase '$phase'"
         return 1
     fi
 
     if [ -z "$new_order" ]; then
-        echo_error "'$reorder_func' returned emmpty order for pahse '$phase'"
+        echo_error "'$reorder_func' returned empty order for phase '$phase'"
         return 1
     fi
 
