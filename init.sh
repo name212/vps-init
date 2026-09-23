@@ -554,7 +554,7 @@ function files_has_not_diff() {
 
     out_diff "$diff_out" "" "" "$title" "$should_out"
 
-    return $ret_diff
+    return "$ret_diff"
 }
 
 # End vps-init/src/include/04_base_diff.sh
@@ -4395,10 +4395,10 @@ function phase_flint_disable_env() {
 
 # End vps-init/src/include/phase_83_flint.sh
 
-# Start vps-init/src/include/phase_99_aliases.sh
+# Start vps-init/src/include/phase_98_aliases.sh
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["aliases"]="99"
+PHASES_WITH_INDEX["aliases"]="98"
 
 # shellcheck disable=SC2329
 function phase_aliases_run() {
@@ -4429,7 +4429,54 @@ function phase_aliases_disable_env() {
     echo -n "DISABLE_ALIASES"
 }
 
-# End vps-init/src/include/phase_99_aliases.sh
+# End vps-init/src/include/phase_98_aliases.sh
+
+# Start vps-init/src/include/phase_99_cleanup_config.sh
+
+export PROTECTED_PASSED_CONFIG_FILE=""
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["cleanup_config"]="99"
+
+
+function set_passed_config_file() {
+    PROTECTED_PASSED_CONFIG_FILE="${1:-}"
+}
+
+# shellcheck disable=SC2329
+function phase_cleanup_config_run() {
+    if [ -z "$PROTECTED_PASSED_CONFIG_FILE" ]; then
+        echo_info "Config not passed. Skip remove."
+        return 0
+    fi
+
+    if [ ! -f "$PROTECTED_PASSED_CONFIG_FILE" ]; then
+        echo_warn "Passed config '$PROTECTED_PASSED_CONFIG_FILE' not file. Skip"
+        return 0
+    fi
+
+    if ! rm -fv "$PROTECTED_PASSED_CONFIG_FILE"; then
+        echo_error "Passed config '$PROTECTED_PASSED_CONFIG_FILE' not removed!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function phase_cleanup_config_help() {
+    echo -n "
+    Cleanup passed config file. For security reason.
+    No Options.
+"
+}
+
+# shellcheck disable=SC2329
+function phase_cleanup_config_disable_env() {
+    echo -n "DISABLE_CLEANUP_PASSED_CONFIG"
+}
+
+# End vps-init/src/include/phase_99_cleanup_config.sh
 
 # Start vps-init/src/main.sh
 
@@ -4649,6 +4696,10 @@ function main() {
         echo_green "Load config $config"
         # shellcheck disable=SC1090
         set -a && source "$config" && set +a
+
+        if declare -F "set_passed_config_file" > /dev/null; then
+            set_passed_config_file "$config"
+        fi
     fi
 
     local got_phase_to_run=""

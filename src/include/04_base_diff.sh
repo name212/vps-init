@@ -130,5 +130,5 @@ function files_has_not_diff() {
 
     out_diff "$diff_out" "" "" "$title" "$should_out"
 
-    return $ret_diff
+    return "$ret_diff"
 }

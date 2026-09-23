@@ -218,6 +218,10 @@ function main() {
         echo_green "Load config $config"
         # shellcheck disable=SC1090
         set -a && source "$config" && set +a
+
+        if declare -F "set_passed_config_file" > /dev/null; then
+            set_passed_config_file "$config"
+        fi
     fi
 
     local got_phase_to_run=""

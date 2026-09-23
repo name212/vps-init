@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["aliases"]="99"
+PHASES_WITH_INDEX["aliases"]="98"
 
 # shellcheck disable=SC2329
 function phase_aliases_run() {
