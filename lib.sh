@@ -162,13 +162,13 @@ function extract_argument() {
     fi
 
     if ! declare -F "$validator" > /dev/null; then
-        echo_red "Internal error: '$validator' func not declared!"
+        echo_error "Internal error: '$validator' func not declared!"
         return 1
     fi
 
     local prepared
     if ! prepared="$($validator "$val" "$arg_passed")"; then
-        echo_red "Incorrect: $prepared"
+        echo_error "Incorrect: $prepared"
         return 1
     fi
 
@@ -402,7 +402,7 @@ function ask_user_choice() {
         fi
     done
 
-    echo_red "Incorrect answer '$answer'"
+    echo_error "Incorrect answer '$answer'"
 
     return 1
 }
@@ -425,7 +425,7 @@ function ask_user_raw() {
     local res=""
 
     if ! res="$($validator "$answer" "$CONST_ARG_PASSED")"; then
-        echo_red "Incorrect answer '$answer': $res"
+        echo_error "Incorrect answer '$answer': $res"
         return 1
     fi
 
@@ -463,32 +463,32 @@ function out_diff() {
     local diff_action_msg=""
 
     if [ -n "$diff_str" ]; then
-        diff_action="echo_yellow"
+        diff_action="echo_warn"
         diff_action_msg="--- Changes: ---"
         diff_to_out="$diff_str"
         has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
     elif [ -n "$src_str" ] && [ -z "$dest_str" ]; then
-        diff_action="echo_green"
+        diff_action="echo_info"
         diff_action_msg="--- Add new: ---"
         diff_to_out="$src_str"
         has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
     elif [ -z "$src_str" ] && [ -n "$dest_str" ]; then
-        diff_action="echo_red" 
+        diff_action="echo_error" 
         diff_action_msg="--- Remove old: ---"
         diff_to_out="$dest_str"
         has_diff="$CONST_OUT_DIFF_OR_HAS_DIFF"
     else
-        diff_action="echo_green"
+        diff_action="echo_info"
         diff_action_msg="--- No diff ---"
     fi
 
     if [[ "$should_out_diff" == "$CONST_OUT_DIFF_OR_HAS_DIFF" ]]; then
-        echo_green "--- Diff for: $title ---"
+        echo_info "--- Diff for: $title ---"
         "$diff_action" "$diff_action_msg"
         if [ -n "$diff_to_out" ]; then
             echo "$diff_to_out"
         fi
-        echo_green "--- End diff for $title ---"
+        echo_info "--- End diff for $title ---"
     fi
 
 
@@ -529,12 +529,12 @@ function files_has_not_diff() {
     title="'${title}' from file '$src' to '$dest'"
 
     if [ -z "$src" ]; then
-        echo_red "Source file not passed"
+        echo_error "Source file not passed"
         return 255
     fi
 
     if [ -z "$dest" ]; then
-        echo_red "Dest file not passed"
+        echo_error "Dest file not passed"
         return 255
     fi
 
@@ -543,7 +543,7 @@ function files_has_not_diff() {
      if [ -f "$src" ] && [ ! -f "$dest" ]; then
         local src_str=""
         if ! src_str="$(cat "$src")"; then
-            echo_red "Cannot read source '$src'"
+            echo_error "Cannot read source '$src'"
             return 255
         fi
 
@@ -554,7 +554,7 @@ function files_has_not_diff() {
     if [ ! -f "$src" ] && [ -f "$dest" ]; then
         local dest_str=""
         if ! dest_str="$(cat "$dest")"; then
-            echo_red "Cannot read dest '$dest'"
+            echo_error "Cannot read dest '$dest'"
             return 255
         fi
 
@@ -600,7 +600,7 @@ function jq_get_key_or_empty() {
 
         "1")
             if [[ "$required" == "true" ]]; then
-                echo "Key not found $key"
+                echo_error "Key not found $key"
                 return 1
             fi
 
@@ -608,7 +608,7 @@ function jq_get_key_or_empty() {
             return 0
     esac
 
-    echo "Cannot get json key $key"
+    echo_error "Cannot get json key $key"
     return 1
 }
 
@@ -619,11 +619,11 @@ function jq_get_key_or_empty() {
 # shellcheck disable=SC2329
 function delete_file() {
     if ! rm "$1"; then
-        echo_red "$1 not deleted!"
+        echo_error "$1 not deleted!"
         return 1
     fi
 
-    echo_green "$1 deleted"
+    echo_info "$1 deleted"
 }
 
 # shellcheck disable=SC2329
@@ -665,12 +665,12 @@ function replace_file() {
     fi
 
     if [[ "$ret_diff" == "255" ]]; then
-        echo_red "Internal diff error"
+        echo_error "Internal diff error"
         return 1
     fi
 
     if [[ "$ret_diff" == "0" ]]; then
-        echo_green "No diff. Skip"
+        echo_info "No diff. Skip"
         return 0
     fi
     
@@ -679,24 +679,24 @@ function replace_file() {
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
         if [[ "$remove_src" == "true" ]]; then
-            echo_green "$title delete source $src"
+            echo_info "$title delete source $src"
             if ! rm "$src"; then
-                echo_yellow "$title source file $src not deleted!"
+                echo_warn "$title source file $src not deleted!"
             fi
         fi
-        echo_red "Disallow replace $dest"
+        echo_error "Disallow replace $dest"
         return 1
     fi
 
     if ! cp "$src" "$dest"; then
-        echo_red "$title not replaced. Source $src not deleted"
+        echo_error "$title not replaced. Source $src not deleted"
         return 1
     fi
 
     if [[ "$remove_src" == "true" ]]; then
-        echo_green "$title delete source $src"
+        echo_info "$title delete source $src"
         if ! rm "$src"; then
-            echo_yellow "$title source file $src not deleted!"
+            echo_warn "$title source file $src not deleted!"
             return 0
         fi
     fi
@@ -764,7 +764,7 @@ function download_script_and_run() {
     # shellcheck disable=SC2155
     local script_path="$(mktemp)"
 
-    echo_green "Download script $url to ${script_path}..."
+    echo_info "Download script $url to ${script_path}..."
 
     download_url "$url" "$script_path"
 
@@ -772,25 +772,25 @@ function download_script_and_run() {
 
     # shellcheck disable=SC2154
     if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
-        echo_green "Run script ${script_path} without ask..."
+        echo_info "Run script ${script_path} without ask..."
         "$script_path" "${script_args[@]}"
         return $?
     fi
 
-    echo_green "If you do not output script (big file) now you can use 'less ${script_path}' before approve"
+    echo_info "If you do not output script (big file) now you can use 'less ${script_path}' before approve"
 
     if ask_user "Output $script_path ?"; then
         cat "$script_path"
     fi
 
     if ! ask_user "Run $script_path ?"; then
-        echo_red "Disallow run $script_path"
+        echo_error "Disallow run $script_path"
         delete_file "$script_path" || true
         return 1
     fi
 
     if ! "$script_path" "${script_args[@]}"; then 
-        echo_red "Run $script_path failed!"
+        echo_error "Run $script_path failed!"
         delete_file "$script_path" || true
         return 1
     fi
@@ -813,9 +813,9 @@ function update_passwd_for_user() {
     local password="${3-}"
 
      if [[ "$remove_password" == "$CONST_REMOVE_PASSWORD" ]]; then
-        echo_green "Remove password for user ${name}..."
+        echo_info "Remove password for user ${name}..."
         if ! passwd -d "$name"; then
-            echo_red "Password not removed for $name"
+            echo_error "Password not removed for $name"
             return 1
         fi
 
@@ -823,9 +823,9 @@ function update_passwd_for_user() {
     fi
 
     if [ -z "$password" ]; then
-        echo_green "Please set password for ${name}:"
+        echo_info "Please set password for ${name}:"
         if ! passwd "${name}"; then
-            echo_red "Password not set for $name"
+            echo_error "Password not set for $name"
             return 1
         fi
 
@@ -836,7 +836,7 @@ function update_passwd_for_user() {
     printf -v enter_pass "%s\n%s" "$password" "$password"
 
     if ! passwd "$name" <<<"$enter_pass"; then
-        echo_red "Cannot update passed password for $name"
+        echo_error "Cannot update passed password for $name"
         return 1
     fi
 
@@ -866,23 +866,23 @@ function get_user_home(){
 
     local user_passwd=""
     if ! user_passwd="$(get_passwd_str_for_user "$name")"; then
-        echo_red "cannot get passwd ent for $name"
+        echo_error "cannot get passwd ent for $name"
         return 1
     fi
 
     local user_home=""
     if ! user_home="$(cut -d: -f6 <<<"$user_passwd")"; then 
-        echo_red "cannot extract home for $name"
+        echo_error "cannot extract home for $name"
         return 1
     fi
 
     if [ -z "$user_home" ]; then
-        echo_red "User home not found for $name"
+        echo_error "User home not found for $name"
         return 1
     fi
 
     if [ ! -d "$user_home" ]; then
-        echo_red "User home $user_home is not directory for $name"
+        echo_error "User home $user_home is not directory for $name"
         return 1
     fi
 
@@ -898,17 +898,17 @@ function add_user() {
     local password="${4-}"
 
     if [ -z "$name" ]; then
-        echo_red "User name is empty"
+        echo_error "User name is empty"
         return 1
     fi
 
     local user_exists="true"
 
     if ! get_passwd_str_for_user "$name" > /dev/null; then
-        echo_green "Add user ${name}..."
+        echo_info "Add user ${name}..."
 
         if ! useradd -m -s /bin/bash "$name"; then
-            echo_red "User $name not added!"
+            echo_error "User $name not added!"
             return 1
         fi
 
@@ -917,8 +917,8 @@ function add_user() {
 
     if [[ "$user_exists" == "true" ]]; then
         if ! ask_user "User $name exists. Update password?" "$not_ask"; then
-            echo_yellow "Skip update password for $name"
-            echo_green "User ${name} updated!"
+            echo_warn "Skip update password for $name"
+            echo_info "User ${name} updated!"
             return 0
         fi
     fi
@@ -927,7 +927,7 @@ function add_user() {
         return 1
     fi
 
-    echo_green "User ${name} added or updated!"
+    echo_info "User ${name} added or updated!"
 }
 
 # shellcheck disable=SC2329
@@ -953,18 +953,18 @@ function add_user_to_group() {
     local group_name="$2"
 
     if get_group_str "$group_name" | grep -q "\b$user_name\b"; then
-        echo_green "User $user_name already in group $group_name"
+        echo_info "User $user_name already in group $group_name"
         return 0
     fi
 
-    echo_green "Add user $user_name to group ${group_name}..."
+    echo_info "Add user $user_name to group ${group_name}..."
 
     if ! usermod -aG "$group_name" "$user_name"; then
-        echo_red "Cannot add user $user_name to group ${group_name}!"
+        echo_error "Cannot add user $user_name to group ${group_name}!"
         return 1
     fi
 
-    echo_green "User $user_name added to group ${group_name}!"
+    echo_info "User $user_name added to group ${group_name}!"
 }
 
 # shellcheck disable=SC2329
@@ -974,7 +974,7 @@ function add_user_to_sudoers() {
     local not_ask="${3-no}"
 
     if [ -z "$name" ]; then
-        echo_red "user name did not pass"
+        echo_error "user name did not pass"
         return 1
     fi
 
@@ -986,7 +986,7 @@ function add_user_to_sudoers() {
     local sudoers_path="/etc/sudoers"
 
     if grep -q "$sudoers_str" "$sudoers_path"; then
-        echo_green "User $name already add to $sudoers_path"
+        echo_info "User $name already add to $sudoers_path"
         return 0
     fi
 
@@ -995,13 +995,13 @@ function add_user_to_sudoers() {
 
     if ! cp "$sudoers_path" "$tmp_file"; then
         delete_file "$tmp_file" || true
-        echo_red "Cannot copy $sudoers_path to $tmp_file for check for user $name"
+        echo_error "Cannot copy $sudoers_path to $tmp_file for check for user $name"
         return 1
     fi
 
     if [ ! -s  "$tmp_file" ]; then
         delete_file "$tmp_file" || true
-        echo_red "$tmp_file is empty after copy sudoers for user $name"
+        echo_error "$tmp_file is empty after copy sudoers for user $name"
         return 1
     fi
 
@@ -1014,7 +1014,7 @@ function add_user_to_sudoers() {
     } >> "$tmp_file"
 
     if ! visudo -q -c -f "$tmp_file"; then
-        echo_red "$tmp_file  sudoers for user $name is invalid. Tmp file not deleted"
+        echo_error "$tmp_file  sudoers for user $name is invalid. Tmp file not deleted"
         return 1
     fi
 
@@ -1032,7 +1032,7 @@ function add_pubkey_for_user() {
     local not_ask="${3-no}"
 
     if [ -z "$name" ]; then
-        echo_red "user name did not pass"
+        echo_error "user name did not pass"
         return 1
     fi
 
@@ -1041,7 +1041,7 @@ function add_pubkey_for_user() {
     if [ -n "$ssh_key_file" ]; then
          if [ -f "$ssh_key_file" ]; then
             if ! ssh_key="$(cat "$ssh_key_file")"; then
-                echo_yellow "$ssh_key_file is not file. Skip add ssh pub key for $name"
+                echo_warn "$ssh_key_file is not file. Skip add ssh pub key for $name"
                 return 0
             fi
         else
@@ -1050,30 +1050,30 @@ function add_pubkey_for_user() {
     fi
    
     if [ -z "$ssh_key" ]; then
-        echo_yellow "$ssh_key_file is empty. Skip add ssh pub key for $name"
+        echo_warn "$ssh_key_file is empty. Skip add ssh pub key for $name"
         return 0
     fi
 
     local user_home=""
     if ! user_home="$(get_user_home "$name")"; then 
-        echo_red "$user_home"
+        echo_error "$user_home"
         return 1
     fi 
 
     local ssh_dir="${user_home}/.ssh"
 
     if ! mkdir -p "$ssh_dir"; then
-        echo_red "cannot create $ssh_dir dir for $name"
+        echo_error "cannot create $ssh_dir dir for $name"
         return 1
     fi
 
     if ! chmod 700 "$ssh_dir"; then
-        echo_red "cannot chmod $ssh_dir dir for $name"
+        echo_error "cannot chmod $ssh_dir dir for $name"
         return 1
     fi
 
     if ! chown "${name}:${name}" "$ssh_dir"; then
-        echo_red "cannot chown $ssh_dir dir for $name"
+        echo_error "cannot chown $ssh_dir dir for $name"
         return 1
     fi
 
@@ -1085,7 +1085,7 @@ function add_pubkey_for_user() {
     if [ -f "$auth_keys_file" ]; then
         if ! cp "$auth_keys_file" "$tmp_file"; then
             delete_file "$tmp_file" || true
-            echo_red "cannot copy $auth_keys_file to $tmp_file for add key for $name"
+            echo_error "cannot copy $auth_keys_file to $tmp_file for add key for $name"
             return 1
         fi
         echo "" >> "$tmp_file"
@@ -1101,12 +1101,12 @@ function add_pubkey_for_user() {
     fi
 
     if ! chmod 600 "$auth_keys_file"; then
-        echo_red "cannot chmod $auth_keys_file file for $name"
+        echo_error "cannot chmod $auth_keys_file file for $name"
         return 1
     fi
 
     if ! chown "${name}:${name}" "$auth_keys_file"; then
-        echo_red "cannot chown $auth_keys_file file for $name"
+        echo_error "cannot chown $auth_keys_file file for $name"
         return 1
     fi
 
@@ -1117,7 +1117,7 @@ function add_pubkey_for_user() {
 function get_loginable_users() {
     local passwd_out=""
     if ! passwd_out="$(cat /etc/passwd)"; then
-        echo_red "Failed to cat /etc/passwd for getting loginable users"
+        echo_error "Failed to cat /etc/passwd for getting loginable users"
         return 1
     fi
 
@@ -1129,7 +1129,7 @@ function get_loginable_users() {
 
     local users_raw_list=""
     if ! users_raw_list="$(cut -d: -f1 <<<"$users_passwd_list")"; then
-        echo_red "Failed to extract users names loginable users"
+        echo_error "Failed to extract users names loginable users"
         return 1
     fi
 
@@ -1176,7 +1176,7 @@ function get_package_manager() {
 # shellcheck disable=SC2329
 function apt_update() {
     if ! apt update; then 
-        echo_red "Cannot run apt update!"
+        echo_error "Cannot run apt update!"
         return 1
     fi
 
@@ -1186,7 +1186,7 @@ function apt_update() {
 # shellcheck disable=SC2329
 function apt_upgrade() {
     if ! apt upgrade -y; then 
-        echo_red "Cannot run apt upgrade!"
+        echo_error "Cannot run apt upgrade!"
         return 1
     fi
 
@@ -1223,7 +1223,7 @@ function apt_remove() {
 # shellcheck disable=SC2329
 function apk_upgrade() {
     if ! apk upgrade; then 
-        echo_red "Cannot run apk upgrade!"
+        echo_error "Cannot run apk upgrade!"
         return 1
     fi
 
@@ -1233,7 +1233,7 @@ function apk_upgrade() {
 # shellcheck disable=SC2329
 function apk_update() {
     if ! apk update; then 
-        echo_red "Cannot run apk update!"
+        echo_error "Cannot run apk update!"
         return 1
     fi
 
@@ -1280,7 +1280,7 @@ function get_package_cmd() {
         ;;
 
         *)
-            echo_red "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
+            echo_error "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
             return 1
         ;;
     esac
@@ -1288,7 +1288,7 @@ function get_package_cmd() {
     local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
 
     if ! declare -F "$res" > /dev/null; then
-        echo_red "Internal error: '$res' func not declared!"
+        echo_error "Internal error: '$res' func not declared!"
         return 1
     fi
 
@@ -1309,19 +1309,19 @@ function upgrade_all_packages() {
     fi
 
     if ! "$update_fun"; then
-        echo_red "Cannot run update"
+        echo_error "Cannot run update"
         return 1
     fi
 
     if ! "$upgrade_fun"; then
-        echo_red "Cannot run apt upgrade"
+        echo_error "Cannot run apt upgrade"
         return 1
     fi
 }
 
 # shellcheck disable=SC2329
 function install_packages() {
-    echo_green "Install apt packages $* ..."
+    echo_info "Install apt packages $* ..."
 
     local update_fun=""
     if ! update_fun="$(get_package_cmd update)"; then
@@ -1334,16 +1334,16 @@ function install_packages() {
     fi
 
     if ! "$update_fun"; then 
-        echo_red "Cannot run update indexes!"
+        echo_error "Cannot run update indexes!"
         return 1
     fi
 
     if ! "$install_fun" "$@"; then
-        echo_red "Cannot run apt install!"
+        echo_error "Cannot run apt install!"
         return 1
     fi
 
-    echo_green "Packages $* installed!"
+    echo_info "Packages $* installed!"
 }
 
 # shellcheck disable=SC2329
@@ -1357,7 +1357,7 @@ function check_packages_installed() {
     while [[ $# -gt 0 ]]; do
         local name="$1"
         if ! "$search_fun" "$name"; then
-            echo_green "$name not installed..."
+            echo_warn "$name not installed..."
             all="false"
         fi
         shift
@@ -1393,14 +1393,14 @@ function remove_packages() {
     done
 
     if [[ "${#for_remove[@]}" == "0" ]]; then
-        echo_green "All passed packages already removed"
+        echo_info "All passed packages already removed"
         return 0
     fi
 
-    echo_green "Remove packages ${for_remove[*]}"
+    echo_info "Remove packages ${for_remove[*]}"
     
     if ! "$remove_fun" "${for_remove[@]}"; then
-        echo_red "Some packages not removed!"
+        echo_error "Some packages not removed!"
         return 1
     fi
 
@@ -1429,7 +1429,7 @@ function get_sys_service_engine() {
         return 0
     fi
 
-    echo_red "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
+    echo_error "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
     return 1
 }
 
@@ -1446,15 +1446,15 @@ function systemd_disable_all() {
         return 0
     fi
 
-    echo_green "systemd service $srv is active. Disable..."
+    echo_info "systemd service $srv is active. Disable..."
 
     if ! systemctl disable --now "$srv"; then
-        echo_red "Cannot disable $srv"
+        echo_error "Cannot disable $srv"
         return 1
     fi
 
     if ! systemctl stop "$srv"; then
-        echo_red "Cannot stop $srv"
+        echo_error "Cannot stop $srv"
         return 1
     fi
 
@@ -1492,7 +1492,7 @@ function disable_and_stop_services() {
     disable_fun="${service_engine}_disable_all"
 
     if ! declare -F "$disable_fun" > /dev/null; then
-        echo_red "Internal error: '$disable_fun' func not declared!"
+        echo_error "Internal error: '$disable_fun' func not declared!"
         return 1
     fi
 
@@ -1563,26 +1563,26 @@ export CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
 # shellcheck disable=SC2329
 function cmd_gitlab_register_runner_run() {
     if ! command -v gitlab-runner &> /dev/null; then
-        echo_red "gitlab runner is not installed!"
-        echo_red "Please init server or install with --phase gitlab first."
+        echo_error "gitlab runner is not installed!"
+        echo_error "Please init server or install with --phase gitlab first."
         return 1
     fi
 
     if ! systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
-        echo_red "gitlab runner service is not active!"
-        echo_red "Please init server or install with --phase gitlab first."
+        echo_error "gitlab runner service is not active!"
+        echo_error "Please init server or install with --phase gitlab first."
         return 1
     fi
 
     local runner_config=""
 
     if ! runner_config="$(extract_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
-        echo_red "Gitlab runner config: $runner_config"
+        echo_error "Gitlab runner config"
         return 1
     fi
 
     if [ -n "$runner_config" ]; then
-        echo_green "Load runner config $runner_config"
+        echo_info "Load runner config $runner_config"
         # shellcheck disable=SC1090
         set -a && source "$runner_config" && set +a
     fi
@@ -1602,7 +1602,7 @@ function cmd_gitlab_register_runner_run() {
     fi
 
     if [ -n "$errors" ]; then
-        echo_red "$errors"
+        echo_error "$errors"
         return 1
     fi
 
@@ -1613,14 +1613,14 @@ function cmd_gitlab_register_runner_run() {
 
     local runners=""
     if ! runners="$(gitlab-runner list -c /etc/gitlab-runner/config.toml)"; then
-        echo_red "Cannot list runners!"
+        echo_error "Cannot list runners!"
         return 1
     fi
 
     local runner_name="$GITLAB_RUNNER_DESC"
 
     if grep -q "$runner_name" <<<"$runners"; then
-        echo_green "Runner $runner_name already registered!"
+        echo_info "Runner $runner_name already registered!"
         return 0
     fi
 
@@ -1637,11 +1637,11 @@ function cmd_gitlab_register_runner_run() {
     )
 
     if ! gitlab-runner register "${register_args[@]}"; then
-        echo_red "Cannot register runner ${runner_name}!"
+        echo_error "Cannot register runner ${runner_name}!"
         return 1
     fi
     
-    echo_green "Runner ${runner_name} registered!"
+    echo_info "Runner ${runner_name} registered!"
 }
 
 # shellcheck disable=SC2329
@@ -1710,20 +1710,20 @@ function validate_arg_mac_address() {
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_itself_run() {
     if command -v vboxmanage &> /dev/null; then
-        echo_red "vboxmanage executable found!"
-        echo_red "Probably you run virtualbox_init_vm_itself command outside vm"
-        echo_red "If you want to init vm from host, use virtualbox_init_vm"
+        echo_error "vboxmanage executable found!"
+        echo_error "Probably you run virtualbox_init_vm_itself command outside vm"
+        echo_error "If you want to init vm from host, use virtualbox_init_vm"
         return 1
     fi
 
-    echo_green "Init virtualbox vm..."
+    echo_info "Init virtualbox vm..."
 
     local package="openssh-server"
 
     if ! check_packages_installed "$package"; then
-        echo_green "Install sshd..."
+        echo_info "Install sshd..."
         if ! install_packages "openssh-server"; then
-            echo_red "SSHD not installed!"
+            echo_error "SSHD not installed!"
             return 1
         fi
     fi
@@ -1731,26 +1731,26 @@ function cmd_virtualbox_init_vm_itself_run() {
     local nat_mac=""
 
     if ! nat_mac="$(extract_argument "--virtualbox-nat-mac" "VIRTUALBOX_NAT_MAC" "$CONST_NOT_FLAG" "validate_arg_mac_address" "$@")"; then
-        echo_red "NAT MAC address: $nat_mac"
+        echo_error "NAT MAC address: $nat_mac"
         return 1
     fi
 
     local static_mac=""
 
     if ! static_mac="$(extract_argument "--virtualbox-static-mac" "VIRTUALBOX_STATIC_MAC" "$CONST_NOT_FLAG" "validate_arg_mac_address" "$@")"; then
-        echo_red "Static MAC address: $static_mac"
+        echo_error "Static MAC address: $static_mac"
         return 1
     fi
 
     local ip_static=""
 
     if ! ip_static="$(extract_argument "--virtualbox-static-ip" "VIRTUALBOX_STATIC_IP" "$CONST_NOT_FLAG" "validate_arg_ipv4" "$@")"; then
-        echo_red "Static IP address: $ip_static"
+        echo_error "Static IP address: $ip_static"
         return 1
     fi
 
     if [[ "$nat_mac" == "$static_mac" ]]; then
-        echo_red "NAT and STATIC MACs should be different"
+        echo_error "NAT and STATIC MACs should be different"
         return 1
     fi
 
@@ -1760,13 +1760,13 @@ function cmd_virtualbox_init_vm_itself_run() {
     local gateway="${ip_parts[0]}.${ip_parts[1]}.${ip_parts[2]}.1"
 
     if [[ "$ip_static" == "$gateway" ]]; then
-        echo_red "IP $ip_static should not gateway $gateway"
+        echo_error "IP $ip_static should not gateway $gateway"
         return 1
     fi
 
     local ssh_key=""
     if ! ssh_key="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "SSH key: $$ssh_key"
+        echo_error "SSH key: $$ssh_key"
         return 1
     fi
 
@@ -1778,7 +1778,7 @@ function cmd_virtualbox_init_vm_itself_run() {
 
     local remove_sudo_pass=""
     if ! remove_sudo_pass="$(extract_argument "--virtualbox-sudo-no-password" "VIRTUALBOX_SUDO_NO_PASSWORD" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "Remove sudo pass: $$remove_sudo_pass"
+        echo_error "Remove sudo pass: $$remove_sudo_pass"
         return 1
     fi
 
@@ -1788,11 +1788,11 @@ function cmd_virtualbox_init_vm_itself_run() {
     local -a users_to_initialize=()
 
     if [[ $remove_sudo_pass == "$CONST_FLAG_SET" || "$ssh_key" != "" ]]; then
-        echo_green "Users should initialize. Get loginable users..."
+        echo_info "Users should initialize. Get loginable users..."
 
         local users_raw_list=""
         if ! users_raw_list="$(get_loginable_users)"; then
-            echo_red "Failed to get loginable users"
+            echo_error "Failed to get loginable users"
             return 1
         fi
 
@@ -1801,13 +1801,13 @@ function cmd_virtualbox_init_vm_itself_run() {
         
         for user_to_append in "${users_list[@]}"; do 
             if [[ "$user_to_append" == "root" ]]; then
-                echo_green "Skip root user"
+                echo_info "Skip root user"
                 continue
             fi
 
             local user_home=""
             if ! user_home="$(get_user_home "$user_to_append")"; then
-                echo_yellow "Not found user home for $user_to_append Skip"
+                echo_warn "Not found user home for $user_to_append Skip"
                 continue
             fi
 
@@ -1816,49 +1816,49 @@ function cmd_virtualbox_init_vm_itself_run() {
                 continue
             fi
 
-            echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
+            echo_warn "Found user $user_to_append but home $user_home is not in /home Skip"
         done
     fi
 
     if [[ "$ssh_key" != "" && "${#users_to_initialize[@]}" != "0" ]]; then
         for init_user in "${users_to_initialize[@]}"; do
-            echo_green "Init ssh key $ssh_key for user $init_user"
+            echo_info "Init ssh key $ssh_key for user $init_user"
             if ! add_pubkey_for_user "$init_user" "$ssh_key" "$not_ask"; then
-                echo_red "Failed to initialize ssh key for $init_user"
+                echo_error "Failed to initialize ssh key for $init_user"
             fi
         done
     fi
 
     if [[ $remove_sudo_pass == "$CONST_FLAG_SET" && "${#users_to_initialize[@]}" != "0" ]]; then
         for init_user_pass in "${users_to_initialize[@]}"; do
-            echo_green "Remove sudo pass for user $init_user_pass"
+            echo_info "Remove sudo pass for user $init_user_pass"
             if ! add_user_to_sudoers "$init_user" "$CONST_SUDO_NO_PASS" "$not_ask"; then
-                echo_red "Failed to remove sudo pass for $init_user"
+                echo_error "Failed to remove sudo pass for $init_user"
             fi
         done
     fi
 
-    echo_green "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
+    echo_info "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
 
     # shellcheck disable=SC2155
     local config_tmp="$(mktemp)"
 
     if ! chmod 600 "$config_tmp"; then
-        echo_red "Cannot chmod temp file for config"
+        echo_error "Cannot chmod temp file for config"
         return 1
     fi
 
     if ! chown "root:root" "$config_tmp"; then
-        echo_red "Cannot chown temp file for config"
+        echo_error "Cannot chown temp file for config"
         return 1
     fi
 
     local backup_netplan="/root/backup_netplans"
 
-    echo_green "Move old netplan configs to $backup_netplan"
+    echo_info "Move old netplan configs to $backup_netplan"
 
     if ! mkdir -p "$backup_netplan"; then
-        echo_red "Cannot create old netplans backup dir $backup_netplan"
+        echo_error "Cannot create old netplans backup dir $backup_netplan"
         return 1
     fi
 
@@ -1880,11 +1880,11 @@ function cmd_virtualbox_init_vm_itself_run() {
     done < <(find "$netplan_dir" -name '*.yaml' -type f -print0)
 
     if [[ "${#backup_files[@]}" == "0" ]]; then
-        echo_green "Nothing to backup"
+        echo_info "Nothing to backup"
     else
         for to_bkp in "${backup_files[@]}"; do
             if ! mv "$to_bkp" "$backup_netplan"; then
-                echo_red "Cannot backup file $to_bkp"
+                echo_error "Cannot backup file $to_bkp"
                 return 1
             fi
         done
@@ -1932,41 +1932,41 @@ EOF
         return 1
     fi
 
-    echo_green "Apply netplan..."
+    echo_info "Apply netplan..."
 
     if ! netplan apply; then
-        echo_red "Netplan config does not applied! Backups in $backup_netplan"
+        echo_error "Netplan config does not applied! Backups in $backup_netplan"
         return 1
     fi
 
     local remote_host="google.com"
 
     if command -v ping &> /dev/null; then
-        echo_green "Netplan applied! Verify internet connection with ping $remote_host"
-        echo_green "Sleep 5 seconds before check..."
+        echo_info "Netplan applied! Verify internet connection with ping $remote_host"
+        echo_info "Sleep 5 seconds before check..."
         sleep 5
 
         if ! ping -W 4 -c 4 "$remote_host"; then
-            echo_red "Host $remote_host not accessible!"
+            echo_error "Host $remote_host not accessible!"
             return 1
         fi
-        echo_green "Internet connection success!" 
+        echo_info "Internet connection success!" 
     else
-        echo_yellow "Ping is not installed. Skip verify internet connection"
+        echo_warn "Ping is not installed. Skip verify internet connection"
     fi
 
     if ask_user "Remove backup dir $backup_netplan ?" "$not_ask"; then
         if ! rm -rfv "$backup_netplan"; then
-            echo_yellow "$backup_netplan not removed!"
+            echo_warn "$backup_netplan not removed!"
         fi
     fi
 
-    echo_green "Virtualbox vm initialized!"
+    echo_info "Virtualbox vm initialized!"
 
     if [[ "${#users_to_initialize[@]}" != "0" ]]; then
-        echo_green "You can try to verify ssh connection with:"
+        echo_info "You can try to verify ssh connection with:"
         for ssh_user in "${users_to_initialize[@]}"; do
-            echo_green "ssh ${ssh_user}@$ip_static"
+            echo_info "ssh ${ssh_user}@$ip_static"
         done
     fi
 
@@ -2023,7 +2023,7 @@ function virtualbox_extract_not_quoted_value() {
     IFS="=" read -ra val_parts <<<"$input"
 
     if [[ "${#val_parts[@]}" != "2" ]]; then
-        echo_red "incorrect input key/val $raw_key_val Have no 2 parts"
+        echo_error "incorrect input key/val $raw_key_val Have no 2 parts"
         return 1
     fi
 
@@ -2046,7 +2046,7 @@ function virtualbox_extract_value_for_key_human() {
             echo -n ""
             return 0
         fi
-        echo_red "Cannot extract $key"
+        echo_error "Cannot extract $key"
         return 1
     fi
 
@@ -2055,7 +2055,7 @@ function virtualbox_extract_value_for_key_human() {
     IFS=":" read -ra val_parts <<<"$raw_key_val"
 
     if [[ "${#val_parts[@]}" != "2" ]]; then
-        echo_red "incorrect input key/val $raw_key_val Have no 2 parts"
+        echo_error "incorrect input key/val $raw_key_val Have no 2 parts"
         return 1
     fi
 
@@ -2075,14 +2075,14 @@ function virtualbox_extract_value_for_key() {
             echo -n ""
             return 0
         fi
-        echo_red "Cannot extract $key"
+        echo_error "Cannot extract $key"
         return 1
     fi
 
     local res=""
 
     if ! res="$(virtualbox_extract_not_quoted_value "$raw_key_val")"; then
-        echo_red "Cannot extract value for key ${key}: $res"
+        echo_error "Cannot extract value for key ${key}: $res"
         return 1
     fi
 
@@ -2099,7 +2099,7 @@ function virtualbox_extract_mac_address() {
 
     local mac=""
     if ! mac="$(virtualbox_extract_value_for_key "$raw_out" "$key")"; then
-        echo_red "Cannot extract mac-address for $key: $mac"
+        echo_error "Cannot extract mac-address for $key: $mac"
         return 1
     fi
 
@@ -2138,12 +2138,12 @@ function virtualbox_extract_host_iface() {
     local raw_out=""
 
     if ! raw_out="$(vboxmanage list hostonlyifs)"; then
-        echo_red "Cannot get list hostonlyifs"
+        echo_error "Cannot get list hostonlyifs"
         return 1
     fi
 
     if [ -z "$raw_out" ]; then 
-        echo_red "Hostonly adapters not found!"
+        echo_error "Hostonly adapters not found!"
         return 1
     fi
 
@@ -2162,13 +2162,13 @@ function virtualbox_extract_host_iface() {
 
         local name=""
         if ! name="$(virtualbox_extract_value_for_key_human "$iface_raw" "Name")"; then
-            echo_red "Cannot extract hostonly interface name from $iface_raw :: $name"
+            echo_error "Cannot extract hostonly interface name from $iface_raw :: $name"
             return 1
         fi
 
         local address=""
         if ! address="$(virtualbox_extract_value_for_key_human "$iface_raw" "IPAddress")"; then
-            echo_red "Cannot extract hostonly interface name from $iface_raw :: $address"
+            echo_error "Cannot extract hostonly interface name from $iface_raw :: $address"
             return 1
         fi
 
@@ -2182,12 +2182,12 @@ function virtualbox_extract_host_iface() {
     if [ -z "$passed_iface" ]; then
         case "${#ifaces[@]}" in
             "0")
-                echo_red "Not found any hostonly interfaces"
+                echo_error "Not found any hostonly interfaces"
                 return 1
             ;;
             "1")
                 choiced_iface="$single_iface_name"
-                echo_green "Found single hostonly interface $choiced_iface with address ${ifaces[$choiced_iface]}" >&2
+                echo_info "Found single hostonly interface $choiced_iface with address ${ifaces[$choiced_iface]}" >&2
             ;;
             *)
                 local -a indexes=()
@@ -2196,13 +2196,13 @@ function virtualbox_extract_host_iface() {
                 for iface_name in "${!ifaces[@]}"; do
                     indexes+=("$cur_index")
                     index_to_name["$cur_index"]="$iface_name"
-                    echo_green "[$cur_index] Found interface $iface_name with address ${ifaces[$iface_name]}" >&2
+                    echo_info "[$cur_index] Found interface $iface_name with address ${ifaces[$iface_name]}" >&2
                     ((cur_index++))
                 done
 
                 local choiced_index="-1"
                 if ! choiced_index="$(ask_user_choice "Enter interface number to attach" "${indexes[@]}")"; then
-                    echo_red "Interface not choiced: $choiced_index"
+                    echo_error "Interface not choiced: $choiced_index"
                     return 1
                 fi
                 choiced_iface="${index_to_name[$choiced_index]}"
@@ -2210,7 +2210,7 @@ function virtualbox_extract_host_iface() {
         esac
     else
         if ! [[ -v ifaces["$passed_iface"] ]]; then
-            echo_red "Not found interface $passed_iface"
+            echo_error "Not found interface $passed_iface"
             return 1
         fi
         choiced_iface="$passed_iface"
@@ -2226,7 +2226,7 @@ function virtualbox_extract_host_iface() {
     if [ -z "$choiced_ip" ]; then
         local octet=""
         if ! octet="$(ask_user_raw "Enter last octet number to assign address" "validate_arg_octet")"; then
-            echo_red "Invalid input octet: $octet"
+            echo_error "Invalid input octet: $octet"
             return 1
         fi
 
@@ -2237,7 +2237,7 @@ function virtualbox_extract_host_iface() {
         unset 'choiced_ip_parts[-1]'
         unset 'gw_ip_parts[-1]'
         if [[ "${gw_ip_parts[*]}" != "${choiced_ip_parts[*]}" ]]; then
-            echo_red "Input IP $choiced_ip not in hostonly gw net $iface_address"
+            echo_error "Input IP $choiced_ip not in hostonly gw net $iface_address"
             return 1
         fi
     fi
@@ -2253,7 +2253,7 @@ function virtualbox_get_vm_info_json() {
     local raw_out=""
 
     if ! raw_out="$(vboxmanage showvminfo "$vm_name" --machinereadable)"; then
-        echo_red "Cannot get info for vm $vm_name"
+        echo_error "Cannot get info for vm $vm_name"
         return 1
     fi
 
@@ -2280,25 +2280,25 @@ function virtualbox_get_vm_info_json() {
         local nic_type=""
 
         if ! nic_type="$(virtualbox_extract_not_quoted_value "$nic_type_raw")"; then
-            echo_red "Cannot to extract nic type for index $cur_nic_index: $nic_type"
+            echo_error "Cannot to extract nic type for index $cur_nic_index: $nic_type"
             return 1
         fi
 
         case "$nic_type" in
             "nat")
                 if [[ "$nat_consumed" == "true" ]]; then
-                    echo_red "NAT interface already consumed"
-                    echo_red "$res_json"
+                    echo_error "NAT interface already consumed"
+                    echo_error "$res_json"
                     return 1
                 fi
                 local mac=""
                 if ! mac="$(virtualbox_extract_mac_address "$raw_out" "$cur_nic_index")"; then
-                    echo_red "$mac"
+                    echo_error "$mac"
                     return
                 fi
                 local nat_json=".ifaces += {\"nat\":{\"mac\":\"$mac\",\"indx\":\"$cur_nic_index\"}}"
                 if ! res_json="$(jq "$nat_json" <<<"$res_json")"; then
-                    echo_red "Cannot append nat iface"
+                    echo_error "Cannot append nat iface"
                     return 1
                 fi
                 nat_consumed="true"
@@ -2306,27 +2306,27 @@ function virtualbox_get_vm_info_json() {
 
             "hostonly")
                 if [[ "$host_consumed" == "true" ]]; then
-                    echo_red "Hostonly interface already consumed"
-                    echo_red "$res_json"
+                    echo_error "Hostonly interface already consumed"
+                    echo_error "$res_json"
                     return 1
                 fi
 
                 local mac=""
                 if ! mac="$(virtualbox_extract_mac_address "$raw_out" "$cur_nic_index")"; then
-                    echo_red "$mac"
+                    echo_error "$mac"
                     return
                 fi
 
                 local adapter=""
                 if ! adapter="$(virtualbox_extract_value_for_key "$raw_out" "hostonlyadapter${cur_nic_index}")"; then
-                    echo_red "Cannot extract hostonly adapter: $adapter"
+                    echo_error "Cannot extract hostonly adapter: $adapter"
                     return 1
                 fi
                 
 
                 local host_json=".ifaces += {\"host\":{\"mac\":\"$mac\",\"adapter\":\"$adapter\",\"indx\":\"$cur_nic_index\"}}"
                 if ! res_json="$(jq "$host_json" <<<"$res_json")"; then
-                    echo_red "Cannot append hostonly iface"
+                    echo_error "Cannot append hostonly iface"
                     return 1
                 fi
                 host_consumed="true"
@@ -2347,7 +2347,7 @@ function virtualbox_get_vm_info_json() {
 
         local ide_type=""
         if ! ide_type="$(virtualbox_extract_value_for_key "$raw_out" "\"IDE-${cur_ide_index}-${minor}\"" "true")"; then
-            echo_red "Cannot extract IDE-${cur_ide_index}-${minor} : $ide_type"
+            echo_error "Cannot extract IDE-${cur_ide_index}-${minor} : $ide_type"
             return 1
         fi
 
@@ -2363,7 +2363,7 @@ function virtualbox_get_vm_info_json() {
             ((minor++))
             local ide_major=""
             if ! ide_major="$(virtualbox_extract_value_for_key "$raw_out" "\"IDE-${cur_ide_index}-${minor}\"" "true")"; then
-                echo_red "Cannot extract IDE-${cur_ide_index}-${minor}: $ide_major"
+                echo_error "Cannot extract IDE-${cur_ide_index}-${minor}: $ide_major"
                 return 1
             fi
             
@@ -2380,7 +2380,7 @@ function virtualbox_get_vm_info_json() {
     for opt in "${opticals[@]}"; do
         local opt_json=".opticals += [\"$opt\"]"
         if ! res_json="$(jq "$opt_json" <<<"$res_json")"; then
-            echo_red "Cannot append optical $opt"
+            echo_error "Cannot append optical $opt"
             return 1
         fi
     done
@@ -2395,7 +2395,7 @@ function virtualbox_vm_is_running() {
 
     local all_vms=""
     if ! all_vms="$(vboxmanage list runningvms)"; then
-        echo_red "Cannot get list running vms!"
+        echo_error "Cannot get list running vms!"
         return 1
     fi
 
@@ -2415,7 +2415,7 @@ function virtualbox_stop_vm() {
     fi
 
     if ! vboxmanage controlvm "$vm_name" poweroff; then
-        echo_red "Cannot stop vm $vm_name"
+        echo_error "Cannot stop vm $vm_name"
         return 1 
     fi
 
@@ -2423,7 +2423,7 @@ function virtualbox_stop_vm() {
 
     for i in $(seq 1 "$attempts"); do
         if virtualbox_vm_is_running "$vm_name"; then
-            echo_yellow "Waiting 5 seconds to stop vm $vm_name Attempt $i"
+            echo_warn "Waiting 5 seconds to stop vm $vm_name Attempt $i"
             sleep 5 
             continue
         fi
@@ -2434,7 +2434,7 @@ function virtualbox_stop_vm() {
         return 0
     fi
 
-    echo_red "Vm $vm_name is not stopped after $attempts attempts"
+    echo_error "Vm $vm_name is not stopped after $attempts attempts"
     return 1
 }
 
@@ -2450,7 +2450,7 @@ function virtualbox_start_vm() {
 
     for i in $(seq 1 "$attempts"); do
         if ! vboxmanage startvm "$vm_name"; then
-            echo_yellow "Waiting 5 seconds to start vm $vm_name Attempt $1"
+            echo_warn "Waiting 5 seconds to start vm $vm_name Attempt $1"
             sleep 5
             continue
         fi
@@ -2462,7 +2462,7 @@ function virtualbox_start_vm() {
         return 0
     fi
 
-    echo_red "Vm $vm_name is not started after $attempts attempts"
+    echo_error "Vm $vm_name is not started after $attempts attempts"
     return 1
 }
 
@@ -2476,19 +2476,19 @@ function virtualbox_prepare_viso() {
 
     local vm_name_sum=""
     if ! vm_name_sum=$(sha256sum <<<"$vm_name"); then
-        echo_red "Cannot calculate sum from vm"
+        echo_error "Cannot calculate sum from vm"
         return 1
     fi
 
     if ! vm_name_sum=$(cut -c 1-12 <<<"$vm_name_sum"); then
-        echo_red "Cannot trim sum for vm"
+        echo_error "Cannot trim sum for vm"
         return 1
     fi
 
     local vm_dir="virtualbox/${vm_name_sum}"
 
     if ! mkdir -p "$vm_dir"; then
-        echo_red "Cannot create tmp dir for vm $vm_name $vm_dir"
+        echo_error "Cannot create tmp dir for vm $vm_name $vm_dir"
         return 1
     fi
 
@@ -2498,7 +2498,7 @@ function virtualbox_prepare_viso() {
 
     # shellcheck disable=SC2154
     if ! cp "$bin_name" "$bundle_file"; then
-        echo_red "Cannot copy init script $bin_name to $vm_dir"
+        echo_error "Cannot copy init script $bin_name to $vm_dir"
         return 1
     fi
 
@@ -2508,7 +2508,7 @@ function virtualbox_prepare_viso() {
 
     if [ -n "$ssh_key" ] && [ -s "$ssh_key" ]; then
         if ! cp "$ssh_key" "$auth_keys_file"; then
-            echo_red "Cannot copy ssh key $ssh_key to $vm_dir"
+            echo_error "Cannot copy ssh key $ssh_key to $vm_dir"
             return 1
         fi
     else
@@ -2559,7 +2559,7 @@ EOF
     files_to_viso+=("$init_file")
 
     if ! chmod 755 "${vm_dir}/init.sh"; then
-        echo_red "Cannot chmod ${vm_dir}/init.sh"
+        echo_error "Cannot chmod ${vm_dir}/init.sh"
         return 1
     fi
 
@@ -2578,19 +2578,19 @@ EOF
     for v_file in "${files_to_viso[@]}"; do
         local base=""
         if ! base="$(basename "$v_file")"; then
-            echo_red "Cannot get base for $v_file"
+            echo_error "Cannot get base for $v_file"
             return 1
         fi
         create_args+=("/${base}=${v_file}")
     done
 
     if ! vbox-img createiso "${create_args[@]}" >&2; then
-        echo_red "Cannot create viso $viso_file"
+        echo_error "Cannot create viso $viso_file"
         return 1 
     fi
 
     if ! viso_file="$(realpath "$viso_file")"; then
-        echo_red "Cannot get real path for $viso_file"
+        echo_error "Cannot get real path for $viso_file"
         return 1
     fi
 
@@ -2605,7 +2605,7 @@ function virtualbox_unmount_opticals() {
     shift
 
     if [[ "$#" == 0 ]]; then
-        echo_green "Nothing to unmount"
+        echo_info "Nothing to unmount"
         return 0 
     fi
 
@@ -2613,7 +2613,7 @@ function virtualbox_unmount_opticals() {
         local -a opt_dev=()
         IFS="-" read -ra opt_dev <<<"$opt"
         if [[ "${#opt_dev[@]}" != "2" ]]; then
-            echo_red "Failed to parse optical $opt Should have 0-0 for example"
+            echo_error "Failed to parse optical $opt Should have 0-0 for example"
             return 1
         fi
 
@@ -2621,10 +2621,10 @@ function virtualbox_unmount_opticals() {
         local port="${opt_dev[0]}"
         local device="${opt_dev[1]}"
 
-        echo_green "Unmount IDE on $vm_name port $port device $device"
+        echo_info "Unmount IDE on $vm_name port $port device $device"
 
         if ! vboxmanage storageattach "$vm_name" --storagectl "IDE" --port "$port" --device "$device" --type dvddrive --medium none; then
-            echo_red "Failed to unmount optical $opt"
+            echo_error "Failed to unmount optical $opt"
             return 1
         fi
     done
@@ -2640,38 +2640,38 @@ function virtualbox_unmount_cleanup_after_init() {
 
     local viso_real=""
     if ! viso_real="$(realpath "$viso_file")"; then
-        echo_red "Cannot real path for $viso_file"
+        echo_error "Cannot real path for $viso_file"
         return 1
     fi
 
     local cleanup_dir=""
     if ! cleanup_dir="$(dirname "$viso_real")"; then
-        echo_red "Cannot get cleanup dir from $viso_real"
+        echo_error "Cannot get cleanup dir from $viso_real"
         return 1
     fi
 
-    echo_green "Stop vm to unmount init opticals..."
+    echo_info "Stop vm to unmount init opticals..."
     if ! virtualbox_stop_vm "$vm_name"; then
-        echo_red "Failed to stop vm?"
+        echo_error "Failed to stop vm?"
     fi
 
     local vm_info_json=""
 
     if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
-        echo_red "Cannot get vm info: $vm_info_json"
+        echo_error "Cannot get vm info: $vm_info_json"
         return 1
     fi
 
     local opticals_str=""
     if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-        echo_red "Cannot get opticals from vm info: $vm_info_json"
+        echo_error "Cannot get opticals from vm info"
         return 1
     fi
 
     local -a opticals_to_unmount=()
     IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
 
-    echo_green "Unmount init opticals..."
+    echo_info "Unmount init opticals..."
 
     if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
         return 1
@@ -2679,17 +2679,17 @@ function virtualbox_unmount_cleanup_after_init() {
 
     if ask_user "Do you want to remove dir $cleanup_dir"; then
         if ! rm -rfv "$cleanup_dir"; then
-            echo_red "Dir $cleanup_dir not removed!"
+            echo_error "Dir $cleanup_dir not removed!"
             return 1
         fi
     else
-        echo_yellow "Disallow remove dir $cleanup_dir"
+        echo_warn "Disallow remove dir $cleanup_dir"
     fi
 
-    echo_green "Start vm..."
+    echo_info "Start vm..."
 
     if ! virtualbox_start_vm "$vm_name"; then
-        echo_red "Vm not started!"
+        echo_error "Vm not started!"
         return 1
     fi
 
@@ -2703,12 +2703,12 @@ function virtualbox_mount_opticals() {
     shift
 
     if [[ "$#" == 0 ]]; then
-        echo_red "Nothing to mount"
+        echo_error "Nothing to mount"
         return 1 
     fi
 
     if [ "$#" -gt  4 ]; then
-        echo_red "To many mounts should be <= 4"
+        echo_error "To many mounts should be <= 4"
         return 1 
     fi
 
@@ -2716,9 +2716,9 @@ function virtualbox_mount_opticals() {
     local device=0
 
     for iso in "$@"; do
-        echo_green "Mount $iso to $vm_name port $port device $device"
+        echo_info "Mount $iso to $vm_name port $port device $device"
         if ! vboxmanage storageattach "$vm_name" --storagectl "IDE" --port "$port" --device "$device" --type dvddrive --medium "$iso"; then
-            echo_red "Failed mount $iso to $vm_name port $port device $device"
+            echo_error "Failed mount $iso to $vm_name port $port device $device"
             return 1
         fi
 
@@ -2736,83 +2736,83 @@ function virtualbox_mount_opticals() {
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_run() {
     if ! command -v vboxmanage &> /dev/null; then
-        echo_red "vboxmanage executable not found!"
-        echo_red "Probably you run virtualbox_init_vm command inside vm"
-        echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
+        echo_error "vboxmanage executable not found!"
+        echo_error "Probably you run virtualbox_init_vm command inside vm"
+        echo_error "If you want to init vm from vm, use virtualbox_init_vm_itself"
         return 1
     fi 
     
     if ! command -v jq &> /dev/null; then
-        echo_red "virtualbox_init_vm command require jq"
-        echo_red "Please install jq"
+        echo_error "virtualbox_init_vm command require jq"
+        echo_error "Please install jq"
         return 1
     fi
 
     local vm_name=""
     if ! vm_name="$(extract_argument "--virtualbox-vm-name" "VIRTUALBOX_VM_NAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
-        echo_red "Vm name not passed: $vm_name"
+        echo_error "Vm name not passed: $vm_name"
         return 1
     fi
 
     local attach_address=""
     if ! attach_address="$(extract_argument "--virtualbox-attach-address" "VIRTUALBOX_ATTACH_ADDRESS" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "Attach address incorrect: $attach_address"
+        echo_error "Attach address incorrect: $attach_address"
         return 1
     fi
 
     local ssh_key_file=""
     if ! ssh_key_file="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "SSH key file incorrect: $ssh_key_file"
+        echo_error "SSH key file incorrect: $ssh_key_file"
         return 1
     fi
 
     local skip_vsio=""
     if ! skip_vsio="$(extract_argument "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "Skip VSIO flag parse error"
+        echo_error "Skip VSIO flag parse error"
         return 1
     fi
 
     if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
         if ! command -v vbox-img &> /dev/null; then
-            echo_red "vbox-img executable not found!"
-            echo_red "Probably you run virtualbox_init_vm command inside vm"
-            echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
+            echo_error "vbox-img executable not found!"
+            echo_error "Probably you run virtualbox_init_vm command inside vm"
+            echo_error "If you want to init vm from vm, use virtualbox_init_vm_itself"
             return 1
         fi
     fi
 
     if [ -n "$attach_address" ]; then
         if ! attach_address="$(validate_arg_ipv4 "$attach_address" "$CONST_ARG_PASSED")"; then
-            echo_red "Attach address incorrect: $attach_address"
+            echo_error "Attach address incorrect: $attach_address"
             return 1
         fi
     fi
 
-    echo_green "Init virtualbox vm $vm_name ..."
+    echo_info "Init virtualbox vm $vm_name ..."
 
     local all_vms=""
     if ! all_vms="$(vboxmanage list vms)"; then
-        echo_red "Cannot get all vms!"
+        echo_error "Cannot get all vms!"
         return 1
     fi
 
     if ! grep -q "$vm_name" <<<"$all_vms"; then
-        echo_red "Vm $vm_name not found!"
-        echo_red "Have next vms:"
+        echo_error "Vm $vm_name not found!"
+        echo_error "Have next vms:"
         echo "$all_vms"
         return 1
     fi
 
-    echo_green "Stop vm $vm_name ..."
+    echo_info "Stop vm $vm_name ..."
     if ! virtualbox_stop_vm "$vm_name"; then
-        echo_red "Cannot stop vm $vm_name!"
+        echo_error "Cannot stop vm $vm_name!"
         return 1
     fi
 
     local vm_info_json=""
 
     if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
-        echo_red "Cannot get vm info: $vm_info_json"
+        echo_error "Cannot get vm info: $vm_info_json"
         return 1
     fi
 
@@ -2822,69 +2822,69 @@ function cmd_virtualbox_init_vm_run() {
     local host_adapter=""
 
     if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "false")"; then
-        echo_red "Cannot extract NAT mac: $nat_mac"
+        echo_error "Cannot extract NAT mac"
         return 1
     fi
 
     if [ -z "$nat_mac" ]; then
-        echo_yellow "NAT interface not found! Create..."
+        echo_warn "NAT interface not found! Create..."
 
         local host_index=""
         if ! host_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.indx" "false")"; then
-            echo_red "Cannot extract index for host iface"
+            echo_error "Cannot extract index for host iface"
             return 1
         fi
         
         if [ -n "$host_indx" ]; then
             # shellcheck disable=SC2004
             nat_index="$(($host_index + 1))"
-            echo_green "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
+            echo_info "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
         else
             nat_index="1"
-            echo_green "Host interface not found. NAT iface will create with index $nat_index"
+            echo_info "Host interface not found. NAT iface will create with index $nat_index"
         fi
 
         if ! vboxmanage modifyvm "$vm_name" "--nic$nat_index" nat; then
-            echo_red "Cannot add NAT interface"
+            echo_error "Cannot add NAT interface"
             return 1
         fi
 
         nat_index=""
         if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
-            echo_red "Cannot get vm info after add NAT: $vm_info_json"
+            echo_error "Cannot get vm info after add NAT"
             return 1
         fi
 
         if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
-            echo_red "Cannot extract NAT mac: $nat_mac"
+            echo_error "Cannot extract NAT mac"
             return 1
         fi
     fi
 
     if ! nat_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.indx" "true")"; then
-        echo_red "Cannot extract NAT index: $nat_index"
+        echo_error "Cannot extract NAT index"
         return 1
     fi
 
     if ! host_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.mac" "false")"; then
-        echo_red "Cannot extract hostonly mac: $host_mac"
+        echo_error "Cannot extract hostonly mac"
         return 1
     fi
 
     if [ -n "$host_mac" ]; then
         if ! host_adapter="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.adapter" "true")"; then
-            echo_red "Cannot extract hostonly adapter: $host_adapter"
+            echo_error "Cannot extract hostonly adapter"
             return 1
         fi
         
         local host_iface=""
         if ! host_iface="$(virtualbox_extract_host_iface "$attach_address" "$host_adapter")"; then
-            echo_red "$host_iface"
+            echo_error "$host_iface"
             return 1
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot extract output for host interface"
+            echo_error "Cannot extract output for host interface"
             return 1
         fi
 
@@ -2892,22 +2892,22 @@ function cmd_virtualbox_init_vm_run() {
         IFS=";" read -r -a host_iface_part <<< "$host_iface"
 
         if [[ "${#host_iface_part[@]}" != "3" ]]; then
-            echo_red "incorrect host interface result '$host_iface'. Have no 2 parts"
+            echo_error "incorrect host interface result '$host_iface'. Have no 2 parts"
             return 1
         fi
 
         host_adapter="${host_iface_part[1]}"
         attach_address="${host_iface_part[2]}"
     else
-        echo_green "Host interface not found for vm. Try to extract..."
+        echo_info "Host interface not found for vm. Try to extract..."
         local host_iface=""
         if ! host_iface="$(virtualbox_extract_host_iface "$attach_address")"; then
-            echo_red "$host_iface"
+            echo_error "$host_iface"
             return 1
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot extract output for host interface"
+            echo_error "Cannot extract output for host interface"
             return 1
         fi
 
@@ -2917,7 +2917,7 @@ function cmd_virtualbox_init_vm_run() {
         echo "$host_iface"
 
         if [[ "${#host_iface_part[@]}" != "3" ]]; then
-            echo_red "incorrect host interface result '$host_iface'. Have no 2 parts"
+            echo_error "incorrect host interface result '$host_iface'. Have no 2 parts"
             return 1
         fi
 
@@ -2927,22 +2927,22 @@ function cmd_virtualbox_init_vm_run() {
         # shellcheck disable=SC2004
         local iface_indx="$(($nat_index + 1))"
 
-        echo_green "Attach $host_adapter with index $iface_indx ..."
+        echo_info "Attach $host_adapter with index $iface_indx ..."
 
         if ! vboxmanage modifyvm "$vm_name" "--nic$iface_indx" hostonly "--host-only-adapter$iface_indx" "$host_adapter" "--cable-connected${iface_indx}" on; then
-            echo_red "Failed attach $host_adapter with index $iface_indx"
+            echo_error "Failed attach $host_adapter with index $iface_indx"
             return 1
         fi
 
         local vm_info_json_after_add=""
 
         if ! vm_info_json_after_add="$(virtualbox_get_vm_info_json "$vm_name")"; then
-            echo_red "Cannot get vm info: $vm_info_json_after_add"
+            echo_error "Cannot get vm info: $vm_info_json_after_add"
             return 1
         fi
 
         if ! host_mac="$(jq_get_key_or_empty "$vm_info_json_after_add" ".ifaces.host.mac" "false")"; then
-            echo_red "Cannot extract hostonly mac: $host_mac"
+            echo_error "Cannot extract hostonly mac"
             return 1
         fi
     fi
@@ -2957,34 +2957,34 @@ function cmd_virtualbox_init_vm_run() {
     if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
         local opticals_str=""
         if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-            echo_red "Cannot get opticals from vm info: $vm_info_json"
+            echo_error "Cannot get opticals from vm info"
             return 1
         fi
 
         local -a opticals_to_unmount=()
         IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
         
-        echo_green "Prepare vsio..."
+        echo_info "Prepare vsio..."
 
         local viso_file=""
         if ! viso_file="$(virtualbox_prepare_viso "$vm_name" "$nat_mac" "$host_mac" "$attach_address" "$ssh_key_file")"; then
-            echo_red "Cannot prepare viso: $viso_file"
+            echo_error "Cannot prepare viso: $viso_file"
             return 1
         fi
 
-        echo_green "Unmount opticals '${opticals_to_unmount[*]}' ..."
+        echo_info "Unmount opticals '${opticals_to_unmount[*]}' ..."
 
         if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
             return 1
         fi
 
-        echo_green "Mount init viso..."
+        echo_info "Mount init viso..."
 
         if ! virtualbox_mount_opticals "$vm_name" "$viso_file"; then
             return 1
         fi
 
-        echo_green "Start vm..."
+        echo_info "Start vm..."
 
         if ! virtualbox_start_vm "$vm_name"; then
             return 1
@@ -3067,14 +3067,14 @@ PHASES_WITH_INDEX["upgrade_pkgs"]="01"
 
 # shellcheck disable=SC2329
 function phase_upgrade_pkgs_run() {
-    echo_green "Upgrade packages..."
+    echo_info "Upgrade packages..."
 
     if ! upgrade_all_packages; then
-        echo_red "Packages not upgraded"
+        echo_error "Packages not upgraded"
         return 1
     fi
 
-    echo_green "All packages upgraded!"
+    echo_info "All packages upgraded!"
 }
 
 # shellcheck disable=SC2329
@@ -3105,11 +3105,11 @@ function phase_base_pkgs_run() {
     fi
 
     if ! "$update_fun"; then
-        echo_red "Cannot run update"
+        echo_error "Cannot run update"
         return 1
     fi
 
-    echo_green "Install base packages..."
+    echo_info "Install base packages..."
 
     local packages=(
         "bash-completion" 
@@ -3136,16 +3136,16 @@ function phase_base_pkgs_run() {
     )
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Base packages already installed!"
+        echo_info "Base packages already installed!"
         return 0
     fi
     
     if ! install_packages "${packages[@]}"; then
-        echo_red "Base packages not installed!"
+        echo_error "Base packages not installed!"
         return 1
     fi
 
-    echo_green "Base packages installed!"
+    echo_info "Base packages installed!"
 }
 
 # shellcheck disable=SC2329
@@ -3170,7 +3170,7 @@ PHASES_WITH_INDEX["remove_upgrade"]="03"
 
 # shellcheck disable=SC2329
 function phase_remove_upgrade_run() {
-    echo_green "Remove unattended upgrades..."
+    echo_info "Remove unattended upgrades..."
 
     if ! remove_packages "unattended-upgrades"; then
         return 1 
@@ -3178,19 +3178,19 @@ function phase_remove_upgrade_run() {
 
     local -a timers=("apt-daily.timer" "apt-daily-upgrade.timer")
 
-    echo_green "Stop and disable timers ${timers[*]} ..."
+    echo_info "Stop and disable timers ${timers[*]} ..."
     
     if ! systemctl disable "${timers[@]}"; then 
-        echo_red "Cannot disable timers"
+        echo_error "Cannot disable timers"
         return 1
     fi
 
     if ! systemctl stop "${timers[@]}"; then 
-        echo_red "Cannot stop timers"
+        echo_error "Cannot stop timers"
         return 1
     fi
 
-    echo_green "Unattended upgrades removed!"
+    echo_info "Unattended upgrades removed!"
     return 0
 }
 
@@ -3255,7 +3255,7 @@ function phase_users_run() {
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_green "Add users..."
+    echo_info "Add users..."
 
     local cur_index=0
 
@@ -3267,17 +3267,17 @@ function phase_users_run() {
     local -A users_keys=()
 
     while true; do
-        echo_green "Try to extract user from envs with index ${cur_index} ..."
+        echo_info "Try to extract user from envs with index ${cur_index} ..."
         local username_env="ADD_USER_${cur_index}_NAME"
         # shellcheck disable=SC2155
         local username="$(get_env_value_or_default "$username_env" "")"
         if [ -z "$username" ]; then
-            echo_green "No get value with index $cur_index Done getting users from envs"
+            echo_info "No get value with index $cur_index Done getting users from envs"
             break
         fi
 
         if [[ -v users["$username"] ]]; then
-            echo_red "$username already present!"
+            echo_error "$username already present!"
             return 1
         fi
 
@@ -3311,7 +3311,7 @@ function phase_users_run() {
         ((cur_index++))
     done
 
-    echo_green "Try to extract users from args..."
+    echo_info "Try to extract users from args..."
     local cur_user_add_arg=0
     while [[ $# -gt 0 ]]; do
         if [[ "${1-}" != "--add-user" ]]; then
@@ -3367,7 +3367,7 @@ function phase_users_run() {
 
                 *)
                     phase_users_help
-                    echo_red "Invalid argument for --add-user $1"
+                    echo_error "Invalid argument for --add-user $1"
                     return 1
                 ;;
             esac
@@ -3376,29 +3376,29 @@ function phase_users_run() {
         done
 
         if [ -z "$arg_username" ]; then
-            echo_red "Username not found for $cur_user_add_arg --add-user argument"
+            echo_error "Username not found for $cur_user_add_arg --add-user argument"
             return 1
         fi
 
         if [[ "$arg_username" == "--" ]]; then
-            echo_red "Username for $cur_user_add_arg --add-user argument is incorrect: --"
+            echo_error "Username for $cur_user_add_arg --add-user argument is incorrect: --"
             return 1  
         fi
 
         if [[ -v users["$arg_username"] ]]; then
-            echo_red "$arg_username already present!"
+            echo_error "$arg_username already present!"
             return 1
         fi
 
         if [[ "$arg_ssh_key" == "--" || "$arg_ssh_key" == "--"* ]]; then
-            echo_red "ssh key path $arg_ssh_key for $cur_user_add_arg --add-user argument is incorrect: -- or start from --"
+            echo_error "ssh key path $arg_ssh_key for $cur_user_add_arg --add-user argument is incorrect: -- or start from --"
             return 1
         fi
 
         if [[ "$arg_pass" == "--" || "$arg_pass" == "--"* ]]; then
-            echo_yellow "User password for $cur_user_add_arg --add-user argument equal -- or start from --"
+            echo_warn "User password for $cur_user_add_arg --add-user argument equal -- or start from --"
             if ! ask_user "It is correct password?" "$CONST_ASK_VAL"; then
-                echo_red "Disallow continue with password"
+                echo_error "Disallow continue with password"
                 return 1
             fi
         fi
@@ -3414,28 +3414,28 @@ function phase_users_run() {
     done
 
     if [[ "${#users[@]}" == "0" ]]; then
-        echo_green "Not found users to add. Skip"
+        echo_info "Not found users to add. Skip"
         return 0
     fi
 
     local has_invalid_keys=""
     for key_user in "${!users_keys[@]}"; do
         local key="${users_keys["$key_user"]}"
-        echo_green "Verify key '$key' for user $key_user"
+        echo_info "Verify key '$key' for user $key_user"
         local err_ssh_key=""
         if ! err_ssh_key="$(users_validate_pub_key "$key")"; then
-            echo_red "ssh pub key file $key for user $key_user invalid: $err_ssh_key"
+            echo_error "ssh pub key file $key for user $key_user invalid: $err_ssh_key"
             has_invalid_keys="true"
         fi
     done
 
     if [[ "$has_invalid_keys" == "true" ]]; then
-        echo_red "^^^ Has invalid ssh pub keys"
+        echo_error "^^^ Has invalid ssh pub keys"
         return 1
     fi
 
     for add_user in "${!users[@]}"; do
-        echo_green "Try to add user $add_user ..."
+        echo_info "Try to add user $add_user ..."
 
         local user_no_pass="${users_no_pass["$add_user"]}"
         local user_pass="${users_passwords["$add_user"]}"
@@ -3448,25 +3448,25 @@ function phase_users_run() {
         fi
 
         if [[ "$user_should_sudo" == "$CONST_SHOULD_SUDO" ]]; then
-            echo_green "Add user $add_user to sudo group..."
+            echo_info "Add user $add_user to sudo group..."
             if ! add_user_to_group "$add_user" "sudo"; then
                 return 1
             fi
 
-            echo_green "Add user $add_user to sudoers..."
+            echo_info "Add user $add_user to sudoers..."
             if ! add_user_to_sudoers "$add_user" "$user_sudo_no_pass" "$not_ask"; then
                 return 1
             fi
         fi
 
         if [ -n "$user_ssh_key" ]; then
-            echo_green "Add public keys for $add_user from $user_ssh_key ..."
+            echo_info "Add public keys for $add_user from $user_ssh_key ..."
             if ! add_pubkey_for_user "$add_user" "$user_ssh_key" "$not_ask"; then
                 return 1
             fi
         fi
 
-        echo_green "User $add_user added!"
+        echo_info "User $add_user added!"
     done
 }
 
@@ -3517,23 +3517,23 @@ function phase_hostname_run() {
     local new_hostname=""
 
     if ! new_hostname="$(extract_argument "--new-hostname" "NEW_HOSTNAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
-        echo_red "New hostname: $new_hostname"
+        echo_error "New hostname: $new_hostname"
         return 1
     fi
 
-    echo_green "Prepare hostname..."
+    echo_info "Prepare hostname..."
 
     local cur_hostanme=""
     if ! cur_hostanme="$(hostnamectl hostname)"; then
-        echo_red "Cannot get current host name!"
+        echo_error "Cannot get current host name!"
         return 1
     fi
 
     if [[ "$new_hostname" == "$cur_hostanme" ]]; then
-        echo_green "Hostname already set to $new_hostname!"
+        echo_info "Hostname already set to $new_hostname!"
     else
         if ! hostnamectl set-hostname "$new_hostname"; then
-            echo_red "Cannot set hostname to $new_hostname!"
+            echo_error "Cannot set hostname to $new_hostname!"
             return 1
         fi
     fi
@@ -3543,9 +3543,9 @@ function phase_hostname_run() {
     local hostname_hosts="127.0.1.1${tab}${new_hostname}"
 
     if grep -q "$hostname_hosts" "$hosts_file"; then
-        echo_green "$new_hostname added to $hosts_file for alias to 127.0.1.1"
+        echo_info "$new_hostname added to $hosts_file for alias to 127.0.1.1"
     else
-        echo_green "Prepare hostname. Add new hostname for alias 127.0.1.1 to ${hosts_file} ..."
+        echo_info "Prepare hostname. Add new hostname for alias 127.0.1.1 to ${hosts_file} ..."
 
         {
             echo ""
@@ -3554,12 +3554,12 @@ function phase_hostname_run() {
             echo ""
         } >> "$hosts_file"
 
-        echo_green "--- New $hosts_file ---"
+        echo_info "--- New $hosts_file ---"
         cat "$hosts_file"
-        echo_green "--- End file ---"
+        echo_info "--- End file ---"
     fi
 
-    echo_green "Hostname changed!"
+    echo_info "Hostname changed!"
 
     return 0
 }
@@ -3621,7 +3621,7 @@ function sshd_initd_restart() {
 function sshd_restart() {
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
-        echo_red "Cannot resolve system service engine"
+        echo_error "Cannot resolve system service engine"
         return 1
     fi
 
@@ -3629,12 +3629,12 @@ function sshd_restart() {
     if [[ -v _SSH_RESTART_FUNC["$service_engine"] ]]; then
         restart_fun="${_SSH_RESTART_FUNC["$service_engine"]}"
     else
-        echo_red "Restart sshd func not found for service engine '$service_engine'"
+        echo_error "Restart sshd func not found for service engine '$service_engine'"
         return 1
     fi
 
     if ! declare -F "$restart_fun" > /dev/null; then
-        echo_red "Internal error: '$restart_fun' func not declared!"
+        echo_error "Internal error: '$restart_fun' func not declared!"
         return 1
     fi
 
@@ -3650,37 +3650,37 @@ function sshd_fix_privilege_separation() {
     local run_dir="/run/sshd"
 
     if ! mkdir -p "$run_dir"; then 
-        echo_red "Cannot create $run_dir dir"
+        echo_error "Cannot create $run_dir dir"
         return 1
     fi
 
     if ! chmod 0755 "$run_dir"; then
-        echo_red "Cannot chmod $run_dir dir"
+        echo_error "Cannot chmod $run_dir dir"
         return 1
     fi
 
     local tmpfiles_dir="/etc/tmpfiles.d/"
 
     if ! mkdir -p "$tmpfiles_dir"; then 
-        echo_red "Cannot create $tmpfiles_dir dir"
+        echo_error "Cannot create $tmpfiles_dir dir"
         return 1
     fi
 
     echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
 
-    echo_green "Restart sshd after fix privilege separation..."
+    echo_info "Restart sshd after fix privilege separation..."
     if ! sshd_restart; then
-        echo_red "!!! SSHD was not restarted !!!"
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
-    echo_green "Verify sshd config after fix privilege separation..."
+    echo_info "Verify sshd config after fix privilege separation..."
     if ! sshd -t; then
-        echo_yellow "Test sshd config failed after fix privilege separation. Sleep 5 seconds before next attempt"
+        echo_warn "Test sshd config failed after fix privilege separation. Sleep 5 seconds before next attempt"
         sleep 5
         
         if ! sshd -t; then
-            echo_red "Test sshd config after fix privilege separation after second attempt!"
+            echo_error "Test sshd config after fix privilege separation after second attempt!"
             return 1
         fi
     fi
@@ -3690,32 +3690,32 @@ function sshd_fix_privilege_separation() {
 
 # shellcheck disable=SC2329
 function sshd_disable_systemd_socket() {
-    echo_green "Enable sshd service..."
+    echo_info "Enable sshd service..."
     if ! systemctl enable --now ssh.service; then
-        echo_red "Cannot enable ssh.service"
+        echo_error "Cannot enable ssh.service"
         return 1
     fi
 
-    echo_green "SSHD service enabled! Restart..."
+    echo_info "SSHD service enabled! Restart..."
 
     if ! sshd_restart; then
-        echo_red "!!! SSHD was not restarted !!!"
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
-    echo_green "Stop sshd systemd socket.."
+    echo_info "Stop sshd systemd socket.."
     if ! systemctl stop ssh.socket; then
-        echo_red "Cannot stop ssh.socket"
+        echo_error "Cannot stop ssh.socket"
         return 1
     fi
 
-    echo_green "Disable sshd systemd socket..."
+    echo_info "Disable sshd systemd socket..."
     if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disable ssh.socket"
+        echo_error "Cannot disable ssh.socket"
         return 1
     fi
 
-    echo_green "Create missing privilege separation directory..."
+    echo_info "Create missing privilege separation directory..."
     if ! sshd_fix_privilege_separation; then
         return 1 
     fi
@@ -3757,19 +3757,19 @@ function sshd_verify_and_restart() {
 
     local conf_for_check=""
     if ! conf_for_check="$("$sshd_bin" -T)"; then
-        echo_red "Cannot get sshd config from sshd!"
+        echo_error "Cannot get sshd config from sshd!"
         return 1 
     fi
 
     if ! grep -qi "$setting" <<<"$conf_for_check"; then
-        echo_red "Cannot found setting '$setting' in sshd config!"
+        echo_error "Cannot found setting '$setting' in sshd config!"
         return 1 
     fi
 
-    echo_green "SSHD config is valid! Restart..."
+    echo_info "SSHD config is valid! Restart..."
 
     if ! sshd_restart; then
-        echo_red "!!! SSHD was not restarted !!!"
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
@@ -3786,26 +3786,26 @@ function sshd_apply_setting() {
     fi
 
     if ! grep -qPzo "$setting" "$conf_file"; then
-        echo_yellow "Change to new sshd port setting to '$setting'"
+        echo_warn "Change to new sshd port setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
 
     if ! chmod 600 "$conf_file"; then
-        echo_yellow "Cannot change mode for config file $conf_file"
+        echo_warn "Cannot change mode for config file $conf_file"
     else
         if ! chown "root:root" "$conf_file"; then
-            echo_yellow "Cannot change owner to root for config file $conf_file"
+            echo_warn "Cannot change owner to root for config file $conf_file"
         fi
     fi
 
     if ! sshd_verify_and_restart "$setting"; then
-        echo_yellow "Remove config $conf_file file and restart..."
+        echo_warn "Remove config $conf_file file and restart..."
         if ! delete_file "$conf_file"; then
-            echo_red "Cannot remove port file config $conf_file"
+            echo_error "Cannot remove port file config $conf_file"
         fi
 
         if ! sshd_restart; then
-            echo_red "!!! SSHD was not restarted !!!"
+            echo_error "!!! SSHD was not restarted !!!"
         fi
 
         return 1
@@ -3865,16 +3865,16 @@ function sshd_add_bind_address() {
         return 1
     fi
 
-    echo_green "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
+    echo_info "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
 
     if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE"; then
         echo_error "Cannot apply sshd listing setting:${CONST_NEW_LINE}${listen_setting_to_set}"
         return 1
     fi
 
-    echo_green "Prepare sshd. Listen address applied!"
+    echo_info "Prepare sshd. Listen address applied!"
     cat "$CONST_LISTEN_FILE" || true
-    echo_green "Please verify that ssh available"
+    echo_info "Please verify that ssh available"
 
     if ! ask_user "SSH available? Continue?" "$not_ask"; then
         echo_error "Disallow continue"
@@ -3890,23 +3890,23 @@ function phase_sshd_run() {
     local bind_address=""
 
     if ! port="$(extract_argument "--sshd-port" "SSHD_PORT" "$CONST_NOT_FLAG" "validate_arg_number" "$@")"; then
-        echo_red "Incorrect sshd port"
+        echo_error "Incorrect sshd port"
         return 1
     fi
 
     if ! bind_address="$(extract_argument "--sshd-listen-address" "SSHD_LISTEN_ADDRESS" "$CONST_NOT_FLAG" "validate_arg_ipv4_optional" "$@")"; then
-        echo_red "Incorrect bind listen sshd address"
+        echo_error "Incorrect bind listen sshd address"
         return 1
     fi
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_green "Prepare sshd..."
+    echo_info "Prepare sshd..."
 
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
-        echo_red "Cannot resolve system service engine"
+        echo_error "Cannot resolve system service engine"
         return 1
     fi
 
@@ -3916,21 +3916,21 @@ function phase_sshd_run() {
         fi
     fi
 
-    echo_green "Prepare sshd. Apply new port..."
+    echo_info "Prepare sshd. Apply new port..."
 
     local port_setting="Port $port"
     local port_file="${CONST_BASE_SSHD_CONFIG}/99_z_port.conf"
 
     if ! sshd_apply_setting "$port_setting" "$port_file"; then
-        echo_red "Cannot apply sshd port setting '$port_setting'"
+        echo_error "Cannot apply sshd port setting '$port_setting'"
         return 1
     fi
 
-    echo_green "Prepare sshd. New port apply!"
-    echo_green "Please verify that ssh available on port $port"
+    echo_info "Prepare sshd. New port apply!"
+    echo_info "Please verify that ssh available on port $port"
 
     if ! ask_user "SSH available? Continue?" "$not_ask"; then
-        echo_red "Disallow continue"
+        echo_error "Disallow continue"
         return 1
     fi
 
@@ -3938,19 +3938,19 @@ function phase_sshd_run() {
         return 1
     fi
 
-    echo_green "Prepare sshd. Disable root login..."
+    echo_info "Prepare sshd. Disable root login..."
 
     local auth_present=""
     # shellcheck disable=SC2044
     for auth_file in $(find /home -name "authorized_keys"); do 
         if [ -s "$auth_file" ]; then
-            echo_green "Found not empty authorized_keys $auth_file"
+            echo_info "Found not empty authorized_keys $auth_file"
             auth_present="true"
         fi 
     done
 
     if [ -z "$auth_present" ]; then
-        echo_red "Not found any non zero authorized_keys files. Cannot continue"
+        echo_error "Not found any non zero authorized_keys files. Cannot continue"
         return 1
     fi
 
@@ -3958,35 +3958,35 @@ function phase_sshd_run() {
     local root_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_root.conf"
 
     if ! sshd_apply_setting "$root_setting" "$root_file"; then
-        echo_red "Cannot disable root login '$root_setting'"
+        echo_error "Cannot disable root login '$root_setting'"
         return 1
     fi
 
-    echo_green "Prepare sshd. Root login disabled!"
-    echo_green "Please verify that ssh not available with root"
+    echo_info "Prepare sshd. Root login disabled!"
+    echo_info "Please verify that ssh not available with root"
 
     if ! ask_user "SSH not available with root? Continue?" "$not_ask"; then
-        echo_red "Disallow continue"
+        echo_error "Disallow continue"
         return 1
     fi
 
-    echo_green "Prepare sshd. Disable password auth..."
+    echo_info "Prepare sshd. Disable password auth..."
 
     local pass_setting="PasswordAuthentication no"
     local pass_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_pass_auth.conf"
 
     if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
-        echo_red "Cannot apply sshd port setting '$pass_setting'"
+        echo_error "Cannot apply sshd port setting '$pass_setting'"
         return 1
     fi
 
-    echo_green "Prepare sshd. Password auth disabled!"
-    echo_green "Please verify that ssh not available with password auth"
-    echo_green "Can be verify with command:" 
-    echo_green "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
+    echo_info "Prepare sshd. Password auth disabled!"
+    echo_info "Please verify that ssh not available with password auth"
+    echo_info "Can be verify with command:" 
+    echo_info "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
 
     if ! ask_user "SSH password auth not available? Continue?" "$not_ask"; then
-        echo_red "Disallow continue"
+        echo_error "Disallow continue"
         return 1
     fi
 
@@ -4037,28 +4037,28 @@ function install_docker_via_apt() {
     done
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Docker already installed!"
+        echo_info "Docker already installed!"
         return 0
     fi
 
-    echo_green "Add Docker's official GPG key..."
+    echo_info "Add Docker's official GPG key..."
 
     if ! install -m 0755 -d /etc/apt/keyrings; then
-        echo_red "Keyrings not installed"
+        echo_error "Keyrings not installed"
         return 0
     fi
    
     if ! download_url "https://download.docker.com/linux/ubuntu/gpg" "/etc/apt/keyrings/docker.asc"; then
-        echo_red "GPG keys not downloaded"
+        echo_error "GPG keys not downloaded"
         return 0
     fi
 
     if ! chmod a+r /etc/apt/keyrings/docker.asc; then
-        echo_red "Cannot chmod GPG keys"
+        echo_error "Cannot chmod GPG keys"
         return 1
     fi
 
-    echo_green "Add the docker repository to apt sources..."
+    echo_info "Add the docker repository to apt sources..."
 
 # shellcheck disable=SC1091
     tee /etc/apt/sources.list.d/docker.sources <<EOF
@@ -4070,10 +4070,10 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
-    echo_green "Install docker packages..."
+    echo_info "Install docker packages..."
 
     if ! install_packages "${packages[@]}"; then
-        echo_red "Docker not installed!"
+        echo_error "Docker not installed!"
         return 1
     fi
 
@@ -4094,12 +4094,12 @@ function install_docker_via_apk() {
     done
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Docker already installed!"
+        echo_info "Docker already installed!"
         return 0
     fi
 
     if ! install_packages "${packages[@]}"; then
-        echo_red "Docker not installed!"
+        echo_error "Docker not installed!"
         return 1
     fi
 
@@ -4113,7 +4113,7 @@ function install_docker_via_apk() {
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
-    echo_green "Install docker..."
+    echo_info "Install docker..."
 
     local additional_packages_str=""
     if ! additional_packages_str="$(extract_argument "--docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
@@ -4146,7 +4146,7 @@ function phase_docker_run() {
         return 1
     fi 
 
-    echo_green "Docker installed!"
+    echo_info "Docker installed!"
 }
 
 # shellcheck disable=SC2329
@@ -4175,13 +4175,13 @@ PHASES_WITH_INDEX["atop"]="10"
 
 # shellcheck disable=SC2329
 function phase_atop_run() {
-    echo_green "Disable atop..."
+    echo_info "Disable atop..."
 
     if ! disable_and_stop_services "atop.service" "atop-rotate.timer" "atopacct.service"; then
         return 1
     fi
 
-    echo_green "Atop disabled!"
+    echo_info "Atop disabled!"
 
     return 0 
 }
@@ -4216,45 +4216,45 @@ function gitlab_prepare_runner_service() {
 
     if systemctl is-active "$service_name"; then
         if ! exec_str="$(systemctl show "$service_name" --no-pager -p ExecStart)"; then
-            echo_red "Cannot get exec string for gitlab service"
+            echo_error "Cannot get exec string for gitlab service"
             return 1
         fi
     else 
-        echo_green "gitlab service not active!"
+        echo_info "gitlab service not active!"
     fi
 
     if [ -z "$exec_str" ]; then
-        echo_red "exec string for gitlab service is empty"
+        echo_error "exec string for gitlab service is empty"
         return 1
     fi
 
     if grep -q "user $username" <<<"$exec_str"; then
-        echo_green "Runner $service_name already will run with user!"
+        echo_info "Runner $service_name already will run with user!"
         if ! systemctl daemon-reload; then
-            echo_red "Cannot run daemon reload!"
+            echo_error "Cannot run daemon reload!"
             return 1
         fi
         return 0
     fi
 
-    echo_green "Gitlab service probably has not user: ${exec_str}"
+    echo_info "Gitlab service probably has not user: ${exec_str}"
 
     if ! ask_user "Do you want to reinstall service?" "$not_ask"; then
-        echo_red "Disallow reinstall runner service!"
+        echo_error "Disallow reinstall runner service!"
         return 1
     fi
 
-    echo_green "Start reinstall gitlab service..."
+    echo_info "Start reinstall gitlab service..."
 
     if ! sudo systemctl stop "$service_name"; then
-        echo_red "Cannot stop gitlab runner service!"
+        echo_error "Cannot stop gitlab runner service!"
         return 1
     fi
 
-    echo_green "Start uninstall gitlab service..."
+    echo_info "Start uninstall gitlab service..."
 
     if ! gitlab-runner uninstall; then
-        echo_red "Cannot uninstall gitlab runner service!"
+        echo_error "Cannot uninstall gitlab runner service!"
         return 1
     fi
 
@@ -4267,45 +4267,45 @@ function gitlab_prepare_runner_service() {
         "/home/$username"
     )
 
-    echo_green "Start install gitlab service..."
+    echo_info "Start install gitlab service..."
 
     if ! gitlab-runner install "${install_args[@]}"; then
-        echo_red "Cannot install gitlab runner service!"
+        echo_error "Cannot install gitlab runner service!"
         return 1
     fi
 
-    echo_green "Reload systemd..."
+    echo_info "Reload systemd..."
 
     if ! systemctl daemon-reload; then
-        echo_red "Cannot run daemon reload!"
+        echo_error "Cannot run daemon reload!"
         return 1
     fi
 
-    echo_green "Start gitlab service..."
+    echo_info "Start gitlab service..."
 
     if ! systemctl start "$service_name"; then
-        echo_red "Cannot run gitlab service!"
+        echo_error "Cannot run gitlab service!"
         return 1
     fi
 
-    echo_green "Enable gitlab service..."
+    echo_info "Enable gitlab service..."
 
     if ! systemctl enable "$service_name"; then
-        echo_red "Cannot enable gitlab service!"
+        echo_error "Cannot enable gitlab service!"
         return 1
     fi
     
-    echo_green "Gitlab service reinstalled with new user!"
+    echo_info "Gitlab service reinstalled with new user!"
 }
 
 # shellcheck disable=SC2329
 function phase_gitlab_run() {
-    echo_green "Install gitlab runner..."
+    echo_info "Install gitlab runner..."
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_green "Create user for runner..."
+    echo_info "Create user for runner..."
 
     local username="gitlab-runner"
     
@@ -4315,14 +4315,13 @@ function phase_gitlab_run() {
 
     local user_home=""
     if ! user_home="$(get_user_home "$username")"; then 
-        echo_red "$user_home"
         return 1
     fi
 
     local bash_logout_file="${user_home}/.bash_logout"
 
     if [ -f "$bash_logout_file" ]; then
-        echo_green "Remove $bash_logout_file ..."
+        echo_info "Remove $bash_logout_file ..."
         if ! delete_file "$bash_logout_file"; then
             return 1
         fi
@@ -4331,7 +4330,7 @@ function phase_gitlab_run() {
     local package="gitlab-runner"
 
     if ! check_packages_installed "$package"; then
-        echo_green "Prepare gitlab apt repository..."
+        echo_info "Prepare gitlab apt repository..."
 
         local url="https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh"
 
@@ -4339,37 +4338,37 @@ function phase_gitlab_run() {
             return 1
         fi
 
-        echo_green "Install gitlab runner package ${package}..."
+        echo_info "Install gitlab runner package ${package}..."
 
         if ! install_packages "$package"; then
-            echo_red "gitlab runner not installed!"
+            echo_error "gitlab runner not installed!"
             return 1
         fi
     else
-        echo_green "gitlab runner already installed!"
+        echo_info "gitlab runner already installed!"
     fi
 
-    echo_green "Allow gitlab user for run docker..."
+    echo_info "Allow gitlab user for run docker..."
 
     if ! add_user_to_group "$username" "docker"; then
         return 1
     fi
 
-    echo_green "Restart gitlab runner service..."
+    echo_info "Restart gitlab runner service..."
 
     if ! gitlab_prepare_runner_service "$CONST_GITLAB_SERVICE_NAME" "$username" "$not_ask"; then
         return 1
     fi
 
     if systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
-        echo_green "Restart gitlab runner service..."
+        echo_info "Restart gitlab runner service..."
         if ! systemctl restart gitlab-runner.service; then
-            echo_red "Cannot restart gitlab runner service!"
+            echo_error "Cannot restart gitlab runner service!"
             return 1
         fi
     fi
 
-    echo_green "gitlab runner installed!"
+    echo_info "gitlab runner installed!"
 }
 
 # shellcheck disable=SC2329
@@ -4394,11 +4393,11 @@ PHASES_WITH_INDEX["gitlab_register"]="81"
 
 # shellcheck disable=SC2329
 function phase_gitlab_register_run() {
-    echo_green "Gitlab register runner..."
+    echo_info "Gitlab register runner..."
     if ! cmd_gitlab_register_runner_run "$@"; then
         return 1
     fi
-    echo_green "Gitlab runner registered!"
+    echo_info "Gitlab runner registered!"
     return 0
 }
 
@@ -4421,10 +4420,10 @@ PHASES_WITH_INDEX["werf"]="82"
 
 # shellcheck disable=SC2329
 function phase_werf_run() {
-    echo_green "Install werf..."
+    echo_info "Install werf..."
 
     if command -v werf &> /dev/null; then
-        echo_green "Werf already installed!"
+        echo_info "Werf already installed!"
         return 0
     fi
 
@@ -4437,7 +4436,7 @@ function phase_werf_run() {
         return 1
     fi
 
-    echo_green "Werf installed!"
+    echo_info "Werf installed!"
 }
 
 # shellcheck disable=SC2329
@@ -4455,54 +4454,6 @@ function phase_werf_disable_env() {
 
 # End vps-init/src/include/phase_82_werf.sh
 
-# Start vps-init/src/include/phase_83_flint.sh
-
-# shellcheck disable=SC2034
-PHASES_WITH_INDEX["flint"]="83"
-
-# shellcheck disable=SC2329
-function phase_flint_run() {
-    echo_green "Install flint..."
-
-    if command -v flint &> /dev/null; then
-        echo "Flint already installed!"
-        return 0
-    fi
-
-    local not_ask=""
-    not_ask="$(parse_not_ask "$@")"
-
-    local url="https://tuf.flint.flant.ru/install.sh"
-
-    local script_args=(
-        "--version"
-        "2"
-        "--channel"
-        "stable"
-    )
-
-    if ! download_script_and_run "$url" "$not_ask" "${script_args[@]}"; then
-        return 1
-    fi
-
-    echo_green "Flint installed!"
-}
-
-# shellcheck disable=SC2329
-function phase_flint_help() {
-    echo -n "
-    Install flint.
-    No options.
-"
-}
-
-# shellcheck disable=SC2329
-function phase_flint_disable_env() {
-    echo -n "DISABLE_FLINT"
-}
-
-# End vps-init/src/include/phase_83_flint.sh
-
 # Start vps-init/src/include/phase_98_aliases.sh
 
 # shellcheck disable=SC2034
@@ -4510,7 +4461,7 @@ PHASES_WITH_INDEX["aliases"]="98"
 
 # shellcheck disable=SC2329
 function phase_aliases_run() {
-    echo_green "Add aliases..."
+    echo_info "Add aliases..."
 
     local content=""
     content=$(cat <<EOF
@@ -4521,7 +4472,7 @@ EOF
 
     echo "$content" > /etc/profile.d/099-additional-aliases.sh
 
-    echo_green "Aliases added!"
+    echo_info "Aliases added!"
 }
 
 # shellcheck disable=SC2329
