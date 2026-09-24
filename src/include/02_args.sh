@@ -107,13 +107,13 @@ function extract_argument() {
     fi
 
     if ! declare -F "$validator" > /dev/null; then
-        echo_red "Internal error: '$validator' func not declared!"
+        echo_error "Internal error: '$validator' func not declared!"
         return 1
     fi
 
     local prepared
     if ! prepared="$($validator "$val" "$arg_passed")"; then
-        echo_red "Incorrect: $prepared"
+        echo_error "Incorrect: $prepared"
         return 1
     fi
 

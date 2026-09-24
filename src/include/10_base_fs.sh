@@ -5,11 +5,11 @@ set -Eeuo pipefail
 # shellcheck disable=SC2329
 function delete_file() {
     if ! rm "$1"; then
-        echo_red "$1 not deleted!"
+        echo_error "$1 not deleted!"
         return 1
     fi
 
-    echo_green "$1 deleted"
+    echo_info "$1 deleted"
 }
 
 # shellcheck disable=SC2329
@@ -51,12 +51,12 @@ function replace_file() {
     fi
 
     if [[ "$ret_diff" == "255" ]]; then
-        echo_red "Internal diff error"
+        echo_error "Internal diff error"
         return 1
     fi
 
     if [[ "$ret_diff" == "0" ]]; then
-        echo_green "No diff. Skip"
+        echo_info "No diff. Skip"
         return 0
     fi
     
@@ -65,24 +65,24 @@ function replace_file() {
 
     if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
         if [[ "$remove_src" == "true" ]]; then
-            echo_green "$title delete source $src"
+            echo_info "$title delete source $src"
             if ! rm "$src"; then
-                echo_yellow "$title source file $src not deleted!"
+                echo_warn "$title source file $src not deleted!"
             fi
         fi
-        echo_red "Disallow replace $dest"
+        echo_error "Disallow replace $dest"
         return 1
     fi
 
     if ! cp "$src" "$dest"; then
-        echo_red "$title not replaced. Source $src not deleted"
+        echo_error "$title not replaced. Source $src not deleted"
         return 1
     fi
 
     if [[ "$remove_src" == "true" ]]; then
-        echo_green "$title delete source $src"
+        echo_info "$title delete source $src"
         if ! rm "$src"; then
-            echo_yellow "$title source file $src not deleted!"
+            echo_warn "$title source file $src not deleted!"
             return 0
         fi
     fi

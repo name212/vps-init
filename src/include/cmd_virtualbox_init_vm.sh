@@ -659,7 +659,7 @@ function virtualbox_unmount_cleanup_after_init() {
 
     local opticals_str=""
     if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-        echo_red "Cannot get opticals from vm info: $vm_info_json"
+        echo_red "Cannot get opticals from vm info"
         return 1
     fi
 
@@ -817,7 +817,7 @@ function cmd_virtualbox_init_vm_run() {
     local host_adapter=""
 
     if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "false")"; then
-        echo_red "Cannot extract NAT mac: $nat_mac"
+        echo_red "Cannot extract NAT mac"
         return 1
     fi
 
@@ -851,24 +851,24 @@ function cmd_virtualbox_init_vm_run() {
         fi
 
         if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
-            echo_red "Cannot extract NAT mac: $nat_mac"
+            echo_red "Cannot extract NAT mac"
             return 1
         fi
     fi
 
     if ! nat_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.indx" "true")"; then
-        echo_red "Cannot extract NAT index: $nat_index"
+        echo_red "Cannot extract NAT index"
         return 1
     fi
 
     if ! host_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.mac" "false")"; then
-        echo_red "Cannot extract hostonly mac: $host_mac"
+        echo_red "Cannot extract hostonly mac"
         return 1
     fi
 
     if [ -n "$host_mac" ]; then
         if ! host_adapter="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.adapter" "true")"; then
-            echo_red "Cannot extract hostonly adapter: $host_adapter"
+            echo_red "Cannot extract hostonly adapter"
             return 1
         fi
         
@@ -937,7 +937,7 @@ function cmd_virtualbox_init_vm_run() {
         fi
 
         if ! host_mac="$(jq_get_key_or_empty "$vm_info_json_after_add" ".ifaces.host.mac" "false")"; then
-            echo_red "Cannot extract hostonly mac: $host_mac"
+            echo_red "Cannot extract hostonly mac"
             return 1
         fi
     fi
@@ -952,7 +952,7 @@ function cmd_virtualbox_init_vm_run() {
     if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
         local opticals_str=""
         if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-            echo_red "Cannot get opticals from vm info: $vm_info_json"
+            echo_red "Cannot get opticals from vm info"
             return 1
         fi
 

@@ -52,7 +52,7 @@ function ask_user_choice() {
         fi
     done
 
-    echo_red "Incorrect answer '$answer'"
+    echo_error "Incorrect answer '$answer'"
 
     return 1
 }
@@ -75,7 +75,7 @@ function ask_user_raw() {
     local res=""
 
     if ! res="$($validator "$answer" "$CONST_ARG_PASSED")"; then
-        echo_red "Incorrect answer '$answer': $res"
+        echo_error "Incorrect answer '$answer': $res"
         return 1
     fi
 
