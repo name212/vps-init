@@ -45,7 +45,7 @@ function phase_run_func() {
     local phase_func="phase_${phase}_run"
 
     if ! declare -F "$phase_func" > /dev/null; then
-        echo_red "Internal error: '$phase_func' func not declared for phase $phase!"
+        echo_error "Internal error: '$phase_func' func not declared for phase $phase!"
         return 1
     fi
 
@@ -68,8 +68,8 @@ function usage() {
     echo "Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]"
     echo ""
 
-  echo_green "  Global parameters:" 2>&1
-  echo "
+    echo_green "  Global parameters:"
+    echo "
     --not-ask
       If passed will not ask user about actions.
       Env NOT_ASK=true for set.
@@ -88,7 +88,7 @@ function usage() {
   you can use disable env variable (see phase params).  
   
 "
-    echo_green  "Phases for run in order:" 2>&1
+    echo_green  "Phases for run in order:"
 
     for p in "$@"; do
         local help_fun="phase_${p}_help"
@@ -98,7 +98,7 @@ function usage() {
         fi
         echo ""
         echo -n "  Phase " 
-        echo_yellow "$p" 2>&1
+        echo_yellow "$p"
         "$help_fun"
         echo "    $(disable_help "$p")"
     done
@@ -106,7 +106,7 @@ function usage() {
     echo ""
 
     if [[ "${#COMMANDS_LIST[@]}" == "0" ]]; then
-        echo_yellow "Not any commands found for run." 2>&1
+        echo_yellow "Not any commands found for run."
         return 0
     fi
 
@@ -125,7 +125,7 @@ function usage() {
         fi
         echo ""
         echo -n "  Command " 
-        echo_yellow "$cm" 2>&1
+        echo_yellow "$cm"
         "$cmd_help_fun"
     done
 }
@@ -142,21 +142,21 @@ function run_passed_command() {
     done
 
     if [[ "$found" != "true" ]]; then
-        echo_red "Command '$cmd_name' not found!"
+        echo_error "Command '$cmd_name' not found!"
         return 1
     fi
 
     local run_func="cmd_${cmd_name}_run"
 
     if ! declare -F "$run_func" > /dev/null; then
-        echo_red "Run function $run_func for command $cmd_name not found!"
+        echo_error "Run function $run_func for command $cmd_name not found!"
         return 1
     fi
 
     shift
 
     if ! "$run_func" "$@"; then
-        echo_red "Command $cmd_name failed" 
+        echo_error "Command $cmd_name failed" 
         return 1
     fi
 
@@ -198,7 +198,7 @@ function main() {
         local phase_to_add="${ps#*:}"
         local func_err=""
         if ! func_err="$(phase_run_func "$phase_to_add")"; then
-            echo_red "$func_err"
+            echo_error "$func_err"
             exit 1
         fi 
         phases+=("$phase_to_add")
@@ -219,12 +219,12 @@ function main() {
     local config=""
 
     if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
-        echo_red "Passed config is incorrect: $config"
+        echo_error "Passed config is incorrect: $config"
         exit 1
     fi
 
     if [ -n "$config" ]; then
-        echo_green "Load config $config"
+        echo_info "Load config $config"
         # shellcheck disable=SC1090
         set -a && source "$config" && set +a
 
@@ -241,13 +241,13 @@ function main() {
 
             if [ -z "$got_phase_to_run" ]; then
                 usage "${phases[@]}"
-                echo_red "Phase not provided"
+                echo_error "Phase not provided"
                 exit 1
             fi
         
             if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
                 usage "${phases[@]}"
-                echo_red "Not found phase $got_phase_to_run"
+                echo_error "Not found phase $got_phase_to_run"
                 exit 1
             fi
 
@@ -259,7 +259,7 @@ function main() {
             local got_command_to_run="${2-}"
             if [ -z "$got_command_to_run" ]; then
                 usage "${phases[@]}"
-                echo_red "Command not provided"
+                echo_error "Command not provided"
                 exit 1
             fi
 
@@ -280,7 +280,7 @@ function main() {
             else 
                 tst_ret="$?"
             fi
-            echo_green "Ret code: $tst_ret"
+            echo_info "Ret code: $tst_ret"
             exit "$tst_ret"
     esac
 
@@ -291,7 +291,7 @@ function main() {
             if phase_is_not_disabled "$pp"; then
                 phases_to_run+=("$pp")
             else
-                echo_yellow "Phase $pp is skipped!"
+                echo_warn "Phase $pp is skipped!"
             fi
         done
     else
@@ -299,7 +299,7 @@ function main() {
     fi
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then
-        echo_red "No one phase to run found!"
+        echo_error "No one phase to run found!"
         exit 1
     fi
 
@@ -308,7 +308,7 @@ function main() {
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
     if ! ask_user "Start init '${old_hostname}'?" "$not_ask"; then
-        echo_red "Disallow start!"
+        echo_error "Disallow start!"
         exit 1
     fi
 
@@ -316,19 +316,19 @@ function main() {
         local phase_run=""
 
         if ! phase_run="$(phase_run_func "$ph")"; then
-            echo_red "$phase_run"
+            echo_error "$phase_run"
             exit 1
         fi 
 
         echo ""
-        echo_green "Run phase ${ph} with func '$phase_run'..."
+        echo_info "Run phase ${ph} with func '$phase_run'..."
 
         if ! "$phase_run" "$@"; then
-            echo_red "Phase $ph failed! Exit"
+            echo_error "Phase $ph failed! Exit"
             exit 1
         fi
         
-        echo_green "Phase ${ph} succeeded!"
+        echo_info "Phase ${ph} succeeded!"
         echo ""
     done
 
