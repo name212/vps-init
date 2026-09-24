@@ -355,7 +355,6 @@ function get_env_value_or_default() {
 function prepare_prompt_str() {
     local prompt="${1:-No prompt}"
     local yes_no_out="${2:-}"
-    echo_info "p: ${yes_no_out}"
     local yes_no=""
     if [ -n "$yes_no_out" ]; then
         # shellcheck disable=SC2059
