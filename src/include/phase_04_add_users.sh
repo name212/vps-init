@@ -46,7 +46,7 @@ function phase_users_run() {
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_green "Add users..."
+    echo_info "Add users..."
 
     local cur_index=0
 
@@ -58,17 +58,17 @@ function phase_users_run() {
     local -A users_keys=()
 
     while true; do
-        echo_green "Try to extract user from envs with index ${cur_index} ..."
+        echo_info "Try to extract user from envs with index ${cur_index} ..."
         local username_env="ADD_USER_${cur_index}_NAME"
         # shellcheck disable=SC2155
         local username="$(get_env_value_or_default "$username_env" "")"
         if [ -z "$username" ]; then
-            echo_green "No get value with index $cur_index Done getting users from envs"
+            echo_info "No get value with index $cur_index Done getting users from envs"
             break
         fi
 
         if [[ -v users["$username"] ]]; then
-            echo_red "$username already present!"
+            echo_error "$username already present!"
             return 1
         fi
 
@@ -102,7 +102,7 @@ function phase_users_run() {
         ((cur_index++))
     done
 
-    echo_green "Try to extract users from args..."
+    echo_info "Try to extract users from args..."
     local cur_user_add_arg=0
     while [[ $# -gt 0 ]]; do
         if [[ "${1-}" != "--add-user" ]]; then
@@ -158,7 +158,7 @@ function phase_users_run() {
 
                 *)
                     phase_users_help
-                    echo_red "Invalid argument for --add-user $1"
+                    echo_error "Invalid argument for --add-user $1"
                     return 1
                 ;;
             esac
@@ -167,29 +167,29 @@ function phase_users_run() {
         done
 
         if [ -z "$arg_username" ]; then
-            echo_red "Username not found for $cur_user_add_arg --add-user argument"
+            echo_error "Username not found for $cur_user_add_arg --add-user argument"
             return 1
         fi
 
         if [[ "$arg_username" == "--" ]]; then
-            echo_red "Username for $cur_user_add_arg --add-user argument is incorrect: --"
+            echo_error "Username for $cur_user_add_arg --add-user argument is incorrect: --"
             return 1  
         fi
 
         if [[ -v users["$arg_username"] ]]; then
-            echo_red "$arg_username already present!"
+            echo_error "$arg_username already present!"
             return 1
         fi
 
         if [[ "$arg_ssh_key" == "--" || "$arg_ssh_key" == "--"* ]]; then
-            echo_red "ssh key path $arg_ssh_key for $cur_user_add_arg --add-user argument is incorrect: -- or start from --"
+            echo_error "ssh key path $arg_ssh_key for $cur_user_add_arg --add-user argument is incorrect: -- or start from --"
             return 1
         fi
 
         if [[ "$arg_pass" == "--" || "$arg_pass" == "--"* ]]; then
-            echo_yellow "User password for $cur_user_add_arg --add-user argument equal -- or start from --"
+            echo_warn "User password for $cur_user_add_arg --add-user argument equal -- or start from --"
             if ! ask_user "It is correct password?" "$CONST_ASK_VAL"; then
-                echo_red "Disallow continue with password"
+                echo_error "Disallow continue with password"
                 return 1
             fi
         fi
@@ -205,28 +205,28 @@ function phase_users_run() {
     done
 
     if [[ "${#users[@]}" == "0" ]]; then
-        echo_green "Not found users to add. Skip"
+        echo_info "Not found users to add. Skip"
         return 0
     fi
 
     local has_invalid_keys=""
     for key_user in "${!users_keys[@]}"; do
         local key="${users_keys["$key_user"]}"
-        echo_green "Verify key '$key' for user $key_user"
+        echo_info "Verify key '$key' for user $key_user"
         local err_ssh_key=""
         if ! err_ssh_key="$(users_validate_pub_key "$key")"; then
-            echo_red "ssh pub key file $key for user $key_user invalid: $err_ssh_key"
+            echo_error "ssh pub key file $key for user $key_user invalid: $err_ssh_key"
             has_invalid_keys="true"
         fi
     done
 
     if [[ "$has_invalid_keys" == "true" ]]; then
-        echo_red "^^^ Has invalid ssh pub keys"
+        echo_error "^^^ Has invalid ssh pub keys"
         return 1
     fi
 
     for add_user in "${!users[@]}"; do
-        echo_green "Try to add user $add_user ..."
+        echo_info "Try to add user $add_user ..."
 
         local user_no_pass="${users_no_pass["$add_user"]}"
         local user_pass="${users_passwords["$add_user"]}"
@@ -239,25 +239,25 @@ function phase_users_run() {
         fi
 
         if [[ "$user_should_sudo" == "$CONST_SHOULD_SUDO" ]]; then
-            echo_green "Add user $add_user to sudo group..."
+            echo_info "Add user $add_user to sudo group..."
             if ! add_user_to_group "$add_user" "sudo"; then
                 return 1
             fi
 
-            echo_green "Add user $add_user to sudoers..."
+            echo_info "Add user $add_user to sudoers..."
             if ! add_user_to_sudoers "$add_user" "$user_sudo_no_pass" "$not_ask"; then
                 return 1
             fi
         fi
 
         if [ -n "$user_ssh_key" ]; then
-            echo_green "Add public keys for $add_user from $user_ssh_key ..."
+            echo_info "Add public keys for $add_user from $user_ssh_key ..."
             if ! add_pubkey_for_user "$add_user" "$user_ssh_key" "$not_ask"; then
                 return 1
             fi
         fi
 
-        echo_green "User $add_user added!"
+        echo_info "User $add_user added!"
     done
 }
 

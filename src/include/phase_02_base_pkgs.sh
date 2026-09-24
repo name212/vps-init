@@ -13,11 +13,11 @@ function phase_base_pkgs_run() {
     fi
 
     if ! "$update_fun"; then
-        echo_red "Cannot run update"
+        echo_error "Cannot run update"
         return 1
     fi
 
-    echo_green "Install base packages..."
+    echo_info "Install base packages..."
 
     local packages=(
         "bash-completion" 
@@ -44,16 +44,16 @@ function phase_base_pkgs_run() {
     )
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Base packages already installed!"
+        echo_info "Base packages already installed!"
         return 0
     fi
     
     if ! install_packages "${packages[@]}"; then
-        echo_red "Base packages not installed!"
+        echo_error "Base packages not installed!"
         return 1
     fi
 
-    echo_green "Base packages installed!"
+    echo_info "Base packages installed!"
 }
 
 # shellcheck disable=SC2329

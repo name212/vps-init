@@ -7,14 +7,14 @@ PHASES_WITH_INDEX["upgrade_pkgs"]="01"
 
 # shellcheck disable=SC2329
 function phase_upgrade_pkgs_run() {
-    echo_green "Upgrade packages..."
+    echo_info "Upgrade packages..."
 
     if ! upgrade_all_packages; then
-        echo_red "Packages not upgraded"
+        echo_error "Packages not upgraded"
         return 1
     fi
 
-    echo_green "All packages upgraded!"
+    echo_info "All packages upgraded!"
 }
 
 # shellcheck disable=SC2329
