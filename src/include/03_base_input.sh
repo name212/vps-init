@@ -2,9 +2,23 @@
 
 set -Eeuo pipefail
 
+function prepare_prompt_str() {
+    set +x
+    local prompt="${1:-No prompt}"
+    local yes_no_out="${2:-}"
+    echo_info "p: ${yes_no_out}"
+    local yes_no=""
+    if [ -n "$yes_no_out" ]; then
+        # shellcheck disable=SC2059
+        yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
+    fi
+    printf "> \e${CONST_COLOR_YELLOW}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
+    set -x
+}
+
 # shellcheck disable=SC2329
 function ask_user() {
-    local prompt="$1"
+    local prompt="${1-:No prompt}"
     local not_ask="${2-no}"
 
     if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
@@ -14,7 +28,7 @@ function ask_user() {
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "${prompt} [y/n]: " answer
+    read -p "$(prepare_prompt_str "$prompt" "print_yn")" answer
 
     if [[ "$answer" == "y" ]]; then
         return 0
@@ -25,14 +39,14 @@ function ask_user() {
 
 # shellcheck disable=SC2329
 function ask_user_choice() {
-    local prompt="$1"
+    local prompt="${1-:No prompt}"
     
     shift
 
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "${prompt}: " answer
+    read -p "$(prepare_prompt_str "$prompt")" answer
 
     for to_check in "$@"; do
         if [[ "$answer" == "$to_check" ]]; then
@@ -48,13 +62,13 @@ function ask_user_choice() {
 
 # shellcheck disable=SC2329
 function ask_user_raw() {
-    local prompt="$1"
+    local prompt="${1-:No prompt}"
     local validator="${2-${CONST_NO_VALIDATE}}"
     
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "${prompt}: " answer
+    read -p "$(prepare_prompt_str "$prompt")" answer
 
     if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
         echo -n "$answer"

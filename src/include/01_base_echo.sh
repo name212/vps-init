@@ -4,20 +4,28 @@ set -Eeuo pipefail
 
 # shellcheck disable=SC2034
 CONST_NEW_LINE=$'\n'
-
-# shellcheck disable=SC2329
-function echo_red(){
-    echo -e "\033[1;31m$1\033[0m" >&2
-}
+# shellcheck disable=SC2034
+CONST_COLOR_GREEN=$'\033[1;32m'
+# shellcheck disable=SC2034
+CONST_COLOR_YELLOW=$'\033[1;33m'
+# shellcheck disable=SC2034
+CONST_COLOR_RED=$'\033[1;31m'
+# shellcheck disable=SC2034
+CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
 function echo_green (){
-    echo -e "\033[1;32m$1\033[0m" >&2
+    echo -e "${CONST_COLOR_GREEN}${1:-}${CONST_COLOR_NO}" >&2
 }
 
 # shellcheck disable=SC2329
 function echo_yellow (){
-    echo -e "\033[1;33m$1\033[0m" >&2
+    echo -e "${CONST_COLOR_YELLOW}${1:-}${CONST_COLOR_NO}" >&2
+}
+
+# shellcheck disable=SC2329
+function echo_red(){
+    echo -e "${CONST_COLOR_RED}${1:-}${CONST_COLOR_NO}" >&2
 }
 
 # shellcheck disable=SC2329

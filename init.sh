@@ -14,20 +14,28 @@ declare -a COMMANDS_LIST=()
 
 # shellcheck disable=SC2034
 CONST_NEW_LINE=$'\n'
-
-# shellcheck disable=SC2329
-function echo_red(){
-    echo -e "\033[1;31m$1\033[0m" >&2
-}
+# shellcheck disable=SC2034
+CONST_COLOR_GREEN=$'\033[1;32m'
+# shellcheck disable=SC2034
+CONST_COLOR_YELLOW=$'\033[1;33m'
+# shellcheck disable=SC2034
+CONST_COLOR_RED=$'\033[1;31m'
+# shellcheck disable=SC2034
+CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
 function echo_green (){
-    echo -e "\033[1;32m$1\033[0m" >&2
+    echo -e "${CONST_COLOR_GREEN}${1:-}${CONST_COLOR_NO}" >&2
 }
 
 # shellcheck disable=SC2329
 function echo_yellow (){
-    echo -e "\033[1;33m$1\033[0m" >&2
+    echo -e "${CONST_COLOR_YELLOW}${1:-}${CONST_COLOR_NO}" >&2
+}
+
+# shellcheck disable=SC2329
+function echo_red(){
+    echo -e "${CONST_COLOR_RED}${1:-}${CONST_COLOR_NO}" >&2
 }
 
 # shellcheck disable=SC2329
@@ -344,9 +352,23 @@ function get_env_value_or_default() {
 
 # Start vps-init/src/include/03_base_input.sh
 
+function prepare_prompt_str() {
+    set +x
+    local prompt="${1:-No prompt}"
+    local yes_no_out="${2:-}"
+    echo_info "p: ${yes_no_out}"
+    local yes_no=""
+    if [ -n "$yes_no_out" ]; then
+        # shellcheck disable=SC2059
+        yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
+    fi
+    printf "> \e${CONST_COLOR_YELLOW}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
+    set -x
+}
+
 # shellcheck disable=SC2329
 function ask_user() {
-    local prompt="$1"
+    local prompt="${1-:No prompt}"
     local not_ask="${2-no}"
 
     if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
@@ -356,7 +378,7 @@ function ask_user() {
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "${prompt} [y/n]: " answer
+    read -p "$(prepare_prompt_str "$prompt" "print_yn")" answer
 
     if [[ "$answer" == "y" ]]; then
         return 0
@@ -367,14 +389,14 @@ function ask_user() {
 
 # shellcheck disable=SC2329
 function ask_user_choice() {
-    local prompt="$1"
+    local prompt="${1-:No prompt}"
     
     shift
 
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "${prompt}: " answer
+    read -p "$(prepare_prompt_str "$prompt")" answer
 
     for to_check in "$@"; do
         if [[ "$answer" == "$to_check" ]]; then
@@ -390,13 +412,13 @@ function ask_user_choice() {
 
 # shellcheck disable=SC2329
 function ask_user_raw() {
-    local prompt="$1"
+    local prompt="${1-:No prompt}"
     local validator="${2-${CONST_NO_VALIDATE}}"
     
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "${prompt}: " answer
+    read -p "$(prepare_prompt_str "$prompt")" answer
 
     if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
         echo -n "$answer"
@@ -4878,7 +4900,7 @@ function main() {
     local old_hostname="$(get_hostname)"
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
-    if ! ask_user "Start init ${old_hostname} ?" "$not_ask"; then
+    if ! ask_user "Start init '${old_hostname}'?" "$not_ask"; then
         echo_red "Disallow start!"
         exit 1
     fi

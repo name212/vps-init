@@ -307,7 +307,7 @@ function main() {
     local old_hostname="$(get_hostname)"
 
     echo_green "Have next phases for run: ${phases_to_run[*]}"
-    if ! ask_user "Start init ${old_hostname} ?" "$not_ask"; then
+    if ! ask_user "Start init '${old_hostname}'?" "$not_ask"; then
         echo_red "Disallow start!"
         exit 1
     fi
