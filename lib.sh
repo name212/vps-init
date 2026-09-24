@@ -25,32 +25,32 @@ CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
 function echo_green (){
-    echo -e "${CONST_COLOR_GREEN}${1:-}${CONST_COLOR_NO}" >&2
+    echo -e "${CONST_COLOR_GREEN}${1:-}${CONST_COLOR_NO}"
 }
 
 # shellcheck disable=SC2329
 function echo_yellow (){
-    echo -e "${CONST_COLOR_YELLOW}${1:-}${CONST_COLOR_NO}" >&2
+    echo -e "${CONST_COLOR_YELLOW}${1:-}${CONST_COLOR_NO}"
 }
 
 # shellcheck disable=SC2329
 function echo_red(){
-    echo -e "${CONST_COLOR_RED}${1:-}${CONST_COLOR_NO}" >&2
+    echo -e "${CONST_COLOR_RED}${1:-}${CONST_COLOR_NO}"
 }
 
 # shellcheck disable=SC2329
 function echo_error(){
-    echo_red "$1"
+    echo_red "$1" >&2
 }
 
 # shellcheck disable=SC2329
 function echo_info (){
-    echo_green "$1"
+    echo_green "$1" >&2
 }
 
 # shellcheck disable=SC2329
 function echo_warn (){
-    echo_yellow "$1"
+    echo_yellow "$1" >&2
 }
 
 # End vps-init/src/include/01_base_echo.sh
