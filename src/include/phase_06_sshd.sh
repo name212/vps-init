@@ -39,7 +39,7 @@ function sshd_initd_restart() {
 function sshd_restart() {
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
-        echo_red "Cannot resolve system service engine"
+        echo_error "Cannot resolve system service engine"
         return 1
     fi
 
@@ -47,12 +47,12 @@ function sshd_restart() {
     if [[ -v _SSH_RESTART_FUNC["$service_engine"] ]]; then
         restart_fun="${_SSH_RESTART_FUNC["$service_engine"]}"
     else
-        echo_red "Restart sshd func not found for service engine '$service_engine'"
+        echo_error "Restart sshd func not found for service engine '$service_engine'"
         return 1
     fi
 
     if ! declare -F "$restart_fun" > /dev/null; then
-        echo_red "Internal error: '$restart_fun' func not declared!"
+        echo_error "Internal error: '$restart_fun' func not declared!"
         return 1
     fi
 
@@ -68,37 +68,37 @@ function sshd_fix_privilege_separation() {
     local run_dir="/run/sshd"
 
     if ! mkdir -p "$run_dir"; then 
-        echo_red "Cannot create $run_dir dir"
+        echo_error "Cannot create $run_dir dir"
         return 1
     fi
 
     if ! chmod 0755 "$run_dir"; then
-        echo_red "Cannot chmod $run_dir dir"
+        echo_error "Cannot chmod $run_dir dir"
         return 1
     fi
 
     local tmpfiles_dir="/etc/tmpfiles.d/"
 
     if ! mkdir -p "$tmpfiles_dir"; then 
-        echo_red "Cannot create $tmpfiles_dir dir"
+        echo_error "Cannot create $tmpfiles_dir dir"
         return 1
     fi
 
     echo "d /run/sshd 0755 root root" > "${tmpfiles_dir}/sshd.conf"
 
-    echo_green "Restart sshd after fix privilege separation..."
+    echo_info "Restart sshd after fix privilege separation..."
     if ! sshd_restart; then
-        echo_red "!!! SSHD was not restarted !!!"
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
-    echo_green "Verify sshd config after fix privilege separation..."
+    echo_info "Verify sshd config after fix privilege separation..."
     if ! sshd -t; then
-        echo_yellow "Test sshd config failed after fix privilege separation. Sleep 5 seconds before next attempt"
+        echo_warn "Test sshd config failed after fix privilege separation. Sleep 5 seconds before next attempt"
         sleep 5
         
         if ! sshd -t; then
-            echo_red "Test sshd config after fix privilege separation after second attempt!"
+            echo_error "Test sshd config after fix privilege separation after second attempt!"
             return 1
         fi
     fi
@@ -108,32 +108,32 @@ function sshd_fix_privilege_separation() {
 
 # shellcheck disable=SC2329
 function sshd_disable_systemd_socket() {
-    echo_green "Enable sshd service..."
+    echo_info "Enable sshd service..."
     if ! systemctl enable --now ssh.service; then
-        echo_red "Cannot enable ssh.service"
+        echo_error "Cannot enable ssh.service"
         return 1
     fi
 
-    echo_green "SSHD service enabled! Restart..."
+    echo_info "SSHD service enabled! Restart..."
 
     if ! sshd_restart; then
-        echo_red "!!! SSHD was not restarted !!!"
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
-    echo_green "Stop sshd systemd socket.."
+    echo_info "Stop sshd systemd socket.."
     if ! systemctl stop ssh.socket; then
-        echo_red "Cannot stop ssh.socket"
+        echo_error "Cannot stop ssh.socket"
         return 1
     fi
 
-    echo_green "Disable sshd systemd socket..."
+    echo_info "Disable sshd systemd socket..."
     if ! systemctl disable --now ssh.socket; then
-        echo_red "Cannot disable ssh.socket"
+        echo_error "Cannot disable ssh.socket"
         return 1
     fi
 
-    echo_green "Create missing privilege separation directory..."
+    echo_info "Create missing privilege separation directory..."
     if ! sshd_fix_privilege_separation; then
         return 1 
     fi
@@ -175,19 +175,19 @@ function sshd_verify_and_restart() {
 
     local conf_for_check=""
     if ! conf_for_check="$("$sshd_bin" -T)"; then
-        echo_red "Cannot get sshd config from sshd!"
+        echo_error "Cannot get sshd config from sshd!"
         return 1 
     fi
 
     if ! grep -qi "$setting" <<<"$conf_for_check"; then
-        echo_red "Cannot found setting '$setting' in sshd config!"
+        echo_error "Cannot found setting '$setting' in sshd config!"
         return 1 
     fi
 
-    echo_green "SSHD config is valid! Restart..."
+    echo_info "SSHD config is valid! Restart..."
 
     if ! sshd_restart; then
-        echo_red "!!! SSHD was not restarted !!!"
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
@@ -204,26 +204,26 @@ function sshd_apply_setting() {
     fi
 
     if ! grep -qPzo "$setting" "$conf_file"; then
-        echo_yellow "Change to new sshd port setting to '$setting'"
+        echo_warn "Change to new sshd port setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
 
     if ! chmod 600 "$conf_file"; then
-        echo_yellow "Cannot change mode for config file $conf_file"
+        echo_warn "Cannot change mode for config file $conf_file"
     else
         if ! chown "root:root" "$conf_file"; then
-            echo_yellow "Cannot change owner to root for config file $conf_file"
+            echo_warn "Cannot change owner to root for config file $conf_file"
         fi
     fi
 
     if ! sshd_verify_and_restart "$setting"; then
-        echo_yellow "Remove config $conf_file file and restart..."
+        echo_warn "Remove config $conf_file file and restart..."
         if ! delete_file "$conf_file"; then
-            echo_red "Cannot remove port file config $conf_file"
+            echo_error "Cannot remove port file config $conf_file"
         fi
 
         if ! sshd_restart; then
-            echo_red "!!! SSHD was not restarted !!!"
+            echo_error "!!! SSHD was not restarted !!!"
         fi
 
         return 1
@@ -283,16 +283,16 @@ function sshd_add_bind_address() {
         return 1
     fi
 
-    echo_green "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
+    echo_info "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
 
     if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE"; then
         echo_error "Cannot apply sshd listing setting:${CONST_NEW_LINE}${listen_setting_to_set}"
         return 1
     fi
 
-    echo_green "Prepare sshd. Listen address applied!"
+    echo_info "Prepare sshd. Listen address applied!"
     cat "$CONST_LISTEN_FILE" || true
-    echo_green "Please verify that ssh available"
+    echo_info "Please verify that ssh available"
 
     if ! ask_user "SSH available? Continue?" "$not_ask"; then
         echo_error "Disallow continue"
@@ -308,23 +308,23 @@ function phase_sshd_run() {
     local bind_address=""
 
     if ! port="$(extract_argument "--sshd-port" "SSHD_PORT" "$CONST_NOT_FLAG" "validate_arg_number" "$@")"; then
-        echo_red "Incorrect sshd port"
+        echo_error "Incorrect sshd port"
         return 1
     fi
 
     if ! bind_address="$(extract_argument "--sshd-listen-address" "SSHD_LISTEN_ADDRESS" "$CONST_NOT_FLAG" "validate_arg_ipv4_optional" "$@")"; then
-        echo_red "Incorrect bind listen sshd address"
+        echo_error "Incorrect bind listen sshd address"
         return 1
     fi
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_green "Prepare sshd..."
+    echo_info "Prepare sshd..."
 
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
-        echo_red "Cannot resolve system service engine"
+        echo_error "Cannot resolve system service engine"
         return 1
     fi
 
@@ -334,21 +334,21 @@ function phase_sshd_run() {
         fi
     fi
 
-    echo_green "Prepare sshd. Apply new port..."
+    echo_info "Prepare sshd. Apply new port..."
 
     local port_setting="Port $port"
     local port_file="${CONST_BASE_SSHD_CONFIG}/99_z_port.conf"
 
     if ! sshd_apply_setting "$port_setting" "$port_file"; then
-        echo_red "Cannot apply sshd port setting '$port_setting'"
+        echo_error "Cannot apply sshd port setting '$port_setting'"
         return 1
     fi
 
-    echo_green "Prepare sshd. New port apply!"
-    echo_green "Please verify that ssh available on port $port"
+    echo_info "Prepare sshd. New port apply!"
+    echo_info "Please verify that ssh available on port $port"
 
     if ! ask_user "SSH available? Continue?" "$not_ask"; then
-        echo_red "Disallow continue"
+        echo_error "Disallow continue"
         return 1
     fi
 
@@ -356,19 +356,19 @@ function phase_sshd_run() {
         return 1
     fi
 
-    echo_green "Prepare sshd. Disable root login..."
+    echo_info "Prepare sshd. Disable root login..."
 
     local auth_present=""
     # shellcheck disable=SC2044
     for auth_file in $(find /home -name "authorized_keys"); do 
         if [ -s "$auth_file" ]; then
-            echo_green "Found not empty authorized_keys $auth_file"
+            echo_info "Found not empty authorized_keys $auth_file"
             auth_present="true"
         fi 
     done
 
     if [ -z "$auth_present" ]; then
-        echo_red "Not found any non zero authorized_keys files. Cannot continue"
+        echo_error "Not found any non zero authorized_keys files. Cannot continue"
         return 1
     fi
 
@@ -376,35 +376,35 @@ function phase_sshd_run() {
     local root_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_root.conf"
 
     if ! sshd_apply_setting "$root_setting" "$root_file"; then
-        echo_red "Cannot disable root login '$root_setting'"
+        echo_error "Cannot disable root login '$root_setting'"
         return 1
     fi
 
-    echo_green "Prepare sshd. Root login disabled!"
-    echo_green "Please verify that ssh not available with root"
+    echo_info "Prepare sshd. Root login disabled!"
+    echo_info "Please verify that ssh not available with root"
 
     if ! ask_user "SSH not available with root? Continue?" "$not_ask"; then
-        echo_red "Disallow continue"
+        echo_error "Disallow continue"
         return 1
     fi
 
-    echo_green "Prepare sshd. Disable password auth..."
+    echo_info "Prepare sshd. Disable password auth..."
 
     local pass_setting="PasswordAuthentication no"
     local pass_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_pass_auth.conf"
 
     if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
-        echo_red "Cannot apply sshd port setting '$pass_setting'"
+        echo_error "Cannot apply sshd port setting '$pass_setting'"
         return 1
     fi
 
-    echo_green "Prepare sshd. Password auth disabled!"
-    echo_green "Please verify that ssh not available with password auth"
-    echo_green "Can be verify with command:" 
-    echo_green "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
+    echo_info "Prepare sshd. Password auth disabled!"
+    echo_info "Please verify that ssh not available with password auth"
+    echo_info "Can be verify with command:" 
+    echo_info "ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no YOUR_USER@HOST"
 
     if ! ask_user "SSH password auth not available? Continue?" "$not_ask"; then
-        echo_red "Disallow continue"
+        echo_error "Disallow continue"
         return 1
     fi
 
