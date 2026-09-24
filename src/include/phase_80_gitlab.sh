@@ -15,45 +15,45 @@ function gitlab_prepare_runner_service() {
 
     if systemctl is-active "$service_name"; then
         if ! exec_str="$(systemctl show "$service_name" --no-pager -p ExecStart)"; then
-            echo_red "Cannot get exec string for gitlab service"
+            echo_error "Cannot get exec string for gitlab service"
             return 1
         fi
     else 
-        echo_green "gitlab service not active!"
+        echo_info "gitlab service not active!"
     fi
 
     if [ -z "$exec_str" ]; then
-        echo_red "exec string for gitlab service is empty"
+        echo_error "exec string for gitlab service is empty"
         return 1
     fi
 
     if grep -q "user $username" <<<"$exec_str"; then
-        echo_green "Runner $service_name already will run with user!"
+        echo_info "Runner $service_name already will run with user!"
         if ! systemctl daemon-reload; then
-            echo_red "Cannot run daemon reload!"
+            echo_error "Cannot run daemon reload!"
             return 1
         fi
         return 0
     fi
 
-    echo_green "Gitlab service probably has not user: ${exec_str}"
+    echo_info "Gitlab service probably has not user: ${exec_str}"
 
     if ! ask_user "Do you want to reinstall service?" "$not_ask"; then
-        echo_red "Disallow reinstall runner service!"
+        echo_error "Disallow reinstall runner service!"
         return 1
     fi
 
-    echo_green "Start reinstall gitlab service..."
+    echo_info "Start reinstall gitlab service..."
 
     if ! sudo systemctl stop "$service_name"; then
-        echo_red "Cannot stop gitlab runner service!"
+        echo_error "Cannot stop gitlab runner service!"
         return 1
     fi
 
-    echo_green "Start uninstall gitlab service..."
+    echo_info "Start uninstall gitlab service..."
 
     if ! gitlab-runner uninstall; then
-        echo_red "Cannot uninstall gitlab runner service!"
+        echo_error "Cannot uninstall gitlab runner service!"
         return 1
     fi
 
@@ -66,45 +66,45 @@ function gitlab_prepare_runner_service() {
         "/home/$username"
     )
 
-    echo_green "Start install gitlab service..."
+    echo_info "Start install gitlab service..."
 
     if ! gitlab-runner install "${install_args[@]}"; then
-        echo_red "Cannot install gitlab runner service!"
+        echo_error "Cannot install gitlab runner service!"
         return 1
     fi
 
-    echo_green "Reload systemd..."
+    echo_info "Reload systemd..."
 
     if ! systemctl daemon-reload; then
-        echo_red "Cannot run daemon reload!"
+        echo_error "Cannot run daemon reload!"
         return 1
     fi
 
-    echo_green "Start gitlab service..."
+    echo_info "Start gitlab service..."
 
     if ! systemctl start "$service_name"; then
-        echo_red "Cannot run gitlab service!"
+        echo_error "Cannot run gitlab service!"
         return 1
     fi
 
-    echo_green "Enable gitlab service..."
+    echo_info "Enable gitlab service..."
 
     if ! systemctl enable "$service_name"; then
-        echo_red "Cannot enable gitlab service!"
+        echo_error "Cannot enable gitlab service!"
         return 1
     fi
     
-    echo_green "Gitlab service reinstalled with new user!"
+    echo_info "Gitlab service reinstalled with new user!"
 }
 
 # shellcheck disable=SC2329
 function phase_gitlab_run() {
-    echo_green "Install gitlab runner..."
+    echo_info "Install gitlab runner..."
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_green "Create user for runner..."
+    echo_info "Create user for runner..."
 
     local username="gitlab-runner"
     
@@ -114,14 +114,13 @@ function phase_gitlab_run() {
 
     local user_home=""
     if ! user_home="$(get_user_home "$username")"; then 
-        echo_red "$user_home"
         return 1
     fi
 
     local bash_logout_file="${user_home}/.bash_logout"
 
     if [ -f "$bash_logout_file" ]; then
-        echo_green "Remove $bash_logout_file ..."
+        echo_info "Remove $bash_logout_file ..."
         if ! delete_file "$bash_logout_file"; then
             return 1
         fi
@@ -130,7 +129,7 @@ function phase_gitlab_run() {
     local package="gitlab-runner"
 
     if ! check_packages_installed "$package"; then
-        echo_green "Prepare gitlab apt repository..."
+        echo_info "Prepare gitlab apt repository..."
 
         local url="https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh"
 
@@ -138,37 +137,37 @@ function phase_gitlab_run() {
             return 1
         fi
 
-        echo_green "Install gitlab runner package ${package}..."
+        echo_info "Install gitlab runner package ${package}..."
 
         if ! install_packages "$package"; then
-            echo_red "gitlab runner not installed!"
+            echo_error "gitlab runner not installed!"
             return 1
         fi
     else
-        echo_green "gitlab runner already installed!"
+        echo_info "gitlab runner already installed!"
     fi
 
-    echo_green "Allow gitlab user for run docker..."
+    echo_info "Allow gitlab user for run docker..."
 
     if ! add_user_to_group "$username" "docker"; then
         return 1
     fi
 
-    echo_green "Restart gitlab runner service..."
+    echo_info "Restart gitlab runner service..."
 
     if ! gitlab_prepare_runner_service "$CONST_GITLAB_SERVICE_NAME" "$username" "$not_ask"; then
         return 1
     fi
 
     if systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
-        echo_green "Restart gitlab runner service..."
+        echo_info "Restart gitlab runner service..."
         if ! systemctl restart gitlab-runner.service; then
-            echo_red "Cannot restart gitlab runner service!"
+            echo_error "Cannot restart gitlab runner service!"
             return 1
         fi
     fi
 
-    echo_green "gitlab runner installed!"
+    echo_info "gitlab runner installed!"
 }
 
 # shellcheck disable=SC2329

@@ -22,28 +22,28 @@ function install_docker_via_apt() {
     done
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Docker already installed!"
+        echo_info "Docker already installed!"
         return 0
     fi
 
-    echo_green "Add Docker's official GPG key..."
+    echo_info "Add Docker's official GPG key..."
 
     if ! install -m 0755 -d /etc/apt/keyrings; then
-        echo_red "Keyrings not installed"
+        echo_error "Keyrings not installed"
         return 0
     fi
    
     if ! download_url "https://download.docker.com/linux/ubuntu/gpg" "/etc/apt/keyrings/docker.asc"; then
-        echo_red "GPG keys not downloaded"
+        echo_error "GPG keys not downloaded"
         return 0
     fi
 
     if ! chmod a+r /etc/apt/keyrings/docker.asc; then
-        echo_red "Cannot chmod GPG keys"
+        echo_error "Cannot chmod GPG keys"
         return 1
     fi
 
-    echo_green "Add the docker repository to apt sources..."
+    echo_info "Add the docker repository to apt sources..."
 
 # shellcheck disable=SC1091
     tee /etc/apt/sources.list.d/docker.sources <<EOF
@@ -55,10 +55,10 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
-    echo_green "Install docker packages..."
+    echo_info "Install docker packages..."
 
     if ! install_packages "${packages[@]}"; then
-        echo_red "Docker not installed!"
+        echo_error "Docker not installed!"
         return 1
     fi
 
@@ -79,12 +79,12 @@ function install_docker_via_apk() {
     done
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Docker already installed!"
+        echo_info "Docker already installed!"
         return 0
     fi
 
     if ! install_packages "${packages[@]}"; then
-        echo_red "Docker not installed!"
+        echo_error "Docker not installed!"
         return 1
     fi
 
@@ -98,7 +98,7 @@ function install_docker_via_apk() {
 
 # shellcheck disable=SC2329
 function phase_docker_run() {
-    echo_green "Install docker..."
+    echo_info "Install docker..."
 
     local additional_packages_str=""
     if ! additional_packages_str="$(extract_argument "--docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
@@ -131,7 +131,7 @@ function phase_docker_run() {
         return 1
     fi 
 
-    echo_green "Docker installed!"
+    echo_info "Docker installed!"
 }
 
 # shellcheck disable=SC2329
