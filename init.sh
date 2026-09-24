@@ -4626,7 +4626,7 @@ function phase_run_func() {
 
 # shellcheck disable=SC2120
 function usage() {
-    local init_msg="Init server."
+    local init_msg="Init ubuntu server."
     if [ -n "${INIT_MSG_HELP:-}" ]; then
         init_msg="$INIT_MSG_HELP"
     fi
