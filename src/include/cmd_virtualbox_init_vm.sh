@@ -18,7 +18,7 @@ function virtualbox_extract_not_quoted_value() {
     IFS="=" read -ra val_parts <<<"$input"
 
     if [[ "${#val_parts[@]}" != "2" ]]; then
-        echo_red "incorrect input key/val $raw_key_val Have no 2 parts"
+        echo_error "incorrect input key/val $raw_key_val Have no 2 parts"
         return 1
     fi
 
@@ -41,7 +41,7 @@ function virtualbox_extract_value_for_key_human() {
             echo -n ""
             return 0
         fi
-        echo_red "Cannot extract $key"
+        echo_error "Cannot extract $key"
         return 1
     fi
 
@@ -50,7 +50,7 @@ function virtualbox_extract_value_for_key_human() {
     IFS=":" read -ra val_parts <<<"$raw_key_val"
 
     if [[ "${#val_parts[@]}" != "2" ]]; then
-        echo_red "incorrect input key/val $raw_key_val Have no 2 parts"
+        echo_error "incorrect input key/val $raw_key_val Have no 2 parts"
         return 1
     fi
 
@@ -70,14 +70,14 @@ function virtualbox_extract_value_for_key() {
             echo -n ""
             return 0
         fi
-        echo_red "Cannot extract $key"
+        echo_error "Cannot extract $key"
         return 1
     fi
 
     local res=""
 
     if ! res="$(virtualbox_extract_not_quoted_value "$raw_key_val")"; then
-        echo_red "Cannot extract value for key ${key}: $res"
+        echo_error "Cannot extract value for key ${key}: $res"
         return 1
     fi
 
@@ -94,7 +94,7 @@ function virtualbox_extract_mac_address() {
 
     local mac=""
     if ! mac="$(virtualbox_extract_value_for_key "$raw_out" "$key")"; then
-        echo_red "Cannot extract mac-address for $key: $mac"
+        echo_error "Cannot extract mac-address for $key: $mac"
         return 1
     fi
 
@@ -133,12 +133,12 @@ function virtualbox_extract_host_iface() {
     local raw_out=""
 
     if ! raw_out="$(vboxmanage list hostonlyifs)"; then
-        echo_red "Cannot get list hostonlyifs"
+        echo_error "Cannot get list hostonlyifs"
         return 1
     fi
 
     if [ -z "$raw_out" ]; then 
-        echo_red "Hostonly adapters not found!"
+        echo_error "Hostonly adapters not found!"
         return 1
     fi
 
@@ -157,13 +157,13 @@ function virtualbox_extract_host_iface() {
 
         local name=""
         if ! name="$(virtualbox_extract_value_for_key_human "$iface_raw" "Name")"; then
-            echo_red "Cannot extract hostonly interface name from $iface_raw :: $name"
+            echo_error "Cannot extract hostonly interface name from $iface_raw :: $name"
             return 1
         fi
 
         local address=""
         if ! address="$(virtualbox_extract_value_for_key_human "$iface_raw" "IPAddress")"; then
-            echo_red "Cannot extract hostonly interface name from $iface_raw :: $address"
+            echo_error "Cannot extract hostonly interface name from $iface_raw :: $address"
             return 1
         fi
 
@@ -177,12 +177,12 @@ function virtualbox_extract_host_iface() {
     if [ -z "$passed_iface" ]; then
         case "${#ifaces[@]}" in
             "0")
-                echo_red "Not found any hostonly interfaces"
+                echo_error "Not found any hostonly interfaces"
                 return 1
             ;;
             "1")
                 choiced_iface="$single_iface_name"
-                echo_green "Found single hostonly interface $choiced_iface with address ${ifaces[$choiced_iface]}" >&2
+                echo_info "Found single hostonly interface $choiced_iface with address ${ifaces[$choiced_iface]}" >&2
             ;;
             *)
                 local -a indexes=()
@@ -191,13 +191,13 @@ function virtualbox_extract_host_iface() {
                 for iface_name in "${!ifaces[@]}"; do
                     indexes+=("$cur_index")
                     index_to_name["$cur_index"]="$iface_name"
-                    echo_green "[$cur_index] Found interface $iface_name with address ${ifaces[$iface_name]}" >&2
+                    echo_info "[$cur_index] Found interface $iface_name with address ${ifaces[$iface_name]}" >&2
                     ((cur_index++))
                 done
 
                 local choiced_index="-1"
                 if ! choiced_index="$(ask_user_choice "Enter interface number to attach" "${indexes[@]}")"; then
-                    echo_red "Interface not choiced: $choiced_index"
+                    echo_error "Interface not choiced: $choiced_index"
                     return 1
                 fi
                 choiced_iface="${index_to_name[$choiced_index]}"
@@ -205,7 +205,7 @@ function virtualbox_extract_host_iface() {
         esac
     else
         if ! [[ -v ifaces["$passed_iface"] ]]; then
-            echo_red "Not found interface $passed_iface"
+            echo_error "Not found interface $passed_iface"
             return 1
         fi
         choiced_iface="$passed_iface"
@@ -221,7 +221,7 @@ function virtualbox_extract_host_iface() {
     if [ -z "$choiced_ip" ]; then
         local octet=""
         if ! octet="$(ask_user_raw "Enter last octet number to assign address" "validate_arg_octet")"; then
-            echo_red "Invalid input octet: $octet"
+            echo_error "Invalid input octet: $octet"
             return 1
         fi
 
@@ -232,7 +232,7 @@ function virtualbox_extract_host_iface() {
         unset 'choiced_ip_parts[-1]'
         unset 'gw_ip_parts[-1]'
         if [[ "${gw_ip_parts[*]}" != "${choiced_ip_parts[*]}" ]]; then
-            echo_red "Input IP $choiced_ip not in hostonly gw net $iface_address"
+            echo_error "Input IP $choiced_ip not in hostonly gw net $iface_address"
             return 1
         fi
     fi
@@ -248,7 +248,7 @@ function virtualbox_get_vm_info_json() {
     local raw_out=""
 
     if ! raw_out="$(vboxmanage showvminfo "$vm_name" --machinereadable)"; then
-        echo_red "Cannot get info for vm $vm_name"
+        echo_error "Cannot get info for vm $vm_name"
         return 1
     fi
 
@@ -275,25 +275,25 @@ function virtualbox_get_vm_info_json() {
         local nic_type=""
 
         if ! nic_type="$(virtualbox_extract_not_quoted_value "$nic_type_raw")"; then
-            echo_red "Cannot to extract nic type for index $cur_nic_index: $nic_type"
+            echo_error "Cannot to extract nic type for index $cur_nic_index: $nic_type"
             return 1
         fi
 
         case "$nic_type" in
             "nat")
                 if [[ "$nat_consumed" == "true" ]]; then
-                    echo_red "NAT interface already consumed"
-                    echo_red "$res_json"
+                    echo_error "NAT interface already consumed"
+                    echo_error "$res_json"
                     return 1
                 fi
                 local mac=""
                 if ! mac="$(virtualbox_extract_mac_address "$raw_out" "$cur_nic_index")"; then
-                    echo_red "$mac"
+                    echo_error "$mac"
                     return
                 fi
                 local nat_json=".ifaces += {\"nat\":{\"mac\":\"$mac\",\"indx\":\"$cur_nic_index\"}}"
                 if ! res_json="$(jq "$nat_json" <<<"$res_json")"; then
-                    echo_red "Cannot append nat iface"
+                    echo_error "Cannot append nat iface"
                     return 1
                 fi
                 nat_consumed="true"
@@ -301,27 +301,27 @@ function virtualbox_get_vm_info_json() {
 
             "hostonly")
                 if [[ "$host_consumed" == "true" ]]; then
-                    echo_red "Hostonly interface already consumed"
-                    echo_red "$res_json"
+                    echo_error "Hostonly interface already consumed"
+                    echo_error "$res_json"
                     return 1
                 fi
 
                 local mac=""
                 if ! mac="$(virtualbox_extract_mac_address "$raw_out" "$cur_nic_index")"; then
-                    echo_red "$mac"
+                    echo_error "$mac"
                     return
                 fi
 
                 local adapter=""
                 if ! adapter="$(virtualbox_extract_value_for_key "$raw_out" "hostonlyadapter${cur_nic_index}")"; then
-                    echo_red "Cannot extract hostonly adapter: $adapter"
+                    echo_error "Cannot extract hostonly adapter: $adapter"
                     return 1
                 fi
                 
 
                 local host_json=".ifaces += {\"host\":{\"mac\":\"$mac\",\"adapter\":\"$adapter\",\"indx\":\"$cur_nic_index\"}}"
                 if ! res_json="$(jq "$host_json" <<<"$res_json")"; then
-                    echo_red "Cannot append hostonly iface"
+                    echo_error "Cannot append hostonly iface"
                     return 1
                 fi
                 host_consumed="true"
@@ -342,7 +342,7 @@ function virtualbox_get_vm_info_json() {
 
         local ide_type=""
         if ! ide_type="$(virtualbox_extract_value_for_key "$raw_out" "\"IDE-${cur_ide_index}-${minor}\"" "true")"; then
-            echo_red "Cannot extract IDE-${cur_ide_index}-${minor} : $ide_type"
+            echo_error "Cannot extract IDE-${cur_ide_index}-${minor} : $ide_type"
             return 1
         fi
 
@@ -358,7 +358,7 @@ function virtualbox_get_vm_info_json() {
             ((minor++))
             local ide_major=""
             if ! ide_major="$(virtualbox_extract_value_for_key "$raw_out" "\"IDE-${cur_ide_index}-${minor}\"" "true")"; then
-                echo_red "Cannot extract IDE-${cur_ide_index}-${minor}: $ide_major"
+                echo_error "Cannot extract IDE-${cur_ide_index}-${minor}: $ide_major"
                 return 1
             fi
             
@@ -375,7 +375,7 @@ function virtualbox_get_vm_info_json() {
     for opt in "${opticals[@]}"; do
         local opt_json=".opticals += [\"$opt\"]"
         if ! res_json="$(jq "$opt_json" <<<"$res_json")"; then
-            echo_red "Cannot append optical $opt"
+            echo_error "Cannot append optical $opt"
             return 1
         fi
     done
@@ -390,7 +390,7 @@ function virtualbox_vm_is_running() {
 
     local all_vms=""
     if ! all_vms="$(vboxmanage list runningvms)"; then
-        echo_red "Cannot get list running vms!"
+        echo_error "Cannot get list running vms!"
         return 1
     fi
 
@@ -410,7 +410,7 @@ function virtualbox_stop_vm() {
     fi
 
     if ! vboxmanage controlvm "$vm_name" poweroff; then
-        echo_red "Cannot stop vm $vm_name"
+        echo_error "Cannot stop vm $vm_name"
         return 1 
     fi
 
@@ -418,7 +418,7 @@ function virtualbox_stop_vm() {
 
     for i in $(seq 1 "$attempts"); do
         if virtualbox_vm_is_running "$vm_name"; then
-            echo_yellow "Waiting 5 seconds to stop vm $vm_name Attempt $i"
+            echo_warn "Waiting 5 seconds to stop vm $vm_name Attempt $i"
             sleep 5 
             continue
         fi
@@ -429,7 +429,7 @@ function virtualbox_stop_vm() {
         return 0
     fi
 
-    echo_red "Vm $vm_name is not stopped after $attempts attempts"
+    echo_error "Vm $vm_name is not stopped after $attempts attempts"
     return 1
 }
 
@@ -445,7 +445,7 @@ function virtualbox_start_vm() {
 
     for i in $(seq 1 "$attempts"); do
         if ! vboxmanage startvm "$vm_name"; then
-            echo_yellow "Waiting 5 seconds to start vm $vm_name Attempt $1"
+            echo_warn "Waiting 5 seconds to start vm $vm_name Attempt $1"
             sleep 5
             continue
         fi
@@ -457,7 +457,7 @@ function virtualbox_start_vm() {
         return 0
     fi
 
-    echo_red "Vm $vm_name is not started after $attempts attempts"
+    echo_error "Vm $vm_name is not started after $attempts attempts"
     return 1
 }
 
@@ -471,19 +471,19 @@ function virtualbox_prepare_viso() {
 
     local vm_name_sum=""
     if ! vm_name_sum=$(sha256sum <<<"$vm_name"); then
-        echo_red "Cannot calculate sum from vm"
+        echo_error "Cannot calculate sum from vm"
         return 1
     fi
 
     if ! vm_name_sum=$(cut -c 1-12 <<<"$vm_name_sum"); then
-        echo_red "Cannot trim sum for vm"
+        echo_error "Cannot trim sum for vm"
         return 1
     fi
 
     local vm_dir="virtualbox/${vm_name_sum}"
 
     if ! mkdir -p "$vm_dir"; then
-        echo_red "Cannot create tmp dir for vm $vm_name $vm_dir"
+        echo_error "Cannot create tmp dir for vm $vm_name $vm_dir"
         return 1
     fi
 
@@ -493,7 +493,7 @@ function virtualbox_prepare_viso() {
 
     # shellcheck disable=SC2154
     if ! cp "$bin_name" "$bundle_file"; then
-        echo_red "Cannot copy init script $bin_name to $vm_dir"
+        echo_error "Cannot copy init script $bin_name to $vm_dir"
         return 1
     fi
 
@@ -503,7 +503,7 @@ function virtualbox_prepare_viso() {
 
     if [ -n "$ssh_key" ] && [ -s "$ssh_key" ]; then
         if ! cp "$ssh_key" "$auth_keys_file"; then
-            echo_red "Cannot copy ssh key $ssh_key to $vm_dir"
+            echo_error "Cannot copy ssh key $ssh_key to $vm_dir"
             return 1
         fi
     else
@@ -554,7 +554,7 @@ EOF
     files_to_viso+=("$init_file")
 
     if ! chmod 755 "${vm_dir}/init.sh"; then
-        echo_red "Cannot chmod ${vm_dir}/init.sh"
+        echo_error "Cannot chmod ${vm_dir}/init.sh"
         return 1
     fi
 
@@ -573,19 +573,19 @@ EOF
     for v_file in "${files_to_viso[@]}"; do
         local base=""
         if ! base="$(basename "$v_file")"; then
-            echo_red "Cannot get base for $v_file"
+            echo_error "Cannot get base for $v_file"
             return 1
         fi
         create_args+=("/${base}=${v_file}")
     done
 
     if ! vbox-img createiso "${create_args[@]}" >&2; then
-        echo_red "Cannot create viso $viso_file"
+        echo_error "Cannot create viso $viso_file"
         return 1 
     fi
 
     if ! viso_file="$(realpath "$viso_file")"; then
-        echo_red "Cannot get real path for $viso_file"
+        echo_error "Cannot get real path for $viso_file"
         return 1
     fi
 
@@ -600,7 +600,7 @@ function virtualbox_unmount_opticals() {
     shift
 
     if [[ "$#" == 0 ]]; then
-        echo_green "Nothing to unmount"
+        echo_info "Nothing to unmount"
         return 0 
     fi
 
@@ -608,7 +608,7 @@ function virtualbox_unmount_opticals() {
         local -a opt_dev=()
         IFS="-" read -ra opt_dev <<<"$opt"
         if [[ "${#opt_dev[@]}" != "2" ]]; then
-            echo_red "Failed to parse optical $opt Should have 0-0 for example"
+            echo_error "Failed to parse optical $opt Should have 0-0 for example"
             return 1
         fi
 
@@ -616,10 +616,10 @@ function virtualbox_unmount_opticals() {
         local port="${opt_dev[0]}"
         local device="${opt_dev[1]}"
 
-        echo_green "Unmount IDE on $vm_name port $port device $device"
+        echo_info "Unmount IDE on $vm_name port $port device $device"
 
         if ! vboxmanage storageattach "$vm_name" --storagectl "IDE" --port "$port" --device "$device" --type dvddrive --medium none; then
-            echo_red "Failed to unmount optical $opt"
+            echo_error "Failed to unmount optical $opt"
             return 1
         fi
     done
@@ -635,38 +635,38 @@ function virtualbox_unmount_cleanup_after_init() {
 
     local viso_real=""
     if ! viso_real="$(realpath "$viso_file")"; then
-        echo_red "Cannot real path for $viso_file"
+        echo_error "Cannot real path for $viso_file"
         return 1
     fi
 
     local cleanup_dir=""
     if ! cleanup_dir="$(dirname "$viso_real")"; then
-        echo_red "Cannot get cleanup dir from $viso_real"
+        echo_error "Cannot get cleanup dir from $viso_real"
         return 1
     fi
 
-    echo_green "Stop vm to unmount init opticals..."
+    echo_info "Stop vm to unmount init opticals..."
     if ! virtualbox_stop_vm "$vm_name"; then
-        echo_red "Failed to stop vm?"
+        echo_error "Failed to stop vm?"
     fi
 
     local vm_info_json=""
 
     if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
-        echo_red "Cannot get vm info: $vm_info_json"
+        echo_error "Cannot get vm info: $vm_info_json"
         return 1
     fi
 
     local opticals_str=""
     if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-        echo_red "Cannot get opticals from vm info"
+        echo_error "Cannot get opticals from vm info"
         return 1
     fi
 
     local -a opticals_to_unmount=()
     IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
 
-    echo_green "Unmount init opticals..."
+    echo_info "Unmount init opticals..."
 
     if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
         return 1
@@ -674,17 +674,17 @@ function virtualbox_unmount_cleanup_after_init() {
 
     if ask_user "Do you want to remove dir $cleanup_dir"; then
         if ! rm -rfv "$cleanup_dir"; then
-            echo_red "Dir $cleanup_dir not removed!"
+            echo_error "Dir $cleanup_dir not removed!"
             return 1
         fi
     else
-        echo_yellow "Disallow remove dir $cleanup_dir"
+        echo_warn "Disallow remove dir $cleanup_dir"
     fi
 
-    echo_green "Start vm..."
+    echo_info "Start vm..."
 
     if ! virtualbox_start_vm "$vm_name"; then
-        echo_red "Vm not started!"
+        echo_error "Vm not started!"
         return 1
     fi
 
@@ -698,12 +698,12 @@ function virtualbox_mount_opticals() {
     shift
 
     if [[ "$#" == 0 ]]; then
-        echo_red "Nothing to mount"
+        echo_error "Nothing to mount"
         return 1 
     fi
 
     if [ "$#" -gt  4 ]; then
-        echo_red "To many mounts should be <= 4"
+        echo_error "To many mounts should be <= 4"
         return 1 
     fi
 
@@ -711,9 +711,9 @@ function virtualbox_mount_opticals() {
     local device=0
 
     for iso in "$@"; do
-        echo_green "Mount $iso to $vm_name port $port device $device"
+        echo_info "Mount $iso to $vm_name port $port device $device"
         if ! vboxmanage storageattach "$vm_name" --storagectl "IDE" --port "$port" --device "$device" --type dvddrive --medium "$iso"; then
-            echo_red "Failed mount $iso to $vm_name port $port device $device"
+            echo_error "Failed mount $iso to $vm_name port $port device $device"
             return 1
         fi
 
@@ -731,83 +731,83 @@ function virtualbox_mount_opticals() {
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_run() {
     if ! command -v vboxmanage &> /dev/null; then
-        echo_red "vboxmanage executable not found!"
-        echo_red "Probably you run virtualbox_init_vm command inside vm"
-        echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
+        echo_error "vboxmanage executable not found!"
+        echo_error "Probably you run virtualbox_init_vm command inside vm"
+        echo_error "If you want to init vm from vm, use virtualbox_init_vm_itself"
         return 1
     fi 
     
     if ! command -v jq &> /dev/null; then
-        echo_red "virtualbox_init_vm command require jq"
-        echo_red "Please install jq"
+        echo_error "virtualbox_init_vm command require jq"
+        echo_error "Please install jq"
         return 1
     fi
 
     local vm_name=""
     if ! vm_name="$(extract_argument "--virtualbox-vm-name" "VIRTUALBOX_VM_NAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
-        echo_red "Vm name not passed: $vm_name"
+        echo_error "Vm name not passed: $vm_name"
         return 1
     fi
 
     local attach_address=""
     if ! attach_address="$(extract_argument "--virtualbox-attach-address" "VIRTUALBOX_ATTACH_ADDRESS" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "Attach address incorrect: $attach_address"
+        echo_error "Attach address incorrect: $attach_address"
         return 1
     fi
 
     local ssh_key_file=""
     if ! ssh_key_file="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "SSH key file incorrect: $ssh_key_file"
+        echo_error "SSH key file incorrect: $ssh_key_file"
         return 1
     fi
 
     local skip_vsio=""
     if ! skip_vsio="$(extract_argument "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "Skip VSIO flag parse error"
+        echo_error "Skip VSIO flag parse error"
         return 1
     fi
 
     if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
         if ! command -v vbox-img &> /dev/null; then
-            echo_red "vbox-img executable not found!"
-            echo_red "Probably you run virtualbox_init_vm command inside vm"
-            echo_red "If you want to init vm from vm, use virtualbox_init_vm_itself"
+            echo_error "vbox-img executable not found!"
+            echo_error "Probably you run virtualbox_init_vm command inside vm"
+            echo_error "If you want to init vm from vm, use virtualbox_init_vm_itself"
             return 1
         fi
     fi
 
     if [ -n "$attach_address" ]; then
         if ! attach_address="$(validate_arg_ipv4 "$attach_address" "$CONST_ARG_PASSED")"; then
-            echo_red "Attach address incorrect: $attach_address"
+            echo_error "Attach address incorrect: $attach_address"
             return 1
         fi
     fi
 
-    echo_green "Init virtualbox vm $vm_name ..."
+    echo_info "Init virtualbox vm $vm_name ..."
 
     local all_vms=""
     if ! all_vms="$(vboxmanage list vms)"; then
-        echo_red "Cannot get all vms!"
+        echo_error "Cannot get all vms!"
         return 1
     fi
 
     if ! grep -q "$vm_name" <<<"$all_vms"; then
-        echo_red "Vm $vm_name not found!"
-        echo_red "Have next vms:"
+        echo_error "Vm $vm_name not found!"
+        echo_error "Have next vms:"
         echo "$all_vms"
         return 1
     fi
 
-    echo_green "Stop vm $vm_name ..."
+    echo_info "Stop vm $vm_name ..."
     if ! virtualbox_stop_vm "$vm_name"; then
-        echo_red "Cannot stop vm $vm_name!"
+        echo_error "Cannot stop vm $vm_name!"
         return 1
     fi
 
     local vm_info_json=""
 
     if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
-        echo_red "Cannot get vm info: $vm_info_json"
+        echo_error "Cannot get vm info: $vm_info_json"
         return 1
     fi
 
@@ -817,69 +817,69 @@ function cmd_virtualbox_init_vm_run() {
     local host_adapter=""
 
     if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "false")"; then
-        echo_red "Cannot extract NAT mac"
+        echo_error "Cannot extract NAT mac"
         return 1
     fi
 
     if [ -z "$nat_mac" ]; then
-        echo_yellow "NAT interface not found! Create..."
+        echo_warn "NAT interface not found! Create..."
 
         local host_index=""
         if ! host_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.indx" "false")"; then
-            echo_red "Cannot extract index for host iface"
+            echo_error "Cannot extract index for host iface"
             return 1
         fi
         
         if [ -n "$host_indx" ]; then
             # shellcheck disable=SC2004
             nat_index="$(($host_index + 1))"
-            echo_green "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
+            echo_info "Found host interface with index ${host_index}. NAT interface will create with index $nat_index"
         else
             nat_index="1"
-            echo_green "Host interface not found. NAT iface will create with index $nat_index"
+            echo_info "Host interface not found. NAT iface will create with index $nat_index"
         fi
 
         if ! vboxmanage modifyvm "$vm_name" "--nic$nat_index" nat; then
-            echo_red "Cannot add NAT interface"
+            echo_error "Cannot add NAT interface"
             return 1
         fi
 
         nat_index=""
         if ! vm_info_json="$(virtualbox_get_vm_info_json "$vm_name")"; then
-            echo_red "Cannot get vm info after add NAT: $vm_info_json"
+            echo_error "Cannot get vm info after add NAT"
             return 1
         fi
 
         if ! nat_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.mac" "true")"; then
-            echo_red "Cannot extract NAT mac"
+            echo_error "Cannot extract NAT mac"
             return 1
         fi
     fi
 
     if ! nat_index="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.nat.indx" "true")"; then
-        echo_red "Cannot extract NAT index"
+        echo_error "Cannot extract NAT index"
         return 1
     fi
 
     if ! host_mac="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.mac" "false")"; then
-        echo_red "Cannot extract hostonly mac"
+        echo_error "Cannot extract hostonly mac"
         return 1
     fi
 
     if [ -n "$host_mac" ]; then
         if ! host_adapter="$(jq_get_key_or_empty "$vm_info_json" ".ifaces.host.adapter" "true")"; then
-            echo_red "Cannot extract hostonly adapter"
+            echo_error "Cannot extract hostonly adapter"
             return 1
         fi
         
         local host_iface=""
         if ! host_iface="$(virtualbox_extract_host_iface "$attach_address" "$host_adapter")"; then
-            echo_red "$host_iface"
+            echo_error "$host_iface"
             return 1
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot extract output for host interface"
+            echo_error "Cannot extract output for host interface"
             return 1
         fi
 
@@ -887,22 +887,22 @@ function cmd_virtualbox_init_vm_run() {
         IFS=";" read -r -a host_iface_part <<< "$host_iface"
 
         if [[ "${#host_iface_part[@]}" != "3" ]]; then
-            echo_red "incorrect host interface result '$host_iface'. Have no 2 parts"
+            echo_error "incorrect host interface result '$host_iface'. Have no 2 parts"
             return 1
         fi
 
         host_adapter="${host_iface_part[1]}"
         attach_address="${host_iface_part[2]}"
     else
-        echo_green "Host interface not found for vm. Try to extract..."
+        echo_info "Host interface not found for vm. Try to extract..."
         local host_iface=""
         if ! host_iface="$(virtualbox_extract_host_iface "$attach_address")"; then
-            echo_red "$host_iface"
+            echo_error "$host_iface"
             return 1
         fi
 
         if ! host_iface="$(grep --color=never "Output" <<<"$host_iface")"; then
-            echo_red "Cannot extract output for host interface"
+            echo_error "Cannot extract output for host interface"
             return 1
         fi
 
@@ -912,7 +912,7 @@ function cmd_virtualbox_init_vm_run() {
         echo "$host_iface"
 
         if [[ "${#host_iface_part[@]}" != "3" ]]; then
-            echo_red "incorrect host interface result '$host_iface'. Have no 2 parts"
+            echo_error "incorrect host interface result '$host_iface'. Have no 2 parts"
             return 1
         fi
 
@@ -922,22 +922,22 @@ function cmd_virtualbox_init_vm_run() {
         # shellcheck disable=SC2004
         local iface_indx="$(($nat_index + 1))"
 
-        echo_green "Attach $host_adapter with index $iface_indx ..."
+        echo_info "Attach $host_adapter with index $iface_indx ..."
 
         if ! vboxmanage modifyvm "$vm_name" "--nic$iface_indx" hostonly "--host-only-adapter$iface_indx" "$host_adapter" "--cable-connected${iface_indx}" on; then
-            echo_red "Failed attach $host_adapter with index $iface_indx"
+            echo_error "Failed attach $host_adapter with index $iface_indx"
             return 1
         fi
 
         local vm_info_json_after_add=""
 
         if ! vm_info_json_after_add="$(virtualbox_get_vm_info_json "$vm_name")"; then
-            echo_red "Cannot get vm info: $vm_info_json_after_add"
+            echo_error "Cannot get vm info: $vm_info_json_after_add"
             return 1
         fi
 
         if ! host_mac="$(jq_get_key_or_empty "$vm_info_json_after_add" ".ifaces.host.mac" "false")"; then
-            echo_red "Cannot extract hostonly mac"
+            echo_error "Cannot extract hostonly mac"
             return 1
         fi
     fi
@@ -952,34 +952,34 @@ function cmd_virtualbox_init_vm_run() {
     if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
         local opticals_str=""
         if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
-            echo_red "Cannot get opticals from vm info"
+            echo_error "Cannot get opticals from vm info"
             return 1
         fi
 
         local -a opticals_to_unmount=()
         IFS=";" read -ra opticals_to_unmount <<< "$opticals_str"
         
-        echo_green "Prepare vsio..."
+        echo_info "Prepare vsio..."
 
         local viso_file=""
         if ! viso_file="$(virtualbox_prepare_viso "$vm_name" "$nat_mac" "$host_mac" "$attach_address" "$ssh_key_file")"; then
-            echo_red "Cannot prepare viso: $viso_file"
+            echo_error "Cannot prepare viso: $viso_file"
             return 1
         fi
 
-        echo_green "Unmount opticals '${opticals_to_unmount[*]}' ..."
+        echo_info "Unmount opticals '${opticals_to_unmount[*]}' ..."
 
         if ! virtualbox_unmount_opticals "$vm_name" "${opticals_to_unmount[@]}"; then
             return 1
         fi
 
-        echo_green "Mount init viso..."
+        echo_info "Mount init viso..."
 
         if ! virtualbox_mount_opticals "$vm_name" "$viso_file"; then
             return 1
         fi
 
-        echo_green "Start vm..."
+        echo_info "Start vm..."
 
         if ! virtualbox_start_vm "$vm_name"; then
             return 1
