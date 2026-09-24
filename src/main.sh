@@ -93,7 +93,7 @@ function usage() {
     for p in "$@"; do
         local help_fun="phase_${p}_help"
         if ! declare -F "$help_fun" > /dev/null; then
-            echo_red "Help function not found for phase $p"
+            echo_error "Help function not found for phase $p"
             exit 1
         fi
         echo ""
@@ -115,12 +115,12 @@ function usage() {
   will run command
 
 "
-    echo_green "Commands available:" 2>&1
+    echo_green "Commands available:"
 
     for cm in "${COMMANDS_LIST[@]}"; do
         local cmd_help_fun="cmd_${cm}_help"
         if ! declare -F "$cmd_help_fun" > /dev/null; then
-            echo_red "Help function not found for command $cm"
+            echo_error "Help function not found for command $cm"
             exit 1
         fi
         echo ""
@@ -306,7 +306,7 @@ function main() {
     # shellcheck disable=SC2155
     local old_hostname="$(get_hostname)"
 
-    echo_green "Have next phases for run: ${phases_to_run[*]}"
+    echo_info "Have next phases for run: ${phases_to_run[*]}"
     if ! ask_user "Start init '${old_hostname}'?" "$not_ask"; then
         echo_error "Disallow start!"
         exit 1
