@@ -61,10 +61,15 @@ function usage() {
     fi
 
     # shellcheck disable=SC2154
-    echo "
-Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
-  $init_msg
-  Global parameters
+    echo "$init_msg"
+    echo ""
+    
+    # shellcheck disable=SC2154
+    echo "Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]"
+    echo ""
+
+  echo_green "  Global parameters:" 2>&1
+  echo "
     --not-ask
       If passed will not ask user about actions.
       Env NOT_ASK=true for set.
@@ -82,8 +87,8 @@ Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
   Otherwise, run all phases. For disable some phase 
   you can use disable env variable (see phase params).  
   
-  Phases for run in order:
 "
+    echo_green  "Phases for run in order:" 2>&1
 
     for p in "$@"; do
         local help_fun="phase_${p}_help"
@@ -92,23 +97,26 @@ Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
             exit 1
         fi
         echo ""
-        echo "  Phase $p"
+        echo -n "  Phase " 
+        echo_yellow "$p" 2>&1
         "$help_fun"
         echo "    $(disable_help "$p")"
     done
 
+    echo ""
+
     if [[ "${#COMMANDS_LIST[@]}" == "0" ]]; then
+        echo_yellow "Not any commands found for run." 2>&1
         return 0
     fi
-
-    echo ""
 
     echo "
   If passed 'cmd' as first argument and name os command as second
   will run command
 
-  Commands available:
 "
+    echo_green "Commands available:" 2>&1
+
     for cm in "${COMMANDS_LIST[@]}"; do
         local cmd_help_fun="cmd_${cm}_help"
         if ! declare -F "$cmd_help_fun" > /dev/null; then
@@ -116,7 +124,8 @@ Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
             exit 1
         fi
         echo ""
-        echo "  Command $cm"
+        echo -n "  Command " 
+        echo_yellow "$cm" 2>&1
         "$cmd_help_fun"
     done
 }
