@@ -353,7 +353,6 @@ function get_env_value_or_default() {
 # Start vps-init/src/include/03_base_input.sh
 
 function prepare_prompt_str() {
-    set +x
     local prompt="${1:-No prompt}"
     local yes_no_out="${2:-}"
     echo_info "p: ${yes_no_out}"
@@ -363,7 +362,6 @@ function prepare_prompt_str() {
         yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
     fi
     printf "> \e${CONST_COLOR_YELLOW}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
-    set -x
 }
 
 # shellcheck disable=SC2329
