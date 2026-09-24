@@ -9,26 +9,26 @@ export CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
 # shellcheck disable=SC2329
 function cmd_gitlab_register_runner_run() {
     if ! command -v gitlab-runner &> /dev/null; then
-        echo_red "gitlab runner is not installed!"
-        echo_red "Please init server or install with --phase gitlab first."
+        echo_error "gitlab runner is not installed!"
+        echo_error "Please init server or install with --phase gitlab first."
         return 1
     fi
 
     if ! systemctl is-active "$CONST_GITLAB_SERVICE_NAME"; then
-        echo_red "gitlab runner service is not active!"
-        echo_red "Please init server or install with --phase gitlab first."
+        echo_error "gitlab runner service is not active!"
+        echo_error "Please init server or install with --phase gitlab first."
         return 1
     fi
 
     local runner_config=""
 
     if ! runner_config="$(extract_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
-        echo_red "Gitlab runner config: $runner_config"
+        echo_error "Gitlab runner config"
         return 1
     fi
 
     if [ -n "$runner_config" ]; then
-        echo_green "Load runner config $runner_config"
+        echo_info "Load runner config $runner_config"
         # shellcheck disable=SC1090
         set -a && source "$runner_config" && set +a
     fi
@@ -48,7 +48,7 @@ function cmd_gitlab_register_runner_run() {
     fi
 
     if [ -n "$errors" ]; then
-        echo_red "$errors"
+        echo_error "$errors"
         return 1
     fi
 
@@ -59,14 +59,14 @@ function cmd_gitlab_register_runner_run() {
 
     local runners=""
     if ! runners="$(gitlab-runner list -c /etc/gitlab-runner/config.toml)"; then
-        echo_red "Cannot list runners!"
+        echo_error "Cannot list runners!"
         return 1
     fi
 
     local runner_name="$GITLAB_RUNNER_DESC"
 
     if grep -q "$runner_name" <<<"$runners"; then
-        echo_green "Runner $runner_name already registered!"
+        echo_info "Runner $runner_name already registered!"
         return 0
     fi
 
@@ -83,11 +83,11 @@ function cmd_gitlab_register_runner_run() {
     )
 
     if ! gitlab-runner register "${register_args[@]}"; then
-        echo_red "Cannot register runner ${runner_name}!"
+        echo_error "Cannot register runner ${runner_name}!"
         return 1
     fi
     
-    echo_green "Runner ${runner_name} registered!"
+    echo_info "Runner ${runner_name} registered!"
 }
 
 # shellcheck disable=SC2329

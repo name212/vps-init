@@ -20,7 +20,7 @@ function get_sys_service_engine() {
         return 0
     fi
 
-    echo_red "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
+    echo_error "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
     return 1
 }
 
@@ -37,15 +37,15 @@ function systemd_disable_all() {
         return 0
     fi
 
-    echo_green "systemd service $srv is active. Disable..."
+    echo_info "systemd service $srv is active. Disable..."
 
     if ! systemctl disable --now "$srv"; then
-        echo_red "Cannot disable $srv"
+        echo_error "Cannot disable $srv"
         return 1
     fi
 
     if ! systemctl stop "$srv"; then
-        echo_red "Cannot stop $srv"
+        echo_error "Cannot stop $srv"
         return 1
     fi
 
@@ -83,7 +83,7 @@ function disable_and_stop_services() {
     disable_fun="${service_engine}_disable_all"
 
     if ! declare -F "$disable_fun" > /dev/null; then
-        echo_red "Internal error: '$disable_fun' func not declared!"
+        echo_error "Internal error: '$disable_fun' func not declared!"
         return 1
     fi
 
