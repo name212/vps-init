@@ -82,12 +82,3 @@ function ask_user_raw() {
     echo -n "$res"
     return 0
 }
-
-# shellcheck disable=SC2329
-function remove_begin_spaces() {
-    local content="$1"
-    while [[ "$content" == [[:space:]]* ]]; do
-        content="${content#[[:space:]]}"
-    done
-    echo -n "$content"
-}

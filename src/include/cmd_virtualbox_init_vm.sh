@@ -54,7 +54,7 @@ function virtualbox_extract_value_for_key_human() {
         return 1
     fi
 
-    echo -n "$(remove_begin_spaces "${val_parts[1]}")"
+    echo -n "$(trim_spaces_left "${val_parts[1]}")"
     return 0
 }
 
