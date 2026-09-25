@@ -4847,7 +4847,10 @@ function main() {
     # shellcheck disable=SC2155
     local old_hostname="$(get_hostname)"
 
-    echo_info "Have next phases for run: ${phases_to_run[*]}"
+    echo_info "Have next phases for run:"
+    for ph_p in "${phases_to_run[@]}"; do
+        echo_info "  $ph_p"
+    done
     if ! ask_user "Start init '${old_hostname}'?" "$not_ask"; then
         echo_error "Disallow start!"
         exit 1
