@@ -282,6 +282,14 @@ function add_pubkey_for_user() {
     local tmp_file="$(mktemp)"
 
     if [ -f "$auth_keys_file" ]; then
+
+        if grep -q "$ssh_key" "$auth_keys_file"; then
+            delete_file "$tmp_file" || true
+            echo_green "SSH key '$ssh_key' already present in '$auth_keys_file'. Content:"
+            cat "$auth_keys_file" || true
+            return 0
+        fi
+
         if ! cp "$auth_keys_file" "$tmp_file"; then
             delete_file "$tmp_file" || true
             echo_error "cannot copy $auth_keys_file to $tmp_file for add key for $name"
