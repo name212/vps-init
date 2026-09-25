@@ -191,7 +191,7 @@ function main() {
     done
 
     local -a phases_sorted=()
-    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort)
+    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort -n)
 
     local -a phases=()
     for ps in "${phases_sorted[@]}"; do
