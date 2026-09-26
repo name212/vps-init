@@ -73,7 +73,7 @@ header="src/main_header.sh"
 echo_green "Write $header to $destination"
 cat "$header" > "$destination"
 
-for fl in $(find src/include -name "*.sh" -type f | sort); do
+for fl in $(find src/include -name "*.sh" -type f | sort -n); do
     bs="$(basename "$fl")"
     if [[ -v skip_build["$bs"] ]]; then
         echo_yellow "Skip add $fl to $destination because it in skip"

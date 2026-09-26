@@ -218,7 +218,7 @@ function main() {
 
     local config=""
 
-    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file_optional" "$@")"; then
         echo_error "Passed config is incorrect: $config"
         exit 1
     fi
@@ -275,12 +275,16 @@ function main() {
 
         "__tst")
             local tst_ret="255"
+            local echo_fun_call="echo_info"
             if run_tests_func; then
                 tst_ret="0"
+                echo_fun_call="echo_info"
             else 
                 tst_ret="$?"
+                echo_fun_call="echo_warn"
             fi
-            echo_info "Ret code: $tst_ret"
+            echo ""
+            "$echo_fun_call" "Ret code: $tst_ret"
             exit "$tst_ret"
     esac
 

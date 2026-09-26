@@ -277,143 +277,6 @@ function parse_not_ask() {
 }
 
 # shellcheck disable=SC2329
-function validate_arg_not_empty_file() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo -n ""
-        return 0
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty file path"
-        return 1 
-    fi
-
-    local real=""
-
-    if ! real="$(realpath "$val")"; then
-        echo "cannot extract real path for $val"
-        return 1
-    fi
-
-    if [ ! -f "$real" ]; then
-        echo "$val is not file!"
-        return 1
-    fi
-
-    if [ ! -s "$real" ]; then
-        echo "$val is empty file!"
-        return 1
-    fi
-
-    echo -n "$real"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_not_empty() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo "Arg not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    echo -n "$val"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_number() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo "Arg not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    if ! [[ $val =~ ^[0-9]+$ ]]; then
-        echo_red "$val is not number!"
-        return 1
-    fi
-
-    echo -n "$val"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_ipv4_func() {
-    local val="$1"
-    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-
-    if [[ "$val" =~ $regexp ]]; then
-        echo -n "$val"
-        return 0
-    fi 
-
-    echo -n "Incorrect IPv4 $val"
-    return 1
-}
-
-# shellcheck disable=SC2329
-function validate_arg_ipv4() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo "Arg not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    if ! validate_arg_ipv4_func "$val"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_ipv4_optional() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo -n ""
-        return 0
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    if ! validate_arg_ipv4_func "$val"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
 function get_env_value_or_default() {
     local var_name="$1"
     local default_val="${2-}"
@@ -429,92 +292,248 @@ function get_env_value_or_default() {
 
 # End vps-init/src/include/03_args.sh
 
-# Start vps-init/src/include/04_base_input.sh
+# Start vps-init/src/include/04_validate_base.sh
 
-function prepare_prompt_str() {
-    local prompt="${1:-No prompt}"
-    local yes_no_out="${2:-}"
-    local yes_no=""
-    if [ -n "$yes_no_out" ]; then
-        # shellcheck disable=SC2059
-        yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
-    fi
-    printf "> \e${CONST_COLOR_YELLOW}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
-}
+export CONST_VALIDATE_SHOULD_OPTIONAL="optional"
+export CONST_VALIDATE_SHOULD_PASSED="passed"
 
 # shellcheck disable=SC2329
-function ask_user() {
-    local prompt="${1-:No prompt}"
-    local not_ask="${2-no}"
+function is_function_declared() {
+    local fun="${1:-}"
 
-    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
-        return 0
-    fi
-
-    local answer=""
-
-    # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt" "print_yn")" answer
-
-    if [[ "$answer" == "y" ]]; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function ask_user_choice() {
-    local prompt="${1-:No prompt}"
-    
-    shift
-
-    local answer=""
-
-    # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt")" answer
-
-    for to_check in "$@"; do
-        if [[ "$answer" == "$to_check" ]]; then
-            echo -n "$answer"
-            return 0
-        fi
-    done
-
-    echo_error "Incorrect answer '$answer'"
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function ask_user_raw() {
-    local prompt="${1-:No prompt}"
-    local validator="${2-${CONST_NO_VALIDATE}}"
-    
-    local answer=""
-
-    # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt")" answer
-
-    if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
-        echo -n "$answer"
-        return 0
-    fi
-
-    local res=""
-
-    if ! res="$($validator "$answer" "$CONST_ARG_PASSED")"; then
-        echo_error "Incorrect answer '$answer': $res"
+    if [ -z "$fun" ]; then
+        echo_error "Function is not passed"
         return 1
     fi
 
-    echo -n "$res"
+    if ! declare -F "$fun" > /dev/null; then
+        echo_error "Function '$fun' is not declared"
+        return 1
+    fi
+
     return 0
 }
 
-# End vps-init/src/include/04_base_input.sh
+# shellcheck disable=SC2329
+function call_validate_fun() {
+    local is_optional="$1"
+    local validate_fun="$2"
+    local val="$3"
+    local passed="$4"
 
-# Start vps-init/src/include/05_base_diff.sh
+    if ! is_function_declared "$validate_fun"; then
+        echo_error "Validation function '$validate_fun' is not declared"
+        return 1
+    fi
+
+    if [[ "$is_optional" == "$CONST_VALIDATE_SHOULD_OPTIONAL" ]]; then
+        if [[ "$passed" == "$CONST_ARG_NOT_PASSED" || "$val" == "" ]]; then
+            echo -n ""
+            return 0
+        fi
+    fi
+
+    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        echo_error "Arg not passed"
+        return 1
+    fi
+
+    if [ -z "$val" ]; then
+        echo_error "Empty arg val"
+        return 1 
+    fi
+
+    if ! val="$("$validate_fun" "$val")"; then
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+# End vps-init/src/include/04_validate_base.sh
+
+# Start vps-init/src/include/05_validate_01_str.sh
+
+# shellcheck disable=SC2329
+function validate_arg_not_empty() {
+    local val="$1"
+    local passed="$2"
+
+    function __dummy_validate() {
+        echo -n "$1"
+    }
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "__dummy_validate" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function check_is_number() {
+    local val="$1"
+
+    if ! [[ $val =~ ^-?[0-9]+$ ]]; then
+        echo_error "'$val' is not number!"
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function validate_arg_number() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_number_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_number" "$val" "$passed"
+    return $?
+}
+
+# End vps-init/src/include/05_validate_01_str.sh
+
+# Start vps-init/src/include/05_validate_02_bash.sh
+
+# shellcheck disable=SC2329
+function validate_arg_func_declared_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_function_declared" "$val" "$passed"
+    return $?
+}
+
+# End vps-init/src/include/05_validate_02_bash.sh
+
+# Start vps-init/src/include/05_validate_03_fs.sh
+
+# shellcheck disable=SC2329
+function check_file_is_not_empty() {
+    local val="$1"
+
+    local real=""
+
+    if ! real="$(realpath "$val")"; then
+        echo_error "Cannot extract real path for '$val'"
+        return 1
+    fi
+
+    if [ ! -f "$real" ]; then
+        echo_error "'$val' is not file!"
+        return 1
+    fi
+
+    if [ ! -s "$real" ]; then
+        echo_error "'$val' is empty file!"
+        return 1
+    fi
+
+    echo -n "$real"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function validate_arg_not_empty_file() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_file_is_not_empty" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_not_empty_file_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_file_is_not_empty" "$val" "$passed"
+    return $?
+}
+
+# End vps-init/src/include/05_validate_03_fs.sh
+
+# Start vps-init/src/include/05_validate_04_net.sh
+
+# shellcheck disable=SC2329
+function check_is_number_port() {
+    local port="$1"
+
+    if ! port="$(check_is_number "$port" "$CONST_ARG_PASSED")"; then
+        echo_error "Port is not number"
+        return 1
+    fi
+
+    if [ "$port" -gt "0" ] && [ "$port" -le "65535" ]; then
+        echo -n "$port"
+        return 0
+    fi
+
+    echo_error "Port '$port' should be >= 1 and <=  65535"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function validate_arg_port() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number_port" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_port_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_number_port" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function check_is_ipv4() {
+    local val="$1"
+    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+
+    if [[ "$val" =~ $regexp ]]; then
+        echo -n "$val"
+        return 0
+    fi 
+
+    echo_error "Incorrect IPv4 '$val'"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function validate_arg_ipv4() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_ipv4" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_ipv4_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_ipv4" "$val" "$passed"
+    return $?
+}
+
+# End vps-init/src/include/05_validate_04_net.sh
+
+# Start vps-init/src/include/06_base_diff.sh
 
 export CONST_OUT_DIFF_OR_HAS_DIFF="true"
 export CONST_DIFF_ADD_ARGS=("--color=always")
@@ -646,9 +665,94 @@ function files_has_not_diff() {
     return "$ret_diff"
 }
 
-# End vps-init/src/include/05_base_diff.sh
+# End vps-init/src/include/06_base_diff.sh
 
-# Start vps-init/src/include/06_base_jq.sh
+# Start vps-init/src/include/07_base_input.sh
+
+function prepare_prompt_str() {
+    local prompt="${1:-No prompt}"
+    local yes_no_out="${2:-}"
+    local yes_no=""
+    if [ -n "$yes_no_out" ]; then
+        # shellcheck disable=SC2059
+        yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
+    fi
+    printf "> \e${CONST_COLOR_YELLOW}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
+}
+
+# shellcheck disable=SC2329
+function ask_user() {
+    local prompt="${1-:No prompt}"
+    local not_ask="${2-no}"
+
+    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
+        return 0
+    fi
+
+    local answer=""
+
+    # shellcheck disable=SC2162
+    read -p "$(prepare_prompt_str "$prompt" "print_yn")" answer
+
+    if [[ "$answer" == "y" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function ask_user_choice() {
+    local prompt="${1-:No prompt}"
+    
+    shift
+
+    local answer=""
+
+    # shellcheck disable=SC2162
+    read -p "$(prepare_prompt_str "$prompt")" answer
+
+    for to_check in "$@"; do
+        if [[ "$answer" == "$to_check" ]]; then
+            echo -n "$answer"
+            return 0
+        fi
+    done
+
+    echo_error "Incorrect answer '$answer'"
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function ask_user_raw() {
+    local prompt="${1-:No prompt}"
+    local validator="${2-${CONST_NO_VALIDATE}}"
+    
+    local answer=""
+
+    # shellcheck disable=SC2162
+    read -p "$(prepare_prompt_str "$prompt")" answer
+
+    if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
+        echo -n "$answer"
+        return 0
+    fi
+
+    local res=""
+
+    if ! res="$($validator "$answer" "$CONST_ARG_PASSED")"; then
+        echo_error "Incorrect answer '$answer': $res"
+        return 1
+    fi
+
+    echo -n "$res"
+    return 0
+}
+
+# End vps-init/src/include/07_base_input.sh
+
+# Start vps-init/src/include/07_base_jq.sh
 
 # shellcheck disable=SC2329
 function jq_get_key_or_empty() { 
@@ -682,7 +786,7 @@ function jq_get_key_or_empty() {
     return 1
 }
 
-# End vps-init/src/include/06_base_jq.sh
+# End vps-init/src/include/07_base_jq.sh
 
 # Start vps-init/src/include/10_base_fs.sh
 
