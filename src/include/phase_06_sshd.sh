@@ -203,10 +203,12 @@ function sshd_apply_setting() {
         echo "$setting" > "$conf_file" 
     fi
 
+    set +x
     if ! grep -qPzo "$setting" "$conf_file"; then
-        echo_warn "Change to new sshd port setting to '$setting'"
+        echo_warn "Change to new sshd setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
+    set -x
 
     if ! chmod 600 "$conf_file"; then
         echo_warn "Cannot change mode for config file $conf_file"

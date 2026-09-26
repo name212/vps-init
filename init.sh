@@ -446,8 +446,11 @@ function validate_arg_func_declared() {
     local val="$1"
     local passed="$2"
 
-    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_function_declared" "$val" "$passed"
-    return $?
+    if ! call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_function_declared" "$val" "$passed"; then
+        return 1
+    fi
+    echo -n "$val"
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -455,8 +458,12 @@ function validate_arg_func_declared_optional() {
     local val="$1"
     local passed="$2"
 
-    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "is_function_declared" "$val" "$passed"
-    return $?
+    if ! call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "is_function_declared" "$val" "$passed"; then
+        return 1
+    fi
+    
+    echo -n "$val"
+    return 0
 }
 
 # End vps-init/src/include/05_validate_02_bash.sh
@@ -4014,10 +4021,12 @@ function sshd_apply_setting() {
         echo "$setting" > "$conf_file" 
     fi
 
+    set +x
     if ! grep -qPzo "$setting" "$conf_file"; then
-        echo_warn "Change to new sshd port setting to '$setting'"
+        echo_warn "Change to new sshd setting to '$setting'"
         echo "$setting" > "$conf_file"
     fi
+    set -x
 
     if ! chmod 600 "$conf_file"; then
         echo_warn "Cannot change mode for config file $conf_file"
