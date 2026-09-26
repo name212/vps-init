@@ -399,6 +399,44 @@ function validate_arg_number_optional() {
     return $?
 }
 
+# shellcheck disable=SC2329
+function validate_arg_number_positive() {
+    local val="$1"
+    local passed="$2"
+
+    if ! val="$(call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed")"; then
+        return 1
+    fi
+
+    if [ "$val" -gt "0" ]; then
+        echo -n "$val"
+        return 0
+    fi
+
+    echo_error "Number '$val' < 1"
+
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_number_positive_or_zero() {
+    local val="$1"
+    local passed="$2"
+
+    if ! val="$(call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed")"; then
+        return 1
+    fi
+
+    if [ "$val" -ge "0" ]; then
+        echo -n "$val"
+        return 0
+    fi
+
+    echo_error "Number '$val' < 0"
+
+    return $?
+}
+
 # End vps-init/src/include/05_validate_01_str.sh
 
 # Start vps-init/src/include/05_validate_02_bash.sh
@@ -409,6 +447,15 @@ function validate_arg_func_declared() {
     local passed="$2"
 
     call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_function_declared" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_func_declared_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "is_function_declared" "$val" "$passed"
     return $?
 }
 
