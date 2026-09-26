@@ -404,7 +404,7 @@ function validate_arg_number_optional() {
 # Start vps-init/src/include/05_validate_02_bash.sh
 
 # shellcheck disable=SC2329
-function validate_arg_func_declared_optional() {
+function validate_arg_func_declared() {
     local val="$1"
     local passed="$2"
 
