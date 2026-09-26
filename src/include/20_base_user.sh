@@ -12,9 +12,9 @@ function update_passwd_for_user() {
     local password="${3-}"
 
      if [[ "$remove_password" == "$CONST_REMOVE_PASSWORD" ]]; then
-        echo_green "Remove password for user ${name}..."
+        echo_info "Remove password for user ${name}..."
         if ! passwd -d "$name"; then
-            echo_red "Password not removed for $name"
+            echo_error "Password not removed for $name"
             return 1
         fi
 
@@ -22,9 +22,9 @@ function update_passwd_for_user() {
     fi
 
     if [ -z "$password" ]; then
-        echo_green "Please set password for ${name}:"
+        echo_info "Please set password for ${name}:"
         if ! passwd "${name}"; then
-            echo_red "Password not set for $name"
+            echo_error "Password not set for $name"
             return 1
         fi
 
@@ -35,10 +35,27 @@ function update_passwd_for_user() {
     printf -v enter_pass "%s\n%s" "$password" "$password"
 
     if ! passwd "$name" <<<"$enter_pass"; then
-        echo_red "Cannot update passed password for $name"
+        echo_error "Cannot update passed password for $name"
         return 1
     fi
 
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_passwd_str_for_user() {
+    local user_name="${1:-}"
+
+    local user_passwd=""
+    if ! user_passwd="$(grep "^${user_name}:" "/etc/passwd")"; then
+        return 1
+    fi
+
+    if [ -z "$user_passwd" ]; then
+        return 1
+    fi
+
+    echo -n "$user_passwd"
     return 0
 }
 
@@ -47,24 +64,24 @@ function get_user_home(){
     local name="$1"
 
     local user_passwd=""
-    if ! user_passwd="$(getent passwd "$name")"; then
-        echo_red "cannot get passwd ent for $name"
+    if ! user_passwd="$(get_passwd_str_for_user "$name")"; then
+        echo_error "cannot get passwd ent for $name"
         return 1
     fi
 
     local user_home=""
     if ! user_home="$(cut -d: -f6 <<<"$user_passwd")"; then 
-        echo_red "cannot extract home for $name"
+        echo_error "cannot extract home for $name"
         return 1
     fi
 
     if [ -z "$user_home" ]; then
-        echo_red "User home not foend for $name"
+        echo_error "User home not found for $name"
         return 1
     fi
 
     if [ ! -d "$user_home" ]; then
-        echo_red "User home $user_home is not directory for $name"
+        echo_error "User home $user_home is not directory for $name"
         return 1
     fi
 
@@ -80,17 +97,17 @@ function add_user() {
     local password="${4-}"
 
     if [ -z "$name" ]; then
-        echo_red "User name is empty"
+        echo_error "User name is empty"
         return 1
     fi
 
     local user_exists="true"
 
-    if ! getent passwd "$name" > /dev/null; then
-        echo_green "Add user ${name}..."
+    if ! get_passwd_str_for_user "$name" > /dev/null; then
+        echo_info "Add user ${name}..."
 
         if ! useradd -m -s /bin/bash "$name"; then
-            echo_red "User $name not added!"
+            echo_error "User $name not added!"
             return 1
         fi
 
@@ -99,8 +116,8 @@ function add_user() {
 
     if [[ "$user_exists" == "true" ]]; then
         if ! ask_user "User $name exists. Update password?" "$not_ask"; then
-            echo_yellow "Skip update password for $name"
-            echo_green "User ${name} updated!"
+            echo_warn "Skip update password for $name"
+            echo_info "User ${name} updated!"
             return 0
         fi
     fi
@@ -109,7 +126,24 @@ function add_user() {
         return 1
     fi
 
-    echo_green "User ${name} added or updated!"
+    echo_info "User ${name} added or updated!"
+}
+
+# shellcheck disable=SC2329
+function get_group_str() {
+    local group_name="$1"
+    local res_str=""
+
+    if ! res_str="$(grep "^${group_name}:" /etc/group)"; then
+        return 1
+    fi
+
+    if [ -z "$res_str" ]; then
+        return 1
+    fi
+
+    echo -n "$res_str"
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -117,19 +151,19 @@ function add_user_to_group() {
     local user_name="$1"
     local group_name="$2"
 
-    if getent group "$group_name" | grep -q "\b$user_name\b"; then
-        echo_green "User $user_name already in group $group_name"
+    if get_group_str "$group_name" | grep -q "\b$user_name\b"; then
+        echo_info "User $user_name already in group $group_name"
         return 0
     fi
 
-    echo_green "Add user $user_name to group ${group_name}..."
+    echo_info "Add user $user_name to group ${group_name}..."
 
     if ! usermod -aG "$group_name" "$user_name"; then
-        echo_red "Cannot add user $user_name to group ${group_name}!"
+        echo_error "Cannot add user $user_name to group ${group_name}!"
         return 1
     fi
 
-    echo_green "User $user_name added to group ${group_name}!"
+    echo_info "User $user_name added to group ${group_name}!"
 }
 
 # shellcheck disable=SC2329
@@ -139,7 +173,7 @@ function add_user_to_sudoers() {
     local not_ask="${3-no}"
 
     if [ -z "$name" ]; then
-        echo_red "user name did not pass"
+        echo_error "user name did not pass"
         return 1
     fi
 
@@ -151,7 +185,7 @@ function add_user_to_sudoers() {
     local sudoers_path="/etc/sudoers"
 
     if grep -q "$sudoers_str" "$sudoers_path"; then
-        echo_green "User $name already add to $sudoers_path"
+        echo_info "User $name already add to $sudoers_path"
         return 0
     fi
 
@@ -160,13 +194,13 @@ function add_user_to_sudoers() {
 
     if ! cp "$sudoers_path" "$tmp_file"; then
         delete_file "$tmp_file" || true
-        echo_red "Cannot copy $sudoers_path to $tmp_file for check for user $name"
+        echo_error "Cannot copy $sudoers_path to $tmp_file for check for user $name"
         return 1
     fi
 
     if [ ! -s  "$tmp_file" ]; then
         delete_file "$tmp_file" || true
-        echo_red "$tmp_file is empty after copy sudoers for user $name"
+        echo_error "$tmp_file is empty after copy sudoers for user $name"
         return 1
     fi
 
@@ -179,7 +213,7 @@ function add_user_to_sudoers() {
     } >> "$tmp_file"
 
     if ! visudo -q -c -f "$tmp_file"; then
-        echo_red "$tmp_file  sudoers for user $name is invalid. Tmp file not deleted"
+        echo_error "$tmp_file  sudoers for user $name is invalid. Tmp file not deleted"
         return 1
     fi
 
@@ -197,43 +231,48 @@ function add_pubkey_for_user() {
     local not_ask="${3-no}"
 
     if [ -z "$name" ]; then
-        echo_red "user name did not pass"
+        echo_error "user name did not pass"
         return 1
     fi
 
-    if [ ! -f "$ssh_key_file" ]; then
-        echo_yellow "$ssh_key_file is not file. Skip add ssh pub key for $name"
-        return 0
+    local ssh_key=""
+
+    if [ -n "$ssh_key_file" ]; then
+         if [ -f "$ssh_key_file" ]; then
+            if ! ssh_key="$(cat "$ssh_key_file")"; then
+                echo_warn "$ssh_key_file is not file. Skip add ssh pub key for $name"
+                return 0
+            fi
+        else
+            ssh_key="$ssh_key_file"
+        fi
     fi
-
-    # shellcheck disable=SC2155
-    local ssh_key="$(cat "$ssh_key_file")"
-
+   
     if [ -z "$ssh_key" ]; then
-        echo_yellow "$ssh_key_file is empty. Skip add ssh pub key for $name"
+        echo_warn "$ssh_key_file is empty. Skip add ssh pub key for $name"
         return 0
     fi
 
     local user_home=""
     if ! user_home="$(get_user_home "$name")"; then 
-        echo_red "$user_home"
+        echo_error "$user_home"
         return 1
     fi 
 
     local ssh_dir="${user_home}/.ssh"
 
     if ! mkdir -p "$ssh_dir"; then
-        echo_red "cannot create $ssh_dir dir for $name"
+        echo_error "cannot create $ssh_dir dir for $name"
         return 1
     fi
 
     if ! chmod 700 "$ssh_dir"; then
-        echo_red "cannot chmod $ssh_dir dir for $name"
+        echo_error "cannot chmod $ssh_dir dir for $name"
         return 1
     fi
 
     if ! chown "${name}:${name}" "$ssh_dir"; then
-        echo_red "cannot chown $ssh_dir dir for $name"
+        echo_error "cannot chown $ssh_dir dir for $name"
         return 1
     fi
 
@@ -243,9 +282,17 @@ function add_pubkey_for_user() {
     local tmp_file="$(mktemp)"
 
     if [ -f "$auth_keys_file" ]; then
+
+        if grep -q "$ssh_key" "$auth_keys_file"; then
+            delete_file "$tmp_file" || true
+            echo_green "SSH key '$ssh_key' already present in '$auth_keys_file'. Content:"
+            cat "$auth_keys_file" || true
+            return 0
+        fi
+
         if ! cp "$auth_keys_file" "$tmp_file"; then
             delete_file "$tmp_file" || true
-            echo_red "cannot copy $auth_keys_file to $tmp_file for add key for $name"
+            echo_error "cannot copy $auth_keys_file to $tmp_file for add key for $name"
             return 1
         fi
         echo "" >> "$tmp_file"
@@ -261,12 +308,12 @@ function add_pubkey_for_user() {
     fi
 
     if ! chmod 600 "$auth_keys_file"; then
-        echo_red "cannot chmod $auth_keys_file file for $name"
+        echo_error "cannot chmod $auth_keys_file file for $name"
         return 1
     fi
 
     if ! chown "${name}:${name}" "$auth_keys_file"; then
-        echo_red "cannot chown $auth_keys_file file for $name"
+        echo_error "cannot chown $auth_keys_file file for $name"
         return 1
     fi
 
@@ -276,8 +323,8 @@ function add_pubkey_for_user() {
 # shellcheck disable=SC2329
 function get_loginable_users() {
     local passwd_out=""
-    if ! passwd_out="$(getent passwd)"; then
-        echo_red "Failed to call getent for get loginable users"
+    if ! passwd_out="$(cat /etc/passwd)"; then
+        echo_error "Failed to cat /etc/passwd for getting loginable users"
         return 1
     fi
 
@@ -289,7 +336,7 @@ function get_loginable_users() {
 
     local users_raw_list=""
     if ! users_raw_list="$(cut -d: -f1 <<<"$users_passwd_list")"; then
-        echo_red "Failed to ectract users names loginable users"
+        echo_error "Failed to extract users names loginable users"
         return 1
     fi
 

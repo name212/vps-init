@@ -22,7 +22,7 @@ function jq_get_key_or_empty() {
 
         "1")
             if [[ "$required" == "true" ]]; then
-                echo "Key not found $key"
+                echo_error "Key not found $key"
                 return 1
             fi
 
@@ -30,6 +30,6 @@ function jq_get_key_or_empty() {
             return 0
     esac
 
-    echo "Cannot get json key $key"
+    echo_error "Cannot get json key $key"
     return 1
 }

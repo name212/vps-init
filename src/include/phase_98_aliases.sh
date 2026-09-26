@@ -3,11 +3,11 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["aliases"]="99"
+PHASES_WITH_INDEX["aliases"]="98"
 
 # shellcheck disable=SC2329
 function phase_aliases_run() {
-    echo_green "Add aliases..."
+    echo_info "Add aliases..."
 
     local content=""
     content=$(cat <<EOF
@@ -18,13 +18,13 @@ EOF
 
     echo "$content" > /etc/profile.d/099-additional-aliases.sh
 
-    echo_green "Aliases added!"
+    echo_info "Aliases added!"
 }
 
 # shellcheck disable=SC2329
 function phase_aliases_help() {
     echo -n "
-    Add aditional aliases
+    Add additional aliases
     No Options.
 "
 }

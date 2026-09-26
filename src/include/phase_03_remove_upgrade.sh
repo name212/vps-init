@@ -3,11 +3,11 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["remove_upgrade"]="02"
+PHASES_WITH_INDEX["remove_upgrade"]="03"
 
 # shellcheck disable=SC2329
 function phase_remove_upgrade_run() {
-    echo_green "Remove unattended upgrades..."
+    echo_info "Remove unattended upgrades..."
 
     if ! remove_packages "unattended-upgrades"; then
         return 1 
@@ -15,19 +15,19 @@ function phase_remove_upgrade_run() {
 
     local -a timers=("apt-daily.timer" "apt-daily-upgrade.timer")
 
-    echo_green "Stop and disable timers ${timers[*]} ..."
+    echo_info "Stop and disable timers ${timers[*]} ..."
     
     if ! systemctl disable "${timers[@]}"; then 
-        echo_red "Cannot disable timers"
+        echo_error "Cannot disable timers"
         return 1
     fi
 
     if ! systemctl stop "${timers[@]}"; then 
-        echo_red "Cannot stop timers"
+        echo_error "Cannot stop timers"
         return 1
     fi
 
-    echo_green "Unattended upgrades removed!"
+    echo_info "Unattended upgrades removed!"
     return 0
 }
 
