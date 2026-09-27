@@ -88,7 +88,8 @@ function echo_info () {
     __write_to_log_file "$CONST_LOG_LEVEL_INFO" "$1" || true
 }
 
-function is_log_level_debug() {
+# shellcheck disable=SC2329
+function is_log_level_debug_enabled() {
     local force="${1:-}"
 
     if [[ "$force" == "$CONST_FORCE_DEBUG" || "$PRIVATE_SCRIPT_DEBUG_ENABLED" == "$CONST_FORCE_DEBUG" ]]; then
@@ -103,7 +104,7 @@ function echo_debug() {
     local msg="${1:-}"
     local force="${2:-}"
 
-    if is_log_level_debug "$force"; then
+    if is_log_level_debug_enabled "$force"; then
         echo -e "${CONST_COLOR_GRAY_LIGHT}${msg}${CONST_COLOR_NO}" >&2
     fi
 
@@ -153,6 +154,7 @@ function set_log_file () {
     return 0
 }
 
+# shellcheck disable=SC2329
 function __tee_log_command_out() {
     local level="$1"
 
@@ -184,13 +186,15 @@ function __tee_log_command_out() {
     return 0
 }
 
-function tee_log_command_out_info() {
-    __tee_log_command_out "$CONST_LOG_LEVEL_INFO" "$@"
+# shellcheck disable=SC2329
+function tee_log_command_out_force() {
+    __tee_log_command_out "$CONST_LOG_LEVEL_DEBUG" "$@"
     return $?
 }
 
-function tee_log_command_out_only_debug() {
-    if ! is_log_level_debug ""; then
+# shellcheck disable=SC2329
+function tee_log_command_out() {
+    if ! is_log_level_debug_enabled ""; then
         return 0
     fi
 
