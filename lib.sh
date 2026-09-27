@@ -30,6 +30,12 @@ export PRIVATE_CONST_LOG_LEVEL_WARN="warn"
 export PRIVATE_CONST_LOG_LEVEL_ERROR="error"
 
 # shellcheck disable=SC2034
+export CONST_LOG_TEE_NO_ERROR="tee_no_error"
+
+# shellcheck disable=SC2034
+export CONST_LOG_TEE_WITH_ERROR="tee_with_error"
+
+# shellcheck disable=SC2034
 export CONST_NEW_LINE=$'\n'
 # shellcheck disable=SC2034
 export CONST_COLOR_GREEN=$'\033[1;32m'
@@ -75,7 +81,9 @@ function __write_to_log_file () {
         dt="N/A-DATE"
     fi
 
-    echo "[$dt] || [$level]: $msg" >> "$PRIVATE_SCRIPT_LOG_FILE" || true
+    local escaped_msg="${msg//$'\n'/\\n}"
+
+    echo "[$dt] || [$level]: $escaped_msg" >> "$PRIVATE_SCRIPT_LOG_FILE" || true
 }
 
 # shellcheck disable=SC2329
@@ -147,6 +155,45 @@ function set_log_file () {
     echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
 
     __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_INFO" "Start log" || true
+
+    return 0
+}
+
+function tee_log_command_out() {
+    local level="$1"
+    local no_error="$2"
+
+    shift
+    shift
+
+    if [[ "${#@}" == 0 ]]; then
+        echo_warn "Command to tee out not found"
+        return 0
+    fi
+
+    local cmd_run="$1"
+    shift
+
+    local output=""
+    local has_error=""
+    local ret_code=""
+
+    if [[ "$no_error" == "$CONST_LOG_TEE_NO_ERROR" ]]; then
+        output="$("$cmd_run" "$@" || true)"
+    else
+        if ! output="$("$cmd_run" "$@")"; then
+            ret_code="$?"
+            has_error="true"
+        fi
+    fi
+
+    if [ -n "$has_error" ]; then
+        echo_warn "'$cmd_run'... Returns error with ret code '$ret_code'"
+    fi
+
+    echo "$output" || true
+
+    __write_to_log_file "$level" "$output" || true
 
     return 0
 }
