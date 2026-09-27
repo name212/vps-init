@@ -61,7 +61,7 @@ function __write_to_log_file () {
     fi
 
     local dt=""
-    if ! dt="$(date %Y-%m-%d %H:%M:%S)"; then
+    if ! dt="$(date +'%Y-%m-%d %H:%M:%S')"; then
         dt="N/A-DATE"
     fi
 
