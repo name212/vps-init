@@ -46,22 +46,45 @@ function validate_arg_number_optional() {
     return $?
 }
 
+function is_number_positive() {
+    local val="$1"
+    local have_zero="${2:-}"
+
+    if ! val="$(check_is_number "$val")"; then
+        return 1
+    fi
+
+    local err_num="1"
+
+    if [ -n "$have_zero" ]; then
+        err_num="0"
+        if [ "$val" -ge "0" ]; then
+            echo -n "$val"
+            return 0
+        fi
+    else 
+        err_num="1"
+        if [ "$val" -gt "0" ]; then
+            echo -n "$val"
+            return 0
+        fi
+    fi
+
+    echo_error "Number '$val' < $err_num"
+    return 0
+}
+
+function is_number_positive_or_zero() {
+    is_number_positive "$1" "true"
+    return $?
+}
+
 # shellcheck disable=SC2329
 function validate_arg_number_positive() {
     local val="$1"
     local passed="$2"
 
-    if ! val="$(call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed")"; then
-        return 1
-    fi
-
-    if [ "$val" -gt "0" ]; then
-        echo -n "$val"
-        return 0
-    fi
-
-    echo_error "Number '$val' < 1"
-
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_number_positive" "$val" "$passed"
     return $?
 }
 
@@ -70,16 +93,6 @@ function validate_arg_number_positive_or_zero() {
     local val="$1"
     local passed="$2"
 
-    if ! val="$(call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed")"; then
-        return 1
-    fi
-
-    if [ "$val" -ge "0" ]; then
-        echo -n "$val"
-        return 0
-    fi
-
-    echo_error "Number '$val' < 0"
-
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_number_positive_or_zero" "$val" "$passed"
     return $?
 }

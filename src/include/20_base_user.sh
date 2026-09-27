@@ -286,7 +286,7 @@ function add_pubkey_for_user() {
         if grep -q "$ssh_key" "$auth_keys_file"; then
             delete_file "$tmp_file" || true
             echo_green "SSH key '$ssh_key' already present in '$auth_keys_file'. Content:"
-            cat "$auth_keys_file" || true
+            tee_log_command_out_force cat "$auth_keys_file" || true
             return 0
         fi
 

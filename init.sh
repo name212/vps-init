@@ -13,6 +13,9 @@ declare -a COMMANDS_LIST=()
 # Start vps-init/src/include/01_base_echo.sh
 
 # shellcheck disable=SC2034
+export CONST_NEW_LINE=$'\n'
+
+# shellcheck disable=SC2034
 export CONST_FORCE_DEBUG="force_debug"
 
 # shellcheck disable=SC2034
@@ -29,8 +32,6 @@ export CONST_LOG_LEVEL_WARN="warn"
 # shellcheck disable=SC2034
 export CONST_LOG_LEVEL_ERROR="error"
 
-# shellcheck disable=SC2034
-export CONST_NEW_LINE=$'\n'
 # shellcheck disable=SC2034
 export CONST_COLOR_GREEN=$'\033[1;32m'
 # shellcheck disable=SC2034
@@ -584,22 +585,45 @@ function validate_arg_number_optional() {
     return $?
 }
 
+function is_number_positive() {
+    local val="$1"
+    local have_zero="${2:-}"
+
+    if ! val="$(check_is_number "$val")"; then
+        return 1
+    fi
+
+    local err_num="1"
+
+    if [ -n "$have_zero" ]; then
+        err_num="0"
+        if [ "$val" -ge "0" ]; then
+            echo -n "$val"
+            return 0
+        fi
+    else 
+        err_num="1"
+        if [ "$val" -gt "0" ]; then
+            echo -n "$val"
+            return 0
+        fi
+    fi
+
+    echo_error "Number '$val' < $err_num"
+    return 0
+}
+
+function is_number_positive_or_zero() {
+    is_number_positive "$1" "true"
+    return $?
+}
+
 # shellcheck disable=SC2329
 function validate_arg_number_positive() {
     local val="$1"
     local passed="$2"
 
-    if ! val="$(call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed")"; then
-        return 1
-    fi
-
-    if [ "$val" -gt "0" ]; then
-        echo -n "$val"
-        return 0
-    fi
-
-    echo_error "Number '$val' < 1"
-
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_number_positive" "$val" "$passed"
     return $?
 }
 
@@ -608,17 +632,7 @@ function validate_arg_number_positive_or_zero() {
     local val="$1"
     local passed="$2"
 
-    if ! val="$(call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_number" "$val" "$passed")"; then
-        return 1
-    fi
-
-    if [ "$val" -ge "0" ]; then
-        echo -n "$val"
-        return 0
-    fi
-
-    echo_error "Number '$val' < 0"
-
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_number_positive_or_zero" "$val" "$passed"
     return $?
 }
 
@@ -923,15 +937,37 @@ function prepare_prompt_str() {
 function ask_user() {
     local prompt="${1-:No prompt}"
     local not_ask="${2-no}"
+    local timeout="${3:-}"
 
     if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
         return 0
     fi
 
+    local timeout_args=""
+    local res_timeout=""
+    if [ -n "$timeout" ]; then
+        if ! res_timeout="$(is_number_positive "$timeout")"; then
+            echo_error "Incorrect timeout '$timeout'"
+            return 1
+        fi
+
+        timeout_args="-t $res_timeout"
+    fi
+
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt" "print_yn")" answer
+    # shellcheck disable=SC2229
+    # shellcheck disable=SC2086
+    if ! read $timeout_args -p "$(prepare_prompt_str "$prompt" "print_yn")" answer; then
+        local err_msg="Read error"
+        if [ -n "$timeout_args" ]; then
+            err_msg="$err_msg or timeout ${res_timeout}s is reached"
+        fi
+
+        echo_error "${CONST_NEW_LINE}$err_msg"
+        return 255
+    fi
 
     if [[ "$answer" == "y" ]]; then
         return 0
@@ -1500,7 +1536,7 @@ function add_pubkey_for_user() {
         if grep -q "$ssh_key" "$auth_keys_file"; then
             delete_file "$tmp_file" || true
             echo_green "SSH key '$ssh_key' already present in '$auth_keys_file'. Content:"
-            cat "$auth_keys_file" || true
+            tee_log_command_out_force cat "$auth_keys_file" || true
             return 0
         fi
 

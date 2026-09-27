@@ -17,15 +17,37 @@ function prepare_prompt_str() {
 function ask_user() {
     local prompt="${1-:No prompt}"
     local not_ask="${2-no}"
+    local timeout="${3:-}"
 
     if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
         return 0
     fi
 
+    local timeout_args=""
+    local res_timeout=""
+    if [ -n "$timeout" ]; then
+        if ! res_timeout="$(is_number_positive "$timeout")"; then
+            echo_error "Incorrect timeout '$timeout'"
+            return 1
+        fi
+
+        timeout_args="-t $res_timeout"
+    fi
+
     local answer=""
 
     # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt" "print_yn")" answer
+    # shellcheck disable=SC2229
+    # shellcheck disable=SC2086
+    if ! read $timeout_args -p "$(prepare_prompt_str "$prompt" "print_yn")" answer; then
+        local err_msg="Read error"
+        if [ -n "$timeout_args" ]; then
+            err_msg="$err_msg or timeout ${res_timeout}s is reached"
+        fi
+
+        echo_error "${CONST_NEW_LINE}$err_msg"
+        return 255
+    fi
 
     if [[ "$answer" == "y" ]]; then
         return 0

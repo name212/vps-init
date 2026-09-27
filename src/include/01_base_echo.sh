@@ -3,6 +3,9 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
+export CONST_NEW_LINE=$'\n'
+
+# shellcheck disable=SC2034
 export CONST_FORCE_DEBUG="force_debug"
 
 # shellcheck disable=SC2034
@@ -19,8 +22,6 @@ export CONST_LOG_LEVEL_WARN="warn"
 # shellcheck disable=SC2034
 export CONST_LOG_LEVEL_ERROR="error"
 
-# shellcheck disable=SC2034
-export CONST_NEW_LINE=$'\n'
 # shellcheck disable=SC2034
 export CONST_COLOR_GREEN=$'\033[1;32m'
 # shellcheck disable=SC2034
