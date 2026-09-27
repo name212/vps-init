@@ -142,6 +142,18 @@ function parse_not_ask() {
     return 0
 }
 
+function is_help_flag_set() {
+    local -a help_flags=("-h" "--help")
+
+    for ha in "${help_flags[@]}"; do 
+        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 # shellcheck disable=SC2329
 function get_env_value_or_default() {
     local var_name="$1"

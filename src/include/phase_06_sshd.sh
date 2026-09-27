@@ -198,17 +198,16 @@ function sshd_verify_and_restart() {
 function sshd_apply_setting() {
     local setting="${1}"
     local conf_file="${2}"
+    local not_ask="${3:-false}"
 
     if [ ! -f "$conf_file" ]; then
-        echo "$setting" > "$conf_file" 
-    fi
-
-    set -x
-    if ! grep -qPzo "$setting" "$conf_file"; then
-        echo_warn "Change to new sshd setting to '$setting'"
         echo "$setting" > "$conf_file"
+    else
+        if ! sync_file_content "$setting" "$conf_file" "Change SSHD settings to '$setting'" "$not_ask"; then
+            echo_error "Cannot sync setting file '$conf_file'"
+            return 1
+        fi
     fi
-    set +x
 
     if ! chmod 600 "$conf_file"; then
         echo_warn "Cannot change mode for config file $conf_file"
@@ -287,7 +286,7 @@ function sshd_add_bind_address() {
 
     echo_info "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
 
-    if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE"; then
+    if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE" "$not_ask"; then
         echo_error "Cannot apply sshd listing setting:${CONST_NEW_LINE}${listen_setting_to_set}"
         return 1
     fi
@@ -341,7 +340,7 @@ function phase_sshd_run() {
     local port_setting="Port $port"
     local port_file="${CONST_BASE_SSHD_CONFIG}/99_z_port.conf"
 
-    if ! sshd_apply_setting "$port_setting" "$port_file"; then
+    if ! sshd_apply_setting "$port_setting" "$port_file" "$not_ask"; then
         echo_error "Cannot apply sshd port setting '$port_setting'"
         return 1
     fi
@@ -377,7 +376,7 @@ function phase_sshd_run() {
     local root_setting="PermitRootLogin no"
     local root_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_root.conf"
 
-    if ! sshd_apply_setting "$root_setting" "$root_file"; then
+    if ! sshd_apply_setting "$root_setting" "$root_file" "$not_ask"; then
         echo_error "Cannot disable root login '$root_setting'"
         return 1
     fi
@@ -395,7 +394,7 @@ function phase_sshd_run() {
     local pass_setting="PasswordAuthentication no"
     local pass_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_pass_auth.conf"
 
-    if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
+    if ! sshd_apply_setting "$pass_setting" "$pass_file" "$not_ask"; then
         echo_error "Cannot apply sshd port setting '$pass_setting'"
         return 1
     fi

@@ -70,17 +70,34 @@ function usage() {
 
     echo_green "  Global parameters:"
     echo "
-    --not-ask
-      If passed will not ask user about actions.
-      Env NOT_ASK=true for set.
-
     --config 'PATH'
       Path to config with envs to settings.
       Should be .env format
       Env CONFIG_PATH 
     
+    --not-ask
+      If passed will not ask user about actions.
+      Env NOT_ASK=true for set.
+
     -h|--help
       Show this message.
+
+    Log settings:
+
+    --log-enable-debug
+      If passed will output debug log information.
+      Env LOG_ENABLE_DEBUG=true for set.
+
+    --log-file 'PATH'
+      If set, all log include debug will write to file in format:
+      [\$date] || [\$level]: \$msg
+      Env LOG_SCRIPT_FILE
+
+    --log-add-unix-seconds-to-file-path
+      If set and pass log file path, will add unix time seconds
+      as suffix of file path like (log file is /tmp/init-log.log):
+        /tmp/init-log.log.1790520136
+      Env LOG_UNIX_SECONDS_TO_PATH=true for set.
   
   If passed 'phase' as first arg and name of phase as second
   only run only one phase.
@@ -167,7 +184,46 @@ function run_tests_func() {
     return 0
 }
 
+function parse_and_apply_log_settings() {
+    if is_help_flag_set "$@"; then
+        return 0
+    fi
+
+    if arg_flag_is_set "--log-enable-debug" "LOG_ENABLE_DEBUG" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+        enable_debug_log "true"
+    fi
+
+    local log_file=""
+    if ! log_file="$(extract_argument "--log-file" "LOG_SCRIPT_FILE" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo_error "Cannot extract log file argument"
+        return 1
+    fi
+
+    if [ -n "$log_file" ]; then
+        if arg_flag_is_set "--log-add-unix-seconds-to-file-path" "LOG_UNIX_SECONDS_TO_PATH" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+            local log_file_suf=""
+            if ! log_file_suf="$(date +%s)"; then
+                echo_error "Cannot get suffix for log file"
+                return 1
+            fi
+            log_file="${log_file}.${log_file_suf}"
+        fi
+
+        if ! set_log_file "$log_file"; then
+            echo_error "Cannot set log file '$log_file'"
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
 function main() {
+    if ! parse_and_apply_log_settings "$@"; then
+        echo_error "Cannot apply log settings"
+        exit 1
+    fi
+
     local -a not_ordered_phases=()
 
     for pi in "${!PHASES_WITH_INDEX[@]}"; do
@@ -204,14 +260,10 @@ function main() {
         phases+=("$phase_to_add")
     done
 
-    local -a help_flags=("-h" "--help")
-
-    for ha in "${help_flags[@]}"; do 
-        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
-            usage "${phases[@]}"
-            exit 0
-        fi
-    done
+    if is_help_flag_set "$@"; then
+        usage "${phases[@]}"
+        exit 0
+    fi
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")" || true

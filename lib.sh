@@ -13,15 +13,34 @@ declare -a COMMANDS_LIST=()
 # Start vps-init/src/include/01_base_echo.sh
 
 # shellcheck disable=SC2034
-CONST_NEW_LINE=$'\n'
+export CONST_FORCE_DEBUG="force_debug"
+
 # shellcheck disable=SC2034
-CONST_COLOR_GREEN=$'\033[1;32m'
+export PRIVATE_SCRIPT_DEBUG_ENABLED=""
 # shellcheck disable=SC2034
-CONST_COLOR_YELLOW=$'\033[1;33m'
+export PRIVATE_SCRIPT_LOG_FILE=""
+
 # shellcheck disable=SC2034
-CONST_COLOR_RED=$'\033[1;31m'
+export PRIVATE_CONST_LOG_LEVEL_DEBUG="debug"
 # shellcheck disable=SC2034
-CONST_COLOR_NO=$'\033[0m'
+export PRIVATE_CONST_LOG_LEVEL_INFO="info"
+# shellcheck disable=SC2034
+export PRIVATE_CONST_LOG_LEVEL_WARN="warn"
+# shellcheck disable=SC2034
+export PRIVATE_CONST_LOG_LEVEL_ERROR="error"
+
+# shellcheck disable=SC2034
+export CONST_NEW_LINE=$'\n'
+# shellcheck disable=SC2034
+export CONST_COLOR_GREEN=$'\033[1;32m'
+# shellcheck disable=SC2034
+export CONST_COLOR_YELLOW=$'\033[1;33m'
+# shellcheck disable=SC2034
+export CONST_COLOR_RED=$'\033[1;31m'
+# shellcheck disable=SC2034
+export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
+# shellcheck disable=SC2034
+export CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
 function echo_green (){
@@ -39,18 +58,96 @@ function echo_red(){
 }
 
 # shellcheck disable=SC2329
-function echo_error(){
+function __write_to_log_file () {
+    local level="$1"
+    local msg="$2"
+
+    if [ -z "$PRIVATE_SCRIPT_LOG_FILE" ]; then
+        return 0
+    fi
+
+    if [ ! -f "$PRIVATE_SCRIPT_LOG_FILE" ]; then
+        return 0
+    fi
+
+    local dt=""
+    if ! dt="$(date %Y-%m-%d %H:%M:%S)"; then
+        dt="N/A-DATE"
+    fi
+
+    echo "[$dt] || [$level]: $msg" >> "$PRIVATE_SCRIPT_LOG_FILE" || true
+}
+
+# shellcheck disable=SC2329
+function echo_error() {
     echo_red "$1" >&2
+    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_ERROR" "$1" || true
 }
 
 # shellcheck disable=SC2329
-function echo_info (){
-    echo_green "$1" >&2
-}
-
-# shellcheck disable=SC2329
-function echo_warn (){
+function echo_warn () {
     echo_yellow "$1" >&2
+    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_WARN" "$1" || true
+}
+
+# shellcheck disable=SC2329
+function echo_info () {
+    echo_green "$1" >&2
+    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_INFO" "$1" || true
+}
+
+# shellcheck disable=SC2329
+function echo_debug() {
+    local msg="${1:-}"
+    local force="${2:-}"
+
+    if [[ "$force" == "$CONST_FORCE_DEBUG" || "$PRIVATE_SCRIPT_DEBUG_ENABLED" == "$CONST_FORCE_DEBUG" ]]; then
+        echo -e "${CONST_COLOR_GRAY_LIGHT}${msg}${CONST_COLOR_NO}" >&2
+    fi
+
+    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_DEBUG" "$1" || true
+}
+
+# shellcheck disable=SC2329
+function enable_debug_log () {
+    local should_enabled="${1:-}"
+    local val=""
+
+    if [[ "$should_enabled" == "" || "$should_enabled" == "true" ]]; then
+        val="$CONST_FORCE_DEBUG"
+    fi
+
+    export PRIVATE_SCRIPT_DEBUG_ENABLED="$val"
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function set_log_file () {
+    local log_file="${1}"
+
+    if [ -z "$log_file" ]; then
+        echo_red "Log file is empty" >&2
+        return 1
+    fi
+
+    if [ -d "$log_file" ]; then
+        echo_red "Log file '$log_file' is directory" >&2
+        return 1
+    fi
+
+    if ! touch "$log_file"; then
+        echo_red "Log file '$log_file' not touch" >&2
+        return 1
+    fi
+
+    export PRIVATE_SCRIPT_LOG_FILE="$log_file"
+
+    echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
+
+    __write_to_log_file "Start log" || true
+
+    return 0
 }
 
 # End vps-init/src/include/01_base_echo.sh
@@ -130,6 +227,20 @@ function split_by_new_line() {
 	local _str="${2:-}"
 	local _transform="${3:-}"
 	split_by "$CONST_NEW_LINE" "$_dest" "$_str" "$_transform"
+}
+
+
+# shellcheck disable=SC2329
+function rand_str_n() {
+    local num=${1:-1}
+
+	local str=""
+    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
+        return 1
+    fi
+
+    echo -n "$str"
+    return 0
 }
 
 # End vps-init/src/include/02_base_str.sh
@@ -274,6 +385,18 @@ function parse_not_ask() {
 
     echo "$CONST_ASK_VAL"
     return 0
+}
+
+function is_help_flag_set() {
+    local -a help_flags=("-h" "--help")
+
+    for ha in "${help_flags[@]}"; do 
+        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 # shellcheck disable=SC2329
@@ -4016,17 +4139,16 @@ function sshd_verify_and_restart() {
 function sshd_apply_setting() {
     local setting="${1}"
     local conf_file="${2}"
+    local not_ask="${3:-false}"
 
     if [ ! -f "$conf_file" ]; then
-        echo "$setting" > "$conf_file" 
-    fi
-
-    set -x
-    if ! grep -qPzo "$setting" "$conf_file"; then
-        echo_warn "Change to new sshd setting to '$setting'"
         echo "$setting" > "$conf_file"
+    else
+        if ! sync_file_content "$setting" "$conf_file" "Change SSHD settings to '$setting'" "$not_ask"; then
+            echo_error "Cannot sync setting file '$conf_file'"
+            return 1
+        fi
     fi
-    set +x
 
     if ! chmod 600 "$conf_file"; then
         echo_warn "Cannot change mode for config file $conf_file"
@@ -4105,7 +4227,7 @@ function sshd_add_bind_address() {
 
     echo_info "Prepare sshd. Set listen settings:${CONST_NEW_LINE}${listen_setting_to_set}"
 
-    if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE"; then
+    if ! sshd_apply_setting "$listen_setting_to_set" "$CONST_LISTEN_FILE" "$not_ask"; then
         echo_error "Cannot apply sshd listing setting:${CONST_NEW_LINE}${listen_setting_to_set}"
         return 1
     fi
@@ -4159,7 +4281,7 @@ function phase_sshd_run() {
     local port_setting="Port $port"
     local port_file="${CONST_BASE_SSHD_CONFIG}/99_z_port.conf"
 
-    if ! sshd_apply_setting "$port_setting" "$port_file"; then
+    if ! sshd_apply_setting "$port_setting" "$port_file" "$not_ask"; then
         echo_error "Cannot apply sshd port setting '$port_setting'"
         return 1
     fi
@@ -4195,7 +4317,7 @@ function phase_sshd_run() {
     local root_setting="PermitRootLogin no"
     local root_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_root.conf"
 
-    if ! sshd_apply_setting "$root_setting" "$root_file"; then
+    if ! sshd_apply_setting "$root_setting" "$root_file" "$not_ask"; then
         echo_error "Cannot disable root login '$root_setting'"
         return 1
     fi
@@ -4213,7 +4335,7 @@ function phase_sshd_run() {
     local pass_setting="PasswordAuthentication no"
     local pass_file="${CONST_BASE_SSHD_CONFIG}/99_z_disable_pass_auth.conf"
 
-    if ! sshd_apply_setting "$pass_setting" "$pass_file"; then
+    if ! sshd_apply_setting "$pass_setting" "$pass_file" "$not_ask"; then
         echo_error "Cannot apply sshd port setting '$pass_setting'"
         return 1
     fi

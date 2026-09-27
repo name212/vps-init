@@ -76,3 +76,17 @@ function split_by_new_line() {
 	local _transform="${3:-}"
 	split_by "$CONST_NEW_LINE" "$_dest" "$_str" "$_transform"
 }
+
+
+# shellcheck disable=SC2329
+function rand_str_n() {
+    local num=${1:-1}
+
+	local str=""
+    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
+        return 1
+    fi
+
+    echo -n "$str"
+    return 0
+}
