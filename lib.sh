@@ -21,19 +21,13 @@ export PRIVATE_SCRIPT_DEBUG_ENABLED=""
 export PRIVATE_SCRIPT_LOG_FILE=""
 
 # shellcheck disable=SC2034
-export PRIVATE_CONST_LOG_LEVEL_DEBUG="debug"
+export CONST_LOG_LEVEL_DEBUG="debug"
 # shellcheck disable=SC2034
-export PRIVATE_CONST_LOG_LEVEL_INFO="info"
+export CONST_LOG_LEVEL_INFO="info"
 # shellcheck disable=SC2034
-export PRIVATE_CONST_LOG_LEVEL_WARN="warn"
+export CONST_LOG_LEVEL_WARN="warn"
 # shellcheck disable=SC2034
-export PRIVATE_CONST_LOG_LEVEL_ERROR="error"
-
-# shellcheck disable=SC2034
-export CONST_LOG_TEE_NO_ERROR="tee_no_error"
-
-# shellcheck disable=SC2034
-export CONST_LOG_TEE_WITH_ERROR="tee_with_error"
+export CONST_LOG_LEVEL_ERROR="error"
 
 # shellcheck disable=SC2034
 export CONST_NEW_LINE=$'\n'
@@ -89,19 +83,29 @@ function __write_to_log_file () {
 # shellcheck disable=SC2329
 function echo_error() {
     echo_red "$1" >&2
-    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_ERROR" "$1" || true
+    __write_to_log_file "$CONST_LOG_LEVEL_ERROR" "$1" || true
 }
 
 # shellcheck disable=SC2329
 function echo_warn () {
     echo_yellow "$1" >&2
-    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_WARN" "$1" || true
+    __write_to_log_file "$CONST_LOG_LEVEL_WARN" "$1" || true
 }
 
 # shellcheck disable=SC2329
 function echo_info () {
     echo_green "$1" >&2
-    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_INFO" "$1" || true
+    __write_to_log_file "$CONST_LOG_LEVEL_INFO" "$1" || true
+}
+
+function is_log_level_debug() {
+    local force="${1:-}"
+
+    if [[ "$force" == "$CONST_FORCE_DEBUG" || "$PRIVATE_SCRIPT_DEBUG_ENABLED" == "$CONST_FORCE_DEBUG" ]]; then
+        return 0
+    fi
+
+    return 1
 }
 
 # shellcheck disable=SC2329
@@ -109,11 +113,11 @@ function echo_debug() {
     local msg="${1:-}"
     local force="${2:-}"
 
-    if [[ "$force" == "$CONST_FORCE_DEBUG" || "$PRIVATE_SCRIPT_DEBUG_ENABLED" == "$CONST_FORCE_DEBUG" ]]; then
+    if is_log_level_debug "$force"; then
         echo -e "${CONST_COLOR_GRAY_LIGHT}${msg}${CONST_COLOR_NO}" >&2
     fi
 
-    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_DEBUG" "$1" || true
+    __write_to_log_file "$CONST_LOG_LEVEL_DEBUG" "$1" || true
 }
 
 # shellcheck disable=SC2329
@@ -154,16 +158,14 @@ function set_log_file () {
 
     echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
 
-    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_INFO" "Start log" || true
+    __write_to_log_file "$CONST_LOG_LEVEL_INFO" "Start log" || true
 
     return 0
 }
 
-function tee_log_command_out() {
+function __tee_log_command_out() {
     local level="$1"
-    local no_error="$2"
 
-    shift
     shift
 
     if [[ "${#@}" == 0 ]]; then
@@ -175,19 +177,13 @@ function tee_log_command_out() {
     shift
 
     local output=""
-    local has_error=""
-    local ret_code=""
+    local ret_code="0"
 
-    if [[ "$no_error" == "$CONST_LOG_TEE_NO_ERROR" ]]; then
-        output="$("$cmd_run" "$@" || true)"
-    else
-        if ! output="$("$cmd_run" "$@")"; then
-            ret_code="$?"
-            has_error="true"
-        fi
+    if ! output="$("$cmd_run" "$@" 2>&1)"; then
+        ret_code="$?"
     fi
 
-    if [ -n "$has_error" ]; then
+    if [[ "$ret_code" != "0" ]]; then
         echo_warn "'$cmd_run'... Returns error with ret code '$ret_code'"
     fi
 
@@ -196,6 +192,20 @@ function tee_log_command_out() {
     __write_to_log_file "$level" "$output" || true
 
     return 0
+}
+
+function tee_log_command_out_info() {
+    __tee_log_command_out "$CONST_LOG_LEVEL_INFO" "$@"
+    return $?
+}
+
+function tee_log_command_out_only_debug() {
+    if ! is_log_level_debug ""; then
+        return 0
+    fi
+
+    __tee_log_command_out "$CONST_LOG_LEVEL_DEBUG" "$@"
+    return $?
 }
 
 # End vps-init/src/include/01_base_echo.sh
