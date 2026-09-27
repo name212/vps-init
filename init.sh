@@ -146,7 +146,7 @@ function set_log_file () {
 
     echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
 
-    __write_to_log_file "Start log" || true
+    __write_to_log_file "$PRIVATE_CONST_LOG_LEVEL_INFO" "Start log" || true
 
     return 0
 }
