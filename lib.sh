@@ -114,6 +114,7 @@ function enable_debug_log () {
     local val=""
 
     if [[ "$should_enabled" == "" || "$should_enabled" == "true" ]]; then
+        echo_green "Debug logs output is enabled" >&2
         val="$CONST_FORCE_DEBUG"
     fi
 
@@ -245,7 +246,7 @@ function rand_str_n() {
 
 # End vps-init/src/include/02_base_str.sh
 
-# Start vps-init/src/include/03_args.sh
+# Start vps-init/src/include/03_base_args.sh
 
 export CONST_FLAG_SET="true"
 export CONST_NO_VALIDATE="no_validate"
@@ -413,7 +414,7 @@ function get_env_value_or_default() {
     return 0
 }
 
-# End vps-init/src/include/03_args.sh
+# End vps-init/src/include/03_base_args.sh
 
 # Start vps-init/src/include/04_validate_base.sh
 

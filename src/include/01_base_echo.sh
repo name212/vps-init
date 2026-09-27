@@ -104,6 +104,7 @@ function enable_debug_log () {
     local val=""
 
     if [[ "$should_enabled" == "" || "$should_enabled" == "true" ]]; then
+        echo_green "Debug logs output is enabled" >&2
         val="$CONST_FORCE_DEBUG"
     fi
 

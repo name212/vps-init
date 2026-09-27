@@ -114,6 +114,7 @@ function enable_debug_log () {
     local val=""
 
     if [[ "$should_enabled" == "" || "$should_enabled" == "true" ]]; then
+        echo_green "Debug logs output is enabled" >&2
         val="$CONST_FORCE_DEBUG"
     fi
 
@@ -245,7 +246,7 @@ function rand_str_n() {
 
 # End vps-init/src/include/02_base_str.sh
 
-# Start vps-init/src/include/03_args.sh
+# Start vps-init/src/include/03_base_args.sh
 
 export CONST_FLAG_SET="true"
 export CONST_NO_VALIDATE="no_validate"
@@ -413,7 +414,7 @@ function get_env_value_or_default() {
     return 0
 }
 
-# End vps-init/src/include/03_args.sh
+# End vps-init/src/include/03_base_args.sh
 
 # Start vps-init/src/include/04_validate_base.sh
 
@@ -5119,7 +5120,35 @@ function parse_and_apply_log_settings() {
     return 0
 }
 
+function parse_and_apply_config_file() {
+    if is_help_flag_set "$@"; then
+        return 0
+    fi
+
+    local config=""
+
+    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file_optional" "$@")"; then
+        echo_error "Passed config is incorrect: $config"
+        return 1
+    fi
+
+    if [ -n "$config" ]; then
+        echo_info "Load config $config"
+        # shellcheck disable=SC1090
+        set -a && source "$config" && set +a
+
+        if declare -F "set_passed_config_file" > /dev/null; then
+            set_passed_config_file "$config"
+        fi
+    fi
+}
+
 function main() {
+    if ! parse_and_apply_config_file "$@"; then
+        echo_error "Cannot apply config"
+        exit 1
+    fi
+
     if ! parse_and_apply_log_settings "$@"; then
         echo_error "Cannot apply log settings"
         exit 1
@@ -5168,23 +5197,6 @@ function main() {
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")" || true
-
-    local config=""
-
-    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file_optional" "$@")"; then
-        echo_error "Passed config is incorrect: $config"
-        exit 1
-    fi
-
-    if [ -n "$config" ]; then
-        echo_info "Load config $config"
-        # shellcheck disable=SC1090
-        set -a && source "$config" && set +a
-
-        if declare -F "set_passed_config_file" > /dev/null; then
-            set_passed_config_file "$config"
-        fi
-    fi
 
     local got_phase_to_run=""
 
