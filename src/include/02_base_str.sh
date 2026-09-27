@@ -80,13 +80,6 @@ function split_by_new_line() {
 
 # shellcheck disable=SC2329
 function rand_str_n() {
-    local num=${1:-1}
-
-	local str=""
-    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
-        return 1
-    fi
-
-    echo -n "$str"
-    return 0
+    __rand_str_n "${1-1}"
+    return $?
 }

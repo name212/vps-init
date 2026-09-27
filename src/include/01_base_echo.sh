@@ -34,6 +34,19 @@ export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 export CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
+function __rand_str_n() {
+    local num=${1:-1}
+
+	local str=""
+    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
+        return 1
+    fi
+
+    echo -n "$str"
+    return 0
+}
+
+# shellcheck disable=SC2329
 function echo_green (){
     echo -e "${CONST_COLOR_GREEN}${1:-}${CONST_COLOR_NO}"
 }
@@ -150,7 +163,12 @@ function set_log_file () {
 
     echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
 
-    __write_to_log_file "$CONST_LOG_LEVEL_INFO" "Start log" || true
+    local log_id=""
+    if ! log_id="$(__rand_str_n "10")"; then
+        log_id="N/A"
+    fi
+
+    __write_to_log_file "$CONST_LOG_LEVEL_INFO" "Start log [id=$log_id]" || true
 
     return 0
 }
