@@ -6,12 +6,14 @@ set -Eeuo pipefail
 function trim_spaces_left() {
     local trimmed="${1:-}"
     echo -n "${trimmed#"${trimmed%%[![:space:]]*}"}"
+	return 0
 }
 
 # shellcheck disable=SC2329
 function trim_spaces_right() {
     local trimmed="${1:-}"
     echo -n "${trimmed%"${trimmed##*[![:space:]]}"}"
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -20,6 +22,13 @@ function trim_spaces() {
     trimmed="$(trim_spaces_left "$trimmed")"
     trimmed="$(trim_spaces_right "$trimmed")"
     echo -n "$trimmed"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function escape_new_line() {
+	__escape_new_line "${1:-}"
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -51,6 +60,8 @@ function split_by() {
     		target_array[_indx]="$("$_transform" "${target_array[_indx]}")"
 		done
 	fi
+
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -58,7 +69,11 @@ function split_by_comma() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
 	local _transform="${3:-}"
-	split_by ',' "$_dest" "$_str" "$_transform"
+	if ! split_by ',' "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -66,7 +81,11 @@ function split_by_space() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
 	local _transform="${3:-}"
-	split_by ' ' "$_dest" "$_str" "$_transform"
+	if ! split_by ' ' "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -74,12 +93,19 @@ function split_by_new_line() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
 	local _transform="${3:-}"
-	split_by "$CONST_NEW_LINE" "$_dest" "$_str" "$_transform"
+	if ! split_by "$CONST_NEW_LINE" "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
 }
 
 
 # shellcheck disable=SC2329
 function rand_str_n() {
-    __rand_str_n "${1-1}"
-    return $?
+    if __rand_str_n "${1-1}"; then
+		return 0
+	else
+		return "$?"
+	fi
 }

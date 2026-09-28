@@ -46,6 +46,7 @@ function validate_arg_number_optional() {
     return $?
 }
 
+# shellcheck disable=SC2329
 function is_number_positive() {
     local val="$1"
     local have_zero="${2:-}"
@@ -74,6 +75,7 @@ function is_number_positive() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function is_number_positive_or_zero() {
     is_number_positive "$1" "true"
     return $?

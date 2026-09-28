@@ -2,14 +2,16 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
 export CONST_FLAG_SET="true"
-export CONST_NO_VALIDATE="no_validate"
-export CONST_IS_FLAG="true"
-export CONST_NOT_FLAG="false"
-export CONST_ARG_NOT_PASSED="false"
-export CONST_ARG_PASSED="true"
-export CONST_NOT_ASK_VAL="true"
-export CONST_ASK_VAL=""
+# shellcheck disable=SC2034
+export CONST_IS_FLAG="__is_flag__"
+# shellcheck disable=SC2034
+export CONST_NOT_FLAG="__not_is_flag__"
+# shellcheck disable=SC2034
+export CONST_ARG_NOT_PASSED="__not_passed_arg__"
+# shellcheck disable=SC2034
+export CONST_ARG_PASSED="__arg_passed"
 
 function disable_env() {
     local phase="$1"

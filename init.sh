@@ -10,10 +10,37 @@ declare -A PHASES_WITH_INDEX=()
 # shellcheck disable=SC2034
 declare -a COMMANDS_LIST=()
 
-# Start vps-init/src/include/01_base_echo.sh
+# Start vps-init/src/include/01_base_const_fn.sh
 
 # shellcheck disable=SC2034
 export CONST_NEW_LINE=$'\n'
+
+# shellcheck disable=SC2034
+export CONST_NO_VALIDATE="no_validate"
+
+# shellcheck disable=SC2329
+function __rand_str_n() {
+    local num=${1:-1}
+
+	local str=""
+    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
+        true
+    fi
+
+    echo -n "$str"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function __escape_new_line() {
+	local val="${1:-}"
+	echo -n "${val//${CONST_NEW_LINE}/\\n}"
+	return 0
+}
+
+# End vps-init/src/include/01_base_const_fn.sh
+
+# Start vps-init/src/include/02_base_echo.sh
 
 # shellcheck disable=SC2034
 export CONST_FORCE_DEBUG="force_debug"
@@ -43,18 +70,6 @@ export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
 export CONST_COLOR_NO=$'\033[0m'
 
-# shellcheck disable=SC2329
-function __rand_str_n() {
-    local num=${1:-1}
-
-	local str=""
-    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
-        return 1
-    fi
-
-    echo -n "$str"
-    return 0
-}
 
 # shellcheck disable=SC2329
 function echo_green (){
@@ -89,7 +104,8 @@ function __write_to_log_file () {
         dt="N/A-DATE"
     fi
 
-    local escaped_msg="${msg//$'\n'/\\n}"
+    # shellcheck disable=SC2155
+    local escaped_msg="$(__escape_new_line "$msg")"
 
     echo "[$dt] || [$level]: $escaped_msg" >> "$PRIVATE_SCRIPT_LOG_FILE" || true
 }
@@ -218,7 +234,7 @@ function __tee_log_command_out() {
 # shellcheck disable=SC2329
 function tee_log_command_out_force() {
     __tee_log_command_out "$CONST_LOG_LEVEL_DEBUG" "$@"
-    return $?
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -228,23 +244,25 @@ function tee_log_command_out() {
     fi
 
     __tee_log_command_out "$CONST_LOG_LEVEL_DEBUG" "$@"
-    return $?
+    return 0
 }
 
-# End vps-init/src/include/01_base_echo.sh
+# End vps-init/src/include/02_base_echo.sh
 
-# Start vps-init/src/include/02_base_str.sh
+# Start vps-init/src/include/03_base_str.sh
 
 # shellcheck disable=SC2329
 function trim_spaces_left() {
     local trimmed="${1:-}"
     echo -n "${trimmed#"${trimmed%%[![:space:]]*}"}"
+	return 0
 }
 
 # shellcheck disable=SC2329
 function trim_spaces_right() {
     local trimmed="${1:-}"
     echo -n "${trimmed%"${trimmed##*[![:space:]]}"}"
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -253,6 +271,13 @@ function trim_spaces() {
     trimmed="$(trim_spaces_left "$trimmed")"
     trimmed="$(trim_spaces_right "$trimmed")"
     echo -n "$trimmed"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function escape_new_line() {
+	__escape_new_line "${1:-}"
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -284,6 +309,8 @@ function split_by() {
     		target_array[_indx]="$("$_transform" "${target_array[_indx]}")"
 		done
 	fi
+
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -291,7 +318,11 @@ function split_by_comma() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
 	local _transform="${3:-}"
-	split_by ',' "$_dest" "$_str" "$_transform"
+	if ! split_by ',' "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -299,7 +330,11 @@ function split_by_space() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
 	local _transform="${3:-}"
-	split_by ' ' "$_dest" "$_str" "$_transform"
+	if ! split_by ' ' "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -307,28 +342,242 @@ function split_by_new_line() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
 	local _transform="${3:-}"
-	split_by "$CONST_NEW_LINE" "$_dest" "$_str" "$_transform"
+	if ! split_by "$CONST_NEW_LINE" "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
 }
 
 
 # shellcheck disable=SC2329
 function rand_str_n() {
-    __rand_str_n "${1-1}"
-    return $?
+    if __rand_str_n "${1-1}"; then
+		return 0
+	else
+		return "$?"
+	fi
 }
 
-# End vps-init/src/include/02_base_str.sh
+# End vps-init/src/include/03_base_str.sh
 
-# Start vps-init/src/include/03_base_args.sh
+# Start vps-init/src/include/04_base_input.sh
 
+# shellcheck disable=SC2034
+export CONST_NOT_ASK_VAL="__not_ask__"
+# shellcheck disable=SC2034
+export CONST_ASK_VAL="__should_ask__"
+
+# shellcheck disable=SC2034
+export CONST_READ_ERROR_RET_CODE="254"
+# shellcheck disable=SC2034
+export CONST_READ_ERROR_WITH_TIMEOUT_RET_CODE="255"
+
+function __prepare_prompt_str() {
+    local prompt="${1:-No prompt}"
+    local yes_no_out="${2:-}"
+    local timeout="${3:-}"
+
+    local yes_no=""
+    if [ -n "$yes_no_out" ]; then
+        # shellcheck disable=SC2059
+        yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
+    fi
+
+    local timeout_msg=""
+    if [ -n "$timeout" ]; then
+        timeout_msg="[Read timeout ${timeout}s] "
+    fi
+
+    printf "> \e${CONST_COLOR_YELLOW}${timeout_msg}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
+}
+
+function __prepare_read_timeout_args() {
+    local timeout="${1:-}"
+
+    local timeout_args=""
+    local res_timeout=""
+    if [ -n "$timeout" ]; then
+        if ! res_timeout="$(is_number_positive "$timeout")"; then
+            echo_error "Incorrect timeout '$timeout'"
+            return 1
+        fi
+
+        echo -n "-t $res_timeout"
+        return 0
+    fi
+
+    echo -n ""
+    return 0
+}
+
+function __read_error_handle() { 
+    local timeout="${1:-}"
+
+    local err_msg="Read error"
+    local ret_code="$CONST_READ_ERROR_RET_CODE"
+    
+    if [ -n "$timeout" ]; then
+        ret_code="$CONST_READ_ERROR_WITH_TIMEOUT_RET_CODE"
+        err_msg="$err_msg or timeout ${timeout}s is reached"
+    fi
+
+    echo_error "${CONST_NEW_LINE}$err_msg"
+    return "$ret_code"
+}
+
+# shellcheck disable=SC2329
+function ask_user() {
+    local prompt="${1:-No prompt}"
+    local not_ask="${2:-no}"
+    local timeout="${3:-}"
+
+    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
+        return 0
+    fi
+
+    local timeout_args=""
+    if ! timeout_args="$(__prepare_read_timeout_args "$timeout")"; then
+        return 1
+    fi
+
+    local answer=""
+
+    # shellcheck disable=SC2162
+    # shellcheck disable=SC2229
+    # shellcheck disable=SC2086
+    if ! read $timeout_args -p "$(__prepare_prompt_str "$prompt" "print_yn" "$timeout")" answer; then
+        local ret_code="$CONST_READ_ERROR_RET_CODE"
+        if __read_error_handle "$timeout"; then
+            true
+        else
+            ret_code="$?"
+        fi
+        return "$ret_code"
+    fi
+
+    if [[ "$answer" == "y" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function ask_user_choice_with_timeout() {
+    local prompt="${1:-No prompt}"
+    local timeout="${2:-}"
+    
+    shift
+    shift
+
+    local timeout_args=""
+    if ! timeout_args="$(__prepare_read_timeout_args "$timeout")"; then
+        return 1
+    fi
+
+    local answer=""
+
+    # shellcheck disable=SC2162
+    # shellcheck disable=SC2229
+    # shellcheck disable=SC2086
+    if ! read $timeout_args -p "$(__prepare_prompt_str "$prompt" "" "$timeout")" answer; then
+        local ret_code="$CONST_READ_ERROR_RET_CODE"
+        if __read_error_handle "$timeout"; then
+            true
+        else
+            ret_code="$?"
+        fi
+        return "$ret_code"
+    fi
+
+    for to_check in "$@"; do
+        if [[ "$answer" == "$to_check" ]]; then
+            echo -n "$answer"
+            return 0
+        fi
+    done
+
+    echo_error "Incorrect answer '$answer'"
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function ask_user_choice() {
+    local prompt="${1:-No prompt}"
+
+    shift
+    
+    local answer=""
+    local ret_code=""
+    if answer="$(ask_user_choice_with_timeout "$prompt" "" "$@")"; then
+        true
+    else
+        ret_code="$?"
+        return "$ret_code"
+    fi
+
+    echo -n "$answer"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function ask_user_raw() {
+    local prompt="${1-:No prompt}"
+    local validator="${2:-${CONST_NO_VALIDATE}}"
+    local timeout="${3:-}"
+
+    local timeout_args=""
+    if ! timeout_args="$(__prepare_read_timeout_args "$timeout")"; then
+        return 1
+    fi
+    
+    local answer=""
+
+    # shellcheck disable=SC2162
+    # shellcheck disable=SC2229
+    # shellcheck disable=SC2086
+    if ! read $timeout_args -p "$(__prepare_prompt_str "$prompt" "" "$timeout")" answer; then
+        local ret_code="$CONST_READ_ERROR_RET_CODE"
+        if __read_error_handle "$timeout"; then
+            true
+        else
+            ret_code="$?"
+        fi
+        return "$ret_code"
+    fi
+
+    if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
+        echo -n "$answer"
+        return 0
+    fi
+
+    local res=""
+
+    if ! res="$($validator "$answer" "$CONST_ARG_PASSED")"; then
+        echo_error "Incorrect answer '$answer': $res"
+        return 1
+    fi
+
+    echo -n "$res"
+    return 0
+}
+
+# End vps-init/src/include/04_base_input.sh
+
+# Start vps-init/src/include/05_base_args.sh
+
+# shellcheck disable=SC2034
 export CONST_FLAG_SET="true"
-export CONST_NO_VALIDATE="no_validate"
-export CONST_IS_FLAG="true"
-export CONST_NOT_FLAG="false"
-export CONST_ARG_NOT_PASSED="false"
-export CONST_ARG_PASSED="true"
-export CONST_NOT_ASK_VAL="true"
-export CONST_ASK_VAL=""
+# shellcheck disable=SC2034
+export CONST_IS_FLAG="__is_flag__"
+# shellcheck disable=SC2034
+export CONST_NOT_FLAG="__not_is_flag__"
+# shellcheck disable=SC2034
+export CONST_ARG_NOT_PASSED="__not_passed_arg__"
+# shellcheck disable=SC2034
+export CONST_ARG_PASSED="__arg_passed"
 
 function disable_env() {
     local phase="$1"
@@ -487,9 +736,9 @@ function get_env_value_or_default() {
     return 0
 }
 
-# End vps-init/src/include/03_base_args.sh
+# End vps-init/src/include/05_base_args.sh
 
-# Start vps-init/src/include/04_validate_base.sh
+# Start vps-init/src/include/06_validate_01_base.sh
 
 export CONST_VALIDATE_SHOULD_OPTIONAL="optional"
 export CONST_VALIDATE_SHOULD_PASSED="passed"
@@ -548,9 +797,9 @@ function call_validate_fun() {
     return 0
 }
 
-# End vps-init/src/include/04_validate_base.sh
+# End vps-init/src/include/06_validate_01_base.sh
 
-# Start vps-init/src/include/05_validate_01_str.sh
+# Start vps-init/src/include/06_validate_02_str.sh
 
 # shellcheck disable=SC2329
 function validate_arg_not_empty() {
@@ -596,6 +845,7 @@ function validate_arg_number_optional() {
     return $?
 }
 
+# shellcheck disable=SC2329
 function is_number_positive() {
     local val="$1"
     local have_zero="${2:-}"
@@ -624,6 +874,7 @@ function is_number_positive() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function is_number_positive_or_zero() {
     is_number_positive "$1" "true"
     return $?
@@ -647,9 +898,9 @@ function validate_arg_number_positive_or_zero() {
     return $?
 }
 
-# End vps-init/src/include/05_validate_01_str.sh
+# End vps-init/src/include/06_validate_02_str.sh
 
-# Start vps-init/src/include/05_validate_02_bash.sh
+# Start vps-init/src/include/06_validate_03_bash.sh
 
 # shellcheck disable=SC2329
 function validate_arg_func_declared() {
@@ -676,9 +927,9 @@ function validate_arg_func_declared_optional() {
     return 0
 }
 
-# End vps-init/src/include/05_validate_02_bash.sh
+# End vps-init/src/include/06_validate_03_bash.sh
 
-# Start vps-init/src/include/05_validate_03_fs.sh
+# Start vps-init/src/include/06_validate_04_fs.sh
 
 # shellcheck disable=SC2329
 function check_file_is_not_empty() {
@@ -723,9 +974,9 @@ function validate_arg_not_empty_file_optional() {
     return $?
 }
 
-# End vps-init/src/include/05_validate_03_fs.sh
+# End vps-init/src/include/06_validate_04_fs.sh
 
-# Start vps-init/src/include/05_validate_04_net.sh
+# Start vps-init/src/include/06_validate_05_net.sh
 
 # shellcheck disable=SC2329
 function check_is_number_port() {
@@ -795,9 +1046,9 @@ function validate_arg_ipv4_optional() {
     return $?
 }
 
-# End vps-init/src/include/05_validate_04_net.sh
+# End vps-init/src/include/06_validate_05_net.sh
 
-# Start vps-init/src/include/06_base_diff.sh
+# Start vps-init/src/include/07_base_diff.sh
 
 export CONST_OUT_DIFF_OR_HAS_DIFF="true"
 export CONST_DIFF_ADD_ARGS=("--color=always")
@@ -929,150 +1180,7 @@ function files_has_not_diff() {
     return "$ret_diff"
 }
 
-# End vps-init/src/include/06_base_diff.sh
-
-# Start vps-init/src/include/07_base_input.sh
-
-function prepare_prompt_str() {
-    local prompt="${1:-No prompt}"
-    local yes_no_out="${2:-}"
-    local yes_no=""
-    if [ -n "$yes_no_out" ]; then
-        # shellcheck disable=SC2059
-        yes_no="$(printf " \e${CONST_COLOR_GREEN}[y/n]\e${CONST_COLOR_NO}")"
-    fi
-    printf "> \e${CONST_COLOR_YELLOW}%s\e${CONST_COLOR_NO}${yes_no}: " "$prompt"
-}
-
-# shellcheck disable=SC2329
-function ask_user() {
-    local prompt="${1-:No prompt}"
-    local not_ask="${2-no}"
-    local timeout="${3:-}"
-
-    if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
-        return 0
-    fi
-
-    local timeout_args=""
-    local res_timeout=""
-    if [ -n "$timeout" ]; then
-        if ! res_timeout="$(is_number_positive "$timeout")"; then
-            echo_error "Incorrect timeout '$timeout'"
-            return 1
-        fi
-
-        timeout_args="-t $res_timeout"
-    fi
-
-    local answer=""
-
-    # shellcheck disable=SC2162
-    # shellcheck disable=SC2229
-    # shellcheck disable=SC2086
-    if ! read $timeout_args -p "$(prepare_prompt_str "$prompt" "print_yn")" answer; then
-        local err_msg="Read error"
-        if [ -n "$timeout_args" ]; then
-            err_msg="$err_msg or timeout ${res_timeout}s is reached"
-        fi
-
-        echo_error "${CONST_NEW_LINE}$err_msg"
-        return 255
-    fi
-
-    if [[ "$answer" == "y" ]]; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function ask_user_choice() {
-    local prompt="${1-:No prompt}"
-    
-    shift
-
-    local answer=""
-
-    # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt")" answer
-
-    for to_check in "$@"; do
-        if [[ "$answer" == "$to_check" ]]; then
-            echo -n "$answer"
-            return 0
-        fi
-    done
-
-    echo_error "Incorrect answer '$answer'"
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function ask_user_raw() {
-    local prompt="${1-:No prompt}"
-    local validator="${2-${CONST_NO_VALIDATE}}"
-    
-    local answer=""
-
-    # shellcheck disable=SC2162
-    read -p "$(prepare_prompt_str "$prompt")" answer
-
-    if [[ "$validator" == "$CONST_NO_VALIDATE" ]]; then
-        echo -n "$answer"
-        return 0
-    fi
-
-    local res=""
-
-    if ! res="$($validator "$answer" "$CONST_ARG_PASSED")"; then
-        echo_error "Incorrect answer '$answer': $res"
-        return 1
-    fi
-
-    echo -n "$res"
-    return 0
-}
-
-# End vps-init/src/include/07_base_input.sh
-
-# Start vps-init/src/include/07_base_jq.sh
-
-# shellcheck disable=SC2329
-function jq_get_key_or_empty() { 
-    local raw_out="$1"
-    local key="$2"
-    local required="${3-false}"
-
-    local val=""
-    local exit_code="128"
-
-    val="$(jq -er "$key" <<<"$raw_out")"
-    exit_code="$?"
-
-    case "$exit_code" in
-        "0")
-            echo -n "$val"
-            return 0
-        ;;
-
-        "1")
-            if [[ "$required" == "true" ]]; then
-                echo_error "Key not found $key"
-                return 1
-            fi
-
-            echo -n ""
-            return 0
-    esac
-
-    echo_error "Cannot get json key $key"
-    return 1
-}
-
-# End vps-init/src/include/07_base_jq.sh
+# End vps-init/src/include/07_base_diff.sh
 
 # Start vps-init/src/include/10_base_fs.sh
 
@@ -1260,6 +1368,42 @@ function download_script_and_run() {
 }
 
 # End vps-init/src/include/11-base_download.sh
+
+# Start vps-init/src/include/11_base_jq.sh
+
+# shellcheck disable=SC2329
+function jq_get_key_or_empty() { 
+    local raw_out="$1"
+    local key="$2"
+    local required="${3-false}"
+
+    local val=""
+    local exit_code="128"
+
+    val="$(jq -er "$key" <<<"$raw_out")"
+    exit_code="$?"
+
+    case "$exit_code" in
+        "0")
+            echo -n "$val"
+            return 0
+        ;;
+
+        "1")
+            if [[ "$required" == "true" ]]; then
+                echo_error "Key not found $key"
+                return 1
+            fi
+
+            echo -n ""
+            return 0
+    esac
+
+    echo_error "Cannot get json key $key"
+    return 1
+}
+
+# End vps-init/src/include/11_base_jq.sh
 
 # Start vps-init/src/include/20_base_user.sh
 
@@ -5093,6 +5237,7 @@ function usage() {
       Show this message.
 
     Log settings:
+    Warning, if you run cmd or only one phase use env variables!
 
     --log-enable-debug
       If passed will output debug log information.
@@ -5108,7 +5253,7 @@ function usage() {
       as suffix of file path like (log file is /tmp/init-log.log):
         /tmp/init-log.log.1790520136
       Env LOG_UNIX_SECONDS_TO_PATH=true for set.
-  
+
   If passed 'phase' as first arg and name of phase as second
   only run only one phase.
   Otherwise, run all phases. For disable some phase 
@@ -5349,7 +5494,7 @@ function main() {
         "__tst")
             local tst_ret="255"
             local echo_fun_call="echo_info"
-            if run_tests_func; then
+            if run_tests_func "$@"; then
                 tst_ret="0"
                 echo_fun_call="echo_info"
             else 

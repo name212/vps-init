@@ -3,9 +3,6 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_NEW_LINE=$'\n'
-
-# shellcheck disable=SC2034
 export CONST_FORCE_DEBUG="force_debug"
 
 # shellcheck disable=SC2034
@@ -33,18 +30,6 @@ export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
 export CONST_COLOR_NO=$'\033[0m'
 
-# shellcheck disable=SC2329
-function __rand_str_n() {
-    local num=${1:-1}
-
-	local str=""
-    if ! str="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$num")"; then
-        return 1
-    fi
-
-    echo -n "$str"
-    return 0
-}
 
 # shellcheck disable=SC2329
 function echo_green (){
@@ -79,7 +64,8 @@ function __write_to_log_file () {
         dt="N/A-DATE"
     fi
 
-    local escaped_msg="${msg//$'\n'/\\n}"
+    # shellcheck disable=SC2155
+    local escaped_msg="$(__escape_new_line "$msg")"
 
     echo "[$dt] || [$level]: $escaped_msg" >> "$PRIVATE_SCRIPT_LOG_FILE" || true
 }
@@ -208,7 +194,7 @@ function __tee_log_command_out() {
 # shellcheck disable=SC2329
 function tee_log_command_out_force() {
     __tee_log_command_out "$CONST_LOG_LEVEL_DEBUG" "$@"
-    return $?
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -218,5 +204,5 @@ function tee_log_command_out() {
     fi
 
     __tee_log_command_out "$CONST_LOG_LEVEL_DEBUG" "$@"
-    return $?
+    return 0
 }

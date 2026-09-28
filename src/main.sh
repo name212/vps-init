@@ -83,6 +83,7 @@ function usage() {
       Show this message.
 
     Log settings:
+    Warning, if you run cmd or only one phase use env variables!
 
     --log-enable-debug
       If passed will output debug log information.
@@ -98,7 +99,7 @@ function usage() {
       as suffix of file path like (log file is /tmp/init-log.log):
         /tmp/init-log.log.1790520136
       Env LOG_UNIX_SECONDS_TO_PATH=true for set.
-  
+
   If passed 'phase' as first arg and name of phase as second
   only run only one phase.
   Otherwise, run all phases. For disable some phase 
@@ -339,7 +340,7 @@ function main() {
         "__tst")
             local tst_ret="255"
             local echo_fun_call="echo_info"
-            if run_tests_func; then
+            if run_tests_func "$@"; then
                 tst_ret="0"
                 echo_fun_call="echo_info"
             else 
