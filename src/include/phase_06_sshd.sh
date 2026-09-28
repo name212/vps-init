@@ -292,6 +292,7 @@ function sshd_add_bind_address() {
     fi
 
     echo_info "Prepare sshd. Listen address applied!"
+    echo ""
     cat "$CONST_LISTEN_FILE" || true
     echo_info "Please verify that ssh available"
 
