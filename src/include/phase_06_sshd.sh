@@ -292,8 +292,8 @@ function sshd_add_bind_address() {
     fi
 
     echo_info "Prepare sshd. Listen address applied!"
-    echo ""
     cat "$CONST_LISTEN_FILE" || true
+    echo ""
     echo_info "Please verify that ssh available"
 
     if ! ask_user "SSH available? Continue?" "$not_ask"; then
