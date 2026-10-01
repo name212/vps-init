@@ -249,7 +249,44 @@ function tee_log_command_out() {
 
 # End vps-init/src/include/02_base_echo.sh
 
-# Start vps-init/src/include/03_base_str_01_num.sh
+# Start vps-init/src/include/03_base_str_01_generate.sh
+
+# shellcheck disable=SC2329
+function rand_str_n() {
+    if __rand_str_n "${1-1}"; then
+		return 0
+	else
+		return "$?"
+	fi
+}
+
+# End vps-init/src/include/03_base_str_01_generate.sh
+
+# Start vps-init/src/include/03_base_str_02_escape.sh
+
+# shellcheck disable=SC2329
+function escape_regexp_str() {
+	local str="${1:-}"
+	if [ -z "$str" ]; then
+		echo -n ""
+		return 0
+	fi; \
+	# shellcheck disable=SC2016
+	# shellcheck disable=SC2155
+	local escaped="$(printf '%s' "$str" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+	echo -n "$escaped"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function escape_new_line() {
+	__escape_new_line "${1:-}"
+	return 0
+}
+
+# End vps-init/src/include/03_base_str_02_escape.sh
+
+# Start vps-init/src/include/03_base_str_03_num.sh
 
 # shellcheck disable=SC2329
 function num_great_than() {
@@ -287,28 +324,14 @@ function num_less_eq() {
 	return 1
 }
 
-# End vps-init/src/include/03_base_str_01_num.sh
+# End vps-init/src/include/03_base_str_03_num.sh
 
-# Start vps-init/src/include/03_base_str_02_func.sh
+# Start vps-init/src/include/03_base_str_04_trim.sh
 
 # shellcheck disable=SC2034
 export CONST_STR_TRIM_LEFT="__left__"
 # shellcheck disable=SC2034
 export CONST_STR_TRIM_RIGHT="__right__"
-
-# shellcheck disable=SC2329
-function escape_regexp_str() {
-	local str="${1:-}"
-	if [ -z "$str" ]; then
-		echo -n ""
-		return 0
-	fi; \
-	# shellcheck disable=SC2016
-	# shellcheck disable=SC2155
-	local escaped="$(printf '%s' "$str" | sed 's/[.[\*^$()+?{|]/\\&/g')"
-	echo -n "$escaped"
-	return 0
-}
 
 # shellcheck disable=SC2329
 function trim_spaces_left() {
@@ -461,11 +484,9 @@ function trim_string_wrapper() {
 	return 0
 }
 
-# shellcheck disable=SC2329
-function escape_new_line() {
-	__escape_new_line "${1:-}"
-	return 0
-}
+# End vps-init/src/include/03_base_str_04_trim.sh
+
+# Start vps-init/src/include/03_base_str_05_split.sh
 
 # shellcheck disable=SC2329
 function split_by() {
@@ -548,16 +569,7 @@ function split_by_new_line() {
 	return 0
 }
 
-# shellcheck disable=SC2329
-function rand_str_n() {
-    if __rand_str_n "${1-1}"; then
-		return 0
-	else
-		return "$?"
-	fi
-}
-
-# End vps-init/src/include/03_base_str_02_func.sh
+# End vps-init/src/include/03_base_str_05_split.sh
 
 # Start vps-init/src/include/04_base_input.sh
 
