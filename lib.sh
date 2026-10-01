@@ -249,7 +249,66 @@ function tee_log_command_out() {
 
 # End vps-init/src/include/02_base_echo.sh
 
-# Start vps-init/src/include/03_base_str.sh
+# Start vps-init/src/include/03_base_str_01_num.sh
+
+# shellcheck disable=SC2329
+function num_great_than() {
+	if [ "$1" -gt "$2" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# shellcheck disable=SC2329
+function num_less_than() {
+	if [ "$1" -lt "$2" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# shellcheck disable=SC2329
+function num_great_eq() {
+	if [ "$1" -ge "$2" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# shellcheck disable=SC2329
+function num_less_eq() {
+	if [ "$1" -le "$2" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# End vps-init/src/include/03_base_str_01_num.sh
+
+# Start vps-init/src/include/03_base_str_02_func.sh
+
+# shellcheck disable=SC2034
+export CONST_STR_TRIM_LEFT="__left__"
+# shellcheck disable=SC2034
+export CONST_STR_TRIM_RIGHT="__right__"
+
+# shellcheck disable=SC2329
+function escape_regexp_str() {
+	local str="${1:-}"
+	if [ -z "$str" ]; then
+		echo -n ""
+		return 0
+	fi; \
+	# shellcheck disable=SC2016
+	# shellcheck disable=SC2155
+	local escaped="$(printf '%s' "$str" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+	echo -n "$escaped"
+	return 0
+}
 
 # shellcheck disable=SC2329
 function trim_spaces_left() {
@@ -271,6 +330,138 @@ function trim_spaces() {
     trimmed="$(trim_spaces_left "$trimmed")"
     trimmed="$(trim_spaces_right "$trimmed")"
     echo -n "$trimmed"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function cut_left_bytes() {
+	local str="$1"
+	local num="${2}"
+	num="$(("$num" + 1))-"
+	# shellcheck disable=SC2155
+	local res="$(echo -n "$str" | cut -b "$num")"
+	echo -n "$res"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function cut_right_bytes() {
+	local str="$1"
+	local num="${2}"
+	# shellcheck disable=SC2155
+	local bytes_to_trim="$(echo -n "$str" | wc -c)"
+	num="-$(("$bytes_to_trim" - "$num"))"
+	# shellcheck disable=SC2155
+	local res="$(echo -n "$str" | cut -b "$num")"
+	echo -n "$res"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function __trim_by_string_on_side() {
+	#set -x
+
+	local symbol="${1:-}"
+    local count="${2:-}"
+    local side="${3}"
+    local str_for_trim="${4:-}"
+
+	if [[ "$symbol" == "" || "$str_for_trim" == "" ]]; then
+		echo -n "$str_for_trim"
+		set +x
+		return 0
+	fi
+
+	# shellcheck disable=SC2034
+	# shellcheck disable=SC2155
+	local escaped_for_re="$(escape_regexp_str "$symbol")"
+
+	local for_re="$escaped_for_re"
+	if [[ "$count" == "" || "$count" == "0" ]]; then
+		for_re="(($escaped_for_re)\\2{0,})"
+	elif [[ "$count" != "1" ]]; then
+		local last=$(("$count" - 1))
+		for_re="(($escaped_for_re)\\2{0,$last})"
+	fi
+
+	local cut_fun=""
+
+	if [[ "$side" == "$CONST_STR_TRIM_LEFT" ]]; then
+		for_re="^${for_re}"
+		cut_fun="cut_left_bytes"
+	elif [[ "$side" == "$CONST_STR_TRIM_RIGHT" ]]; then
+		for_re="${for_re}\$"
+		cut_fun="cut_right_bytes"
+	fi
+
+	local matched_for_trim=""
+	if matched_for_trim="$(echo -n "$str_for_trim" | grep -oP "$for_re")"; then
+		# shellcheck disable=SC2155
+		local bytes_to_trim="$(echo -n "$matched_for_trim" | wc -c)"
+		# shellcheck disable=SC2155
+		echo -n "$($cut_fun "$str_for_trim" "$bytes_to_trim")"
+		return 0
+	fi
+
+	echo -n "$str_for_trim"
+	set +x
+	return 0
+}
+
+# shellcheck disable=SC2329
+function trim_by_string_left() {
+    local symbol="${1}"
+    local count="${2}"
+    local str="${3:-}"
+
+	
+	__trim_by_string_on_side "$symbol" "$count" "$CONST_STR_TRIM_LEFT" "$str"
+	return $?
+}
+
+# shellcheck disable=SC2329
+function trim_by_string_right() {
+    local symbol="${1}"
+    local count="${2}"
+    local str="${3:-}"
+
+	__trim_by_string_on_side "$symbol" "$count" "$CONST_STR_TRIM_RIGHT" "$str"
+	return $?
+}
+
+# shellcheck disable=SC2329
+function trim_by_string() {
+	local symbol="${1}"
+    local count="${2}"
+    local str="${3:-}"
+
+	# test cases
+
+
+	# shellcheck disable=SC2155
+	local res="$(trim_by_string_left "$symbol" "$count" "$str")"
+	echo -n "$(trim_by_string_right "$symbol" "$count" "$res")"
+
+	return 0
+}
+
+# shellcheck disable=SC2329
+function trim_string_wrapper() {
+    local str="${1:-}"
+
+	local count="1"
+	local -a symbols=('"' "'")
+
+	local res="$str"
+	for ss in "${symbols[@]}"; do
+		res="$(trim_by_string "$ss" "$count" "$str")"
+		if [[ "$res" != "$str" ]]; then
+			break
+		fi
+	done
+
+	echo -n "$res"
+
 	return 0
 }
 
@@ -314,6 +505,18 @@ function split_by() {
 }
 
 # shellcheck disable=SC2329
+function split_by_dot() {
+	local _dest="${1:-}"
+	local _str="${2:-}"
+	local _transform="${3:-}"
+	if ! split_by '.' "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
+}
+
+# shellcheck disable=SC2329
 function split_by_comma() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
@@ -349,7 +552,6 @@ function split_by_new_line() {
 	return 0
 }
 
-
 # shellcheck disable=SC2329
 function rand_str_n() {
     if __rand_str_n "${1-1}"; then
@@ -359,7 +561,7 @@ function rand_str_n() {
 	fi
 }
 
-# End vps-init/src/include/03_base_str.sh
+# End vps-init/src/include/03_base_str_02_func.sh
 
 # Start vps-init/src/include/04_base_input.sh
 

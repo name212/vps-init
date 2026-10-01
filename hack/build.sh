@@ -75,10 +75,16 @@ cat "$header" > "$destination"
 
 for fl in $(find src/include -name "*.sh" -type f | sort -n); do
     bs="$(basename "$fl")"
+    if [[ "$bs" == *.test.sh ]]; then
+        echo_yellow "Found test file '$fl' Skip"
+        continue
+    fi
+
     if [[ -v skip_build["$bs"] ]]; then
         echo_yellow "Skip add $fl to $destination because it in skip"
         continue
     fi
+
     write_file "$fl" "$destination"
 done
 
