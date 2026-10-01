@@ -2,14 +2,16 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
 export CONST_FLAG_SET="true"
-export CONST_NO_VALIDATE="no_validate"
-export CONST_IS_FLAG="true"
-export CONST_NOT_FLAG="false"
-export CONST_ARG_NOT_PASSED="false"
-export CONST_ARG_PASSED="true"
-export CONST_NOT_ASK_VAL="true"
-export CONST_ASK_VAL=""
+# shellcheck disable=SC2034
+export CONST_IS_FLAG="__is_flag__"
+# shellcheck disable=SC2034
+export CONST_NOT_FLAG="__not_is_flag__"
+# shellcheck disable=SC2034
+export CONST_ARG_NOT_PASSED="__not_passed_arg__"
+# shellcheck disable=SC2034
+export CONST_ARG_PASSED="__arg_passed"
 
 function disable_env() {
     local phase="$1"
@@ -50,7 +52,7 @@ function disable_help() {
     local env_name="$(disable_env "$phase")"
 
     if [ -n "$env_name" ]; then
-        echo "Can be desabled with set env ${env_name}=true"
+        echo "Can be disabled with set env ${env_name}=true"
         return 0
     fi
 
@@ -107,13 +109,13 @@ function extract_argument() {
     fi
 
     if ! declare -F "$validator" > /dev/null; then
-        echo_red "Internal error: '$validator' func not declared!"
+        echo_error "Internal error: '$validator' func not declared!"
         return 1
     fi
 
     local prepared
     if ! prepared="$($validator "$val" "$arg_passed")"; then
-        echo_red "Incorrect: $prepared"
+        echo_error "Incorrect: $prepared"
         return 1
     fi
 
@@ -142,108 +144,15 @@ function parse_not_ask() {
     return 0
 }
 
-# shellcheck disable=SC2329
-function validate_arg_not_empty_file() {
-    local val="$1"
-    local passed="$2"
+function is_help_flag_set() {
+    local -a help_flags=("-h" "--help")
 
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo -n ""
-        return 0
-    fi
+    for ha in "${help_flags[@]}"; do 
+        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
+            return 0
+        fi
+    done
 
-    if [ -z "$val" ]; then
-        echo "Empty file path"
-        return 1 
-    fi
-
-    local real=""
-
-    if ! real="$(realpath "$val")"; then
-        echo "cannot extract real path for $val"
-        return 1
-    fi
-
-    if [ ! -f "$real" ]; then
-        echo "$val is not file!"
-        return 1
-    fi
-
-    if [ ! -s "$real" ]; then
-        echo "$val is empty file!"
-        return 1
-    fi
-
-    echo -n "$real"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_not_empty() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo "Arg not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    echo -n "$val"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_number() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo "Arg not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    if ! [[ $val =~ ^[0-9]+$ ]]; then
-        echo_red "$val is not number!"
-        return 1
-    fi
-
-    echo -n "$val"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function validate_arg_ipv4() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo "Arg not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty arg val"
-        return 1 
-    fi
-
-    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-
-    if [[ "$val" =~ $regexp ]]; then
-        echo -n "$val"
-        return 0
-    fi 
-
-    echo -n "Incorrect IPv4 $val"
     return 1
 }
 

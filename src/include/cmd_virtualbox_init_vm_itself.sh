@@ -46,20 +46,20 @@ function validate_arg_mac_address() {
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_itself_run() {
     if command -v vboxmanage &> /dev/null; then
-        echo_red "vboxmanage executable found!"
-        echo_red "Probably you run virtualbox_init_vm_itself command outside vm"
-        echo_red "If you want to init vm from host, use virtualbox_init_vm"
+        echo_error "vboxmanage executable found!"
+        echo_error "Probably you run virtualbox_init_vm_itself command outside vm"
+        echo_error "If you want to init vm from host, use virtualbox_init_vm"
         return 1
     fi
 
-    echo_green "Init virtualbox vm..."
+    echo_info "Init virtualbox vm..."
 
     local package="openssh-server"
 
     if ! check_packages_installed "$package"; then
-        echo_green "Install sshd..."
+        echo_info "Install sshd..."
         if ! install_packages "openssh-server"; then
-            echo_red "SSHD not installed!"
+            echo_error "SSHD not installed!"
             return 1
         fi
     fi
@@ -67,26 +67,26 @@ function cmd_virtualbox_init_vm_itself_run() {
     local nat_mac=""
 
     if ! nat_mac="$(extract_argument "--virtualbox-nat-mac" "VIRTUALBOX_NAT_MAC" "$CONST_NOT_FLAG" "validate_arg_mac_address" "$@")"; then
-        echo_red "NAT MAC address: $nat_mac"
+        echo_error "NAT MAC address: $nat_mac"
         return 1
     fi
 
     local static_mac=""
 
     if ! static_mac="$(extract_argument "--virtualbox-static-mac" "VIRTUALBOX_STATIC_MAC" "$CONST_NOT_FLAG" "validate_arg_mac_address" "$@")"; then
-        echo_red "Static MAC address: $static_mac"
+        echo_error "Static MAC address: $static_mac"
         return 1
     fi
 
     local ip_static=""
 
     if ! ip_static="$(extract_argument "--virtualbox-static-ip" "VIRTUALBOX_STATIC_IP" "$CONST_NOT_FLAG" "validate_arg_ipv4" "$@")"; then
-        echo_red "Static IP address: $ip_static"
+        echo_error "Static IP address: $ip_static"
         return 1
     fi
 
     if [[ "$nat_mac" == "$static_mac" ]]; then
-        echo_red "NAT and STATIC MACs should be different"
+        echo_error "NAT and STATIC MACs should be different"
         return 1
     fi
 
@@ -96,13 +96,13 @@ function cmd_virtualbox_init_vm_itself_run() {
     local gateway="${ip_parts[0]}.${ip_parts[1]}.${ip_parts[2]}.1"
 
     if [[ "$ip_static" == "$gateway" ]]; then
-        echo_red "IP $ip_static should not gateway $gateway"
+        echo_error "IP $ip_static should not gateway $gateway"
         return 1
     fi
 
     local ssh_key=""
     if ! ssh_key="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "SSH key: $$ssh_key"
+        echo_error "SSH key: $$ssh_key"
         return 1
     fi
 
@@ -114,7 +114,7 @@ function cmd_virtualbox_init_vm_itself_run() {
 
     local remove_sudo_pass=""
     if ! remove_sudo_pass="$(extract_argument "--virtualbox-sudo-no-password" "VIRTUALBOX_SUDO_NO_PASSWORD" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_red "Remove sudo pass: $$remove_sudo_pass"
+        echo_error "Remove sudo pass: $$remove_sudo_pass"
         return 1
     fi
 
@@ -124,11 +124,11 @@ function cmd_virtualbox_init_vm_itself_run() {
     local -a users_to_initialize=()
 
     if [[ $remove_sudo_pass == "$CONST_FLAG_SET" || "$ssh_key" != "" ]]; then
-        echo_green "Users should initialize. Get loginable users..."
+        echo_info "Users should initialize. Get loginable users..."
 
         local users_raw_list=""
         if ! users_raw_list="$(get_loginable_users)"; then
-            echo_red "Failed to get loginable users"
+            echo_error "Failed to get loginable users"
             return 1
         fi
 
@@ -137,13 +137,13 @@ function cmd_virtualbox_init_vm_itself_run() {
         
         for user_to_append in "${users_list[@]}"; do 
             if [[ "$user_to_append" == "root" ]]; then
-                echo_green "Skip root user"
+                echo_info "Skip root user"
                 continue
             fi
 
             local user_home=""
             if ! user_home="$(get_user_home "$user_to_append")"; then
-                echo_yellow "Not found user home for $user_to_append Skip"
+                echo_warn "Not found user home for $user_to_append Skip"
                 continue
             fi
 
@@ -152,49 +152,49 @@ function cmd_virtualbox_init_vm_itself_run() {
                 continue
             fi
 
-            echo_yellow "Found user $user_to_append but home $user_home is not in /home Skip"
+            echo_warn "Found user $user_to_append but home $user_home is not in /home Skip"
         done
     fi
 
     if [[ "$ssh_key" != "" && "${#users_to_initialize[@]}" != "0" ]]; then
         for init_user in "${users_to_initialize[@]}"; do
-            echo_green "Init ssh key $ssh_key for user $init_user"
+            echo_info "Init ssh key $ssh_key for user $init_user"
             if ! add_pubkey_for_user "$init_user" "$ssh_key" "$not_ask"; then
-                echo_red "Failed to initialize ssh key for $init_user"
+                echo_error "Failed to initialize ssh key for $init_user"
             fi
         done
     fi
 
     if [[ $remove_sudo_pass == "$CONST_FLAG_SET" && "${#users_to_initialize[@]}" != "0" ]]; then
         for init_user_pass in "${users_to_initialize[@]}"; do
-            echo_green "Remove sudo pass for user $init_user_pass"
+            echo_info "Remove sudo pass for user $init_user_pass"
             if ! add_user_to_sudoers "$init_user" "$CONST_SUDO_NO_PASS" "$not_ask"; then
-                echo_red "Failed to remove sudo pass for $init_user"
+                echo_error "Failed to remove sudo pass for $init_user"
             fi
         done
     fi
 
-    echo_green "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
+    echo_info "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
 
     # shellcheck disable=SC2155
     local config_tmp="$(mktemp)"
 
     if ! chmod 600 "$config_tmp"; then
-        echo_red "Cannot chmod temp file for config"
+        echo_error "Cannot chmod temp file for config"
         return 1
     fi
 
     if ! chown "root:root" "$config_tmp"; then
-        echo_red "Cannot chown temp file for config"
+        echo_error "Cannot chown temp file for config"
         return 1
     fi
 
     local backup_netplan="/root/backup_netplans"
 
-    echo_green "Move old netplan configs to $backup_netplan"
+    echo_info "Move old netplan configs to $backup_netplan"
 
     if ! mkdir -p "$backup_netplan"; then
-        echo_red "Cannot create old netplans backup dir $backup_netplan"
+        echo_error "Cannot create old netplans backup dir $backup_netplan"
         return 1
     fi
 
@@ -216,11 +216,11 @@ function cmd_virtualbox_init_vm_itself_run() {
     done < <(find "$netplan_dir" -name '*.yaml' -type f -print0)
 
     if [[ "${#backup_files[@]}" == "0" ]]; then
-        echo_green "Nothing to backup"
+        echo_info "Nothing to backup"
     else
         for to_bkp in "${backup_files[@]}"; do
             if ! mv "$to_bkp" "$backup_netplan"; then
-                echo_red "Cannot backup file $to_bkp"
+                echo_error "Cannot backup file $to_bkp"
                 return 1
             fi
         done
@@ -268,41 +268,41 @@ EOF
         return 1
     fi
 
-    echo_green "Applly netplan..."
+    echo_info "Apply netplan..."
 
     if ! netplan apply; then
-        echo_red "Netplan config does not applyed! Backups in $backup_netplan"
+        echo_error "Netplan config does not applied! Backups in $backup_netplan"
         return 1
     fi
 
     local remote_host="google.com"
 
     if command -v ping &> /dev/null; then
-        echo_green "Netplan applyed! Verify internet connection with ping $remote_host"
-        echo_green "Sleep 5 seconds before check..."
+        echo_info "Netplan applied! Verify internet connection with ping $remote_host"
+        echo_info "Sleep 5 seconds before check..."
         sleep 5
 
         if ! ping -W 4 -c 4 "$remote_host"; then
-            echo_red "Host $remote_host not accessable!"
+            echo_error "Host $remote_host not accessible!"
             return 1
         fi
-        echo_green "Internet connection success!" 
+        echo_info "Internet connection success!" 
     else
-        echo_yellow "Ping is not installed. Skip verify internet connection"
+        echo_warn "Ping is not installed. Skip verify internet connection"
     fi
 
     if ask_user "Remove backup dir $backup_netplan ?" "$not_ask"; then
         if ! rm -rfv "$backup_netplan"; then
-            echo_yellow "$backup_netplan not removed!"
+            echo_warn "$backup_netplan not removed!"
         fi
     fi
 
-    echo_green "Virtualbox vm initialized!"
+    echo_info "Virtualbox vm initialized!"
 
     if [[ "${#users_to_initialize[@]}" != "0" ]]; then
-        echo_green "You can try to verify ssh connection with:"
+        echo_info "You can try to verify ssh connection with:"
         for ssh_user in "${users_to_initialize[@]}"; do
-            echo_green "ssh ${ssh_user}@$ip_static"
+            echo_info "ssh ${ssh_user}@$ip_static"
         done
     fi
 

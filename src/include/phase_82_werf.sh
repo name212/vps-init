@@ -7,10 +7,10 @@ PHASES_WITH_INDEX["werf"]="82"
 
 # shellcheck disable=SC2329
 function phase_werf_run() {
-    echo_green "Install werf..."
+    echo_info "Install werf..."
 
     if command -v werf &> /dev/null; then
-        echo_green "Werf already installed!"
+        echo_info "Werf already installed!"
         return 0
     fi
 
@@ -23,7 +23,7 @@ function phase_werf_run() {
         return 1
     fi
 
-    echo_green "Werf installed!"
+    echo_info "Werf installed!"
 }
 
 # shellcheck disable=SC2329

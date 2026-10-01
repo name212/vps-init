@@ -3,23 +3,21 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-PHASES_WITH_INDEX["base_pkgs"]="01"
+PHASES_WITH_INDEX["base_pkgs"]="02"
 
 # shellcheck disable=SC2329
 function phase_base_pkgs_run() {
-    echo_green "Upgrade all..."
-
-    if ! apt update; then
-        echo_red "Cannot run apt update"
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
         return 1
     fi
 
-    if ! apt upgrade -y; then
-        echo_red "Cannot run apt upgrade"
+    if ! "$update_fun"; then
+        echo_error "Cannot run update"
         return 1
     fi
 
-    echo_green "Install base packages..."
+    echo_info "Install base packages..."
 
     local packages=(
         "bash-completion" 
@@ -46,16 +44,16 @@ function phase_base_pkgs_run() {
     )
 
     if check_packages_installed "${packages[@]}"; then
-        echo_green "Base packages already installed!"
+        echo_info "Base packages already installed!"
         return 0
     fi
     
     if ! install_packages "${packages[@]}"; then
-        echo_red "Base packages not installed!"
+        echo_error "Base packages not installed!"
         return 1
     fi
 
-    echo_green "Base packages installed!"
+    echo_info "Base packages installed!"
 }
 
 # shellcheck disable=SC2329
