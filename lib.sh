@@ -359,8 +359,6 @@ function cut_right_bytes() {
 
 # shellcheck disable=SC2329
 function __trim_by_string_on_side() {
-	#set -x
-
 	local symbol="${1:-}"
     local count="${2:-}"
     local side="${3}"
@@ -368,7 +366,6 @@ function __trim_by_string_on_side() {
 
 	if [[ "$symbol" == "" || "$str_for_trim" == "" ]]; then
 		echo -n "$str_for_trim"
-		set +x
 		return 0
 	fi
 
@@ -404,7 +401,6 @@ function __trim_by_string_on_side() {
 	fi
 
 	echo -n "$str_for_trim"
-	set +x
 	return 0
 }
 
