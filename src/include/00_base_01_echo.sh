@@ -2,13 +2,24 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
+function __is_debug_file_present(){
+    if [ -n "${PRIVATE_SCRIPT_LOG_FILE:-}" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
 # shellcheck disable=SC2034
-export CONST_FORCE_DEBUG="force_debug"
+export CONST_FORCE_DEBUG="__force_debug__"
 
 # shellcheck disable=SC2034
 export PRIVATE_SCRIPT_DEBUG_ENABLED=""
 # shellcheck disable=SC2034
-export PRIVATE_SCRIPT_LOG_FILE=""
+if ! __is_debug_file_present; then
+    export PRIVATE_SCRIPT_LOG_FILE=""
+fi
 
 # shellcheck disable=SC2034
 export CONST_LOG_LEVEL_DEBUG="debug"
@@ -30,6 +41,18 @@ export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
 export CONST_COLOR_NO=$'\033[0m'
 
+# shellcheck disable=SC2034
+export CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
+# shellcheck disable=SC2034
+export CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
+# shellcheck disable=SC2034
+export CONST_LOG_ARG_FILE="--log-file"
+# shellcheck disable=SC2034
+export CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
+# shellcheck disable=SC2034
+export CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
+# shellcheck disable=SC2034
+export CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
 
 # shellcheck disable=SC2329
 function echo_green (){
@@ -112,12 +135,12 @@ function echo_debug() {
 }
 
 # shellcheck disable=SC2329
-function enable_debug_log () {
+function __enable_debug_log () {
     local should_enabled="${1:-}"
     local val=""
 
     if [[ "$should_enabled" == "" || "$should_enabled" == "true" ]]; then
-        echo_green "Debug logs output is enabled" >&2
+        echo_yellow "Debug logs output is enabled" >&2
         val="$CONST_FORCE_DEBUG"
     fi
 
@@ -127,8 +150,12 @@ function enable_debug_log () {
 }
 
 # shellcheck disable=SC2329
-function set_log_file () {
+function __set_log_file () {
     local log_file="${1}"
+
+    if __is_debug_file_present; then
+       return 0 
+    fi
 
     if [ -z "$log_file" ]; then
         echo_red "Log file is empty" >&2
@@ -147,16 +174,22 @@ function set_log_file () {
 
     export PRIVATE_SCRIPT_LOG_FILE="$log_file"
 
-    echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
-
     local log_id=""
     if ! log_id="$(__rand_str_n "10")"; then
         log_id="N/A"
     fi
 
     __write_to_log_file "$CONST_LOG_LEVEL_INFO" "Start log [id=$log_id]" || true
+    
+    echo_debug "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
 
     return 0
+}
+
+function print_debug_log_file(){
+    if __is_debug_file_present; then
+        echo_warn "Log file: '$PRIVATE_SCRIPT_LOG_FILE'"
+    fi
 }
 
 # shellcheck disable=SC2329

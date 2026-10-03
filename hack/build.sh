@@ -70,8 +70,11 @@ function write_file() {
 
 header="src/main_header.sh"
 
-echo_green "Write $header to $destination"
-cat "$header" > "$destination"
+if [ -s "$header" ]; then
+    echo_green "Write main header $header to $destination"
+    cat "$header" > "$destination"
+fi
+
 
 for fl in $(find src/include -name "*.sh" -type f | sort -n); do
     bs="$(basename "$fl")"
@@ -95,6 +98,7 @@ fi
 footer_file="src/main_footer.sh"
 
 if [ -s "$footer_file" ]; then
+    echo_green "Write main footer $footer_file to $destination"
     write_file "$footer_file" "$destination"
 fi
 

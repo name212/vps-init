@@ -492,8 +492,8 @@ function virtualbox_prepare_viso() {
     local -a files_to_viso=()
 
     # shellcheck disable=SC2154
-    if ! cp "$bin_name" "$bundle_file"; then
-        echo_error "Cannot copy init script $bin_name to $vm_dir"
+    if ! cp "$CONST_SCRIPT_NAME" "$bundle_file"; then
+        echo_error "Cannot copy init script $CONST_SCRIPT_NAME to $vm_dir"
         return 1
     fi
 
@@ -520,14 +520,7 @@ function virtualbox_prepare_viso() {
 
     local init_file="${vm_dir}/init.sh"
 
-    # bash not correct handle shebang and set 
-    # when write file! 
-    {
-        echo -n "#"
-        echo '!/usr/bin/env bash'
-        echo -n 'se'
-        echo 't -Eeuo pipefail'
-    } > "$init_file"
+    write_shebang_header "$init_file"
 
     cat <<EOF >> "$init_file"
 run_dir=\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" &> /dev/null && pwd)

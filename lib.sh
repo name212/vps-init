@@ -2,21 +2,35 @@
 
 set -Eeuo pipefail
 
+# Start vps-init/src/include/00_base_01_const_fn.sh
+
 # shellcheck disable=SC2034
-bin_name="$0"
+export CONST_SCRIPT_NAME="$0"
+# shellcheck disable=SC2034
+export CONST_LIB_FILE_NAME="init-lib.sh"
+
+# shellcheck disable=SC2034
+export CONST_IDEMPOTENT_START_COMMENT="# start idempotent run"
+# shellcheck disable=SC2034
+export CONST_IDEMPOTENT_END_COMMENT="# end idempotent run"
+# shellcheck disable=SC2034
+export CONST_IDEMPOTENT_START_COMMENT="# start idempotent run"
+
+# shellcheck disable=SC2155
+export WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # shellcheck disable=SC2034
 declare -A PHASES_WITH_INDEX=()
 # shellcheck disable=SC2034
 declare -a COMMANDS_LIST=()
 
-# Start vps-init/src/include/01_base_const_fn.sh
-
 # shellcheck disable=SC2034
 export CONST_NEW_LINE=$'\n'
+# shellcheck disable=SC2034
+export CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
 
 # shellcheck disable=SC2034
-export CONST_NO_VALIDATE="no_validate"
+export CONST_NO_VALIDATE="__no_validate"
 
 # shellcheck disable=SC2329
 function __rand_str_n() {
@@ -38,17 +52,42 @@ function __escape_new_line() {
 	return 0
 }
 
-# End vps-init/src/include/01_base_const_fn.sh
+# shellcheck disable=SC2329
+function write_shebang_header() {
+	local des_file="${1}"
 
-# Start vps-init/src/include/02_base_echo.sh
+    # bash not correct handle shebang and set 
+    # when write file! 
+	{
+        echo -n "#"
+        echo '!/usr/bin/env bash'
+        echo -n 'se'
+        echo 't -Eeuo pipefail'
+    } > "$des_file"
+}
+
+# End vps-init/src/include/00_base_01_const_fn.sh
+
+# Start vps-init/src/include/00_base_01_echo.sh
+
+# shellcheck disable=SC2329
+function __is_debug_file_present(){
+    if [ -n "${PRIVATE_SCRIPT_LOG_FILE:-}" ]; then
+        return 0
+    fi
+
+    return 1
+}
 
 # shellcheck disable=SC2034
-export CONST_FORCE_DEBUG="force_debug"
+export CONST_FORCE_DEBUG="__force_debug__"
 
 # shellcheck disable=SC2034
 export PRIVATE_SCRIPT_DEBUG_ENABLED=""
 # shellcheck disable=SC2034
-export PRIVATE_SCRIPT_LOG_FILE=""
+if ! __is_debug_file_present; then
+    export PRIVATE_SCRIPT_LOG_FILE=""
+fi
 
 # shellcheck disable=SC2034
 export CONST_LOG_LEVEL_DEBUG="debug"
@@ -70,6 +109,18 @@ export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
 export CONST_COLOR_NO=$'\033[0m'
 
+# shellcheck disable=SC2034
+export CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
+# shellcheck disable=SC2034
+export CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
+# shellcheck disable=SC2034
+export CONST_LOG_ARG_FILE="--log-file"
+# shellcheck disable=SC2034
+export CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
+# shellcheck disable=SC2034
+export CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
+# shellcheck disable=SC2034
+export CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
 
 # shellcheck disable=SC2329
 function echo_green (){
@@ -152,12 +203,12 @@ function echo_debug() {
 }
 
 # shellcheck disable=SC2329
-function enable_debug_log () {
+function __enable_debug_log () {
     local should_enabled="${1:-}"
     local val=""
 
     if [[ "$should_enabled" == "" || "$should_enabled" == "true" ]]; then
-        echo_green "Debug logs output is enabled" >&2
+        echo_yellow "Debug logs output is enabled" >&2
         val="$CONST_FORCE_DEBUG"
     fi
 
@@ -167,8 +218,12 @@ function enable_debug_log () {
 }
 
 # shellcheck disable=SC2329
-function set_log_file () {
+function __set_log_file () {
     local log_file="${1}"
+
+    if __is_debug_file_present; then
+       return 0 
+    fi
 
     if [ -z "$log_file" ]; then
         echo_red "Log file is empty" >&2
@@ -187,16 +242,22 @@ function set_log_file () {
 
     export PRIVATE_SCRIPT_LOG_FILE="$log_file"
 
-    echo_green "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
-
     local log_id=""
     if ! log_id="$(__rand_str_n "10")"; then
         log_id="N/A"
     fi
 
     __write_to_log_file "$CONST_LOG_LEVEL_INFO" "Start log [id=$log_id]" || true
+    
+    echo_debug "Log file: '$PRIVATE_SCRIPT_LOG_FILE'" >&2
 
     return 0
+}
+
+function print_debug_log_file(){
+    if __is_debug_file_present; then
+        echo_warn "Log file: '$PRIVATE_SCRIPT_LOG_FILE'"
+    fi
 }
 
 # shellcheck disable=SC2329
@@ -247,7 +308,565 @@ function tee_log_command_out() {
     return 0
 }
 
-# End vps-init/src/include/02_base_echo.sh
+# End vps-init/src/include/00_base_01_echo.sh
+
+# Start vps-init/src/include/00_base_02_pkg.sh
+
+# shellcheck disable=SC2034
+export SYS_PACKAGES_ENGINE_APT="apt"
+# shellcheck disable=SC2034
+export SYS_PACKAGES_ENGINE_APK="apk"
+
+if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
+    export SYS_PACKAGES_ENGINE="$SYS_PACKAGES_ENGINE_APT"
+fi
+
+# shellcheck disable=SC2329
+function get_package_manager() {
+    echo -n "$SYS_PACKAGES_ENGINE"
+}
+
+# shellcheck disable=SC2329
+function apt_update() {
+    if ! apt update; then 
+        echo_error "Cannot run apt update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_upgrade() {
+    if ! apt upgrade -y; then 
+        echo_error "Cannot run apt upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_install() {
+    if ! apt install -y "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_search() {
+    if dpkg-query -s "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apt_remove() {
+    if ! apt purge -y --auto-remove "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_upgrade() {
+    if ! apk upgrade; then 
+        echo_error "Cannot run apk upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_update() {
+    if ! apk update; then 
+        echo_error "Cannot run apk update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_install() {
+    if ! apk add --no-cache "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_search() {
+    if apk info -e "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apk_remove() {
+    if ! apk del "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_package_cmd() {
+    local cmd_name="$1"
+    case "$SYS_PACKAGES_ENGINE" in
+        "$SYS_PACKAGES_ENGINE_APT")
+            true
+        ;;
+
+        "$SYS_PACKAGES_ENGINE_APK")
+            true
+        ;;
+
+        *)
+            echo_error "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
+            return 1
+        ;;
+    esac
+
+    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
+
+    if ! declare -F "$res" > /dev/null; then
+        echo_error "Internal error: '$res' func not declared!"
+        return 1
+    fi
+
+    echo -n "$res"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function upgrade_all_packages() {
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local upgrade_fun=""
+    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then
+        echo_error "Cannot run update"
+        return 1
+    fi
+
+    if ! "$upgrade_fun"; then
+        echo_error "Cannot run apt upgrade"
+        return 1
+    fi
+}
+
+# shellcheck disable=SC2329
+function install_packages() {
+    echo_info "Install apt packages $* ..."
+
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local install_fun=""
+    if ! install_fun="$(get_package_cmd install)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then 
+        echo_error "Cannot run update indexes!"
+        return 1
+    fi
+
+    if ! "$install_fun" "$@"; then
+        echo_error "Cannot run apt install!"
+        return 1
+    fi
+
+    echo_info "Packages $* installed!"
+}
+
+# shellcheck disable=SC2329
+function check_packages_installed() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local all="true"
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if ! "$search_fun" "$name"; then
+            echo_warn "$name not installed..."
+            all="false"
+        fi
+        shift
+    done
+
+    if [[ "$all" == "false" ]]; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# shellcheck disable=SC2329
+function remove_packages() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local remove_fun=""
+    if ! remove_fun="$(get_package_cmd remove)"; then
+        return 1
+    fi
+
+    local -a for_remove=()
+
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if "$search_fun" "$name"; then
+            for_remove+=("$name")
+        fi
+        shift
+    done
+
+    if [[ "${#for_remove[@]}" == "0" ]]; then
+        echo_info "All passed packages already removed"
+        return 0
+    fi
+
+    echo_info "Remove packages ${for_remove[*]}"
+    
+    if ! "$remove_fun" "${for_remove[@]}"; then
+        echo_error "Some packages not removed!"
+        return 1
+    fi
+
+    return 0
+}
+
+# End vps-init/src/include/00_base_02_pkg.sh
+
+# Start vps-init/src/include/00_base_03_args.sh
+
+# shellcheck disable=SC2034
+export CONST_FLAG_SET="true"
+# shellcheck disable=SC2034
+export CONST_IS_FLAG="__is_flag__"
+# shellcheck disable=SC2034
+export CONST_NOT_FLAG="__not_is_flag__"
+# shellcheck disable=SC2034
+export CONST_ARG_NOT_PASSED="__not_passed_arg__"
+# shellcheck disable=SC2034
+export CONST_ARG_PASSED="__arg_passed"
+# shellcheck disable=SC2034
+export CONST_NOT_ASK_ARG="--not-ask"
+export CONST_NOT_ASK_ENV="NOT_ASK"
+
+declare -a CONST_HELP_AGS=("-h" "--help")
+
+# shellcheck disable=SC2329
+function __no_validate() {
+    local val="$1"
+    echo -n "$val"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function disable_env() {
+    local phase="$1"
+
+    local env_name=""
+
+    local env_fun="phase_${phase}_disable_env"
+    if declare -F "$env_fun" > /dev/null; then
+        env_name="$("$env_fun")"
+    fi
+
+    echo -n "$env_name"
+}
+
+function phase_is_not_disabled() {
+    local phase="$1"
+
+     # shellcheck disable=SC2155
+    local env_name="$(disable_env "$phase")"
+
+    if [ -z "$env_name" ]; then
+        return 0
+    fi
+
+    if [ -v "$env_name" ]; then
+        if [[ "${!env_name:-}" == "$CONST_FLAG_SET" ]]; then
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+function disable_help() {
+    local phase="$1"
+
+    # shellcheck disable=SC2155
+    local env_name="$(disable_env "$phase")"
+
+    if [ -n "$env_name" ]; then
+        echo "Can be disabled with set env ${env_name}=true"
+        return 0
+    fi
+
+    echo "This phase is required and not be disabled!"
+}
+
+function extract_argument() {
+    local arg_name="$1"
+    local env_name="$2"
+    local is_flag="$3"
+    local validator="$4"
+
+    shift
+    shift
+    shift
+    shift
+
+    local val=""
+
+    local arg_passed="$CONST_ARG_NOT_PASSED"
+
+    local extract_and_break=""
+    for arg in "$@"; do
+        if [[ "$extract_and_break" == "true" ]]; then
+            val="$arg"
+            break
+        fi
+
+        if [[ "$arg" == "$arg_name" ]]; then
+            arg_passed="$CONST_ARG_PASSED"
+            if [[ "$is_flag" == "$CONST_IS_FLAG" ]]; then
+                val="$CONST_FLAG_SET"
+            else
+                extract_and_break="true"
+            fi
+        fi
+    done
+
+    if [ -n "$env_name" ]; then
+        if [ -v "$env_name" ]; then
+            val="${!env_name:-}"
+            arg_passed="$CONST_ARG_PASSED"
+        fi
+    fi
+
+    if [[ "$is_flag" == "$CONST_IS_FLAG" ]]; then
+        echo -n "$val"
+        return 0
+    fi
+
+    if [[ "$validator" == "" || "$validator" == "$CONST_NO_VALIDATE" ]]; then
+        echo -n "$val"
+        return 0
+    fi
+
+    if ! declare -F "$validator" > /dev/null; then
+        echo_error "Internal error: '$validator' func not declared!"
+        return 1
+    fi
+
+    local prepared
+    if ! prepared="$($validator "$val" "$arg_passed")"; then
+        echo_error "Incorrect: $prepared"
+        return 1
+    fi
+
+    echo -n "$prepared"
+    return 0
+}
+
+function extract_value_argument() { 
+    local arg_name="$1"
+    local env_name="$2"
+    local validator="$3"
+
+    shift
+    shift
+    shift
+
+    local val=""
+    if ! val="$(extract_argument "$arg_name" "$env_name" "$CONST_NOT_FLAG" "$validator" "$@")"; then
+        echo -n ""
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+function extract_value_argument_no_validate() { 
+    local arg_name="$1"
+    local env_name="$2"
+
+    shift
+    shift
+
+    local val=""
+    if ! val="$(extract_argument "$arg_name" "$env_name" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+        echo -n ""
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+function arg_flag_is_set() {
+    local arg_name="$1"
+    local env_name="${2}"
+
+    shift
+    shift
+
+    # shellcheck disable=SC2155
+    local res="$(extract_argument "$arg_name" "$env_name" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"
+    if [[ "$res" == "$CONST_FLAG_SET" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function get_env_value_or_default() {
+    local var_name="$1"
+    local default_val="${2-}"
+
+    if ! [[ -v "$var_name" ]]; then
+        echo -n "$default_val"
+        return 0
+    fi
+
+    echo -n "${!var_name}"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function parse_not_ask() {
+    if arg_flag_is_set "$CONST_NOT_ASK_ARG" "$CONST_NOT_ASK_ENV" "$@"; then
+        echo -n "$CONST_NOT_ASK_VAL"
+        return 0
+    fi
+
+    echo "$CONST_ASK_VAL"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function not_ask_help() {
+    echo "
+    ${CONST_NOT_ASK_ARG}
+      If passed will not ask user about actions.
+      Env ${CONST_NOT_ASK_ENV}=true for set.
+    "
+}
+
+# shellcheck disable=SC2329
+function is_help_flag_set() {
+    for ha in "${CONST_HELP_AGS[@]}"; do 
+        if arg_flag_is_set "$ha" "" "$@"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function echo_help_args_help() {
+    local args_list=""
+
+    for hah in "${CONST_HELP_AGS[@]}"; do
+        if [ -z "$args_list" ]; then
+            args_list="$hah"
+            continue
+        fi
+
+        args_list="${args_list}|${hah}"
+    done 
+
+    echo "
+    ${args_list}
+      Show this help message.
+    "
+}
+
+# shellcheck disable=SC2329
+function parse_and_apply_log_settings() {
+    if arg_flag_is_set "$CONST_LOG_ARG_ENABLE_DEBUG" "$CONST_LOG_ENV_ENABLE_DEBUG" "$@"; then
+        __enable_debug_log "true"
+    fi
+
+    local log_file=""
+    if ! log_file="$(extract_value_argument_no_validate "$CONST_LOG_ARG_FILE" "$CONST_LOG_ENV_FILE" "$@")"; then
+        echo_error "Cannot extract log file argument"
+        return 1
+    fi
+
+    if [ -n "$log_file" ]; then
+        if arg_flag_is_set "$CONST_LOG_ARG_UNIX_SECONDS" "$CONST_LOG_ENV_UNIX_SECONDS" "$@"; then
+            local log_file_suf=""
+            if ! log_file_suf="$(date +%s)"; then
+                echo_error "Cannot get suffix for log file"
+                return 1
+            fi
+            log_file="${log_file}.${log_file_suf}"
+        fi
+
+        if ! __set_log_file "$log_file"; then
+            echo_error "Cannot set log file '$log_file'"
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function log_settings_help() {
+    echo "
+    Log settings:
+    $CONST_LOG_ARG_ENABLE_DEBUG
+      If passed will output debug log information to terminal.
+      Env ${CONST_LOG_ENV_ENABLE_DEBUG}=true for set.
+
+    $CONST_LOG_ARG_FILE 'PATH'
+      If set, all log include debug will write to file in format:
+      [\$date] || [\$level]: \$msg
+      Env $CONST_LOG_ENV_FILE
+
+    $CONST_LOG_ARG_UNIX_SECONDS
+      If set and pass log file path, will add unix time seconds
+      as suffix of file path like (log file is /tmp/init-log.log):
+        /tmp/init-log.log.1790520136
+      Env ${CONST_LOG_ENV_UNIX_SECONDS}=true for set.
+    "
+ }
+
+# End vps-init/src/include/00_base_03_args.sh
 
 # Start vps-init/src/include/03_base_str_01_generate.sh
 
@@ -824,177 +1443,289 @@ function ask_user_raw() {
 
 # End vps-init/src/include/04_base_input.sh
 
-# Start vps-init/src/include/05_base_args.sh
+# Start vps-init/src/include/05_base_screen.sh
 
 # shellcheck disable=SC2034
-export CONST_FLAG_SET="true"
-# shellcheck disable=SC2034
-export CONST_IS_FLAG="__is_flag__"
-# shellcheck disable=SC2034
-export CONST_NOT_FLAG="__not_is_flag__"
-# shellcheck disable=SC2034
-export CONST_ARG_NOT_PASSED="__not_passed_arg__"
-# shellcheck disable=SC2034
-export CONST_ARG_PASSED="__arg_passed"
+declare -A CONST_PRIVATE_SCREEN_PACKAGES=()
 
-function disable_env() {
-    local phase="$1"
+CONST_PRIVATE_SCREEN_PACKAGES["$SYS_PACKAGES_ENGINE_APT"]="screen"
+CONST_PRIVATE_SCREEN_PACKAGES["$SYS_PACKAGES_ENGINE_APK"]="screen"
 
-    local env_name=""
+# shellcheck disable=SC2034
+export CONST_SCREEN_REPLACED_VAL="__in_screen__"
+# shellcheck disable=SC2034
+export CONST_SCREEN_SHOULD_REPLACED="__should_run_in_screen__"
+# shellcheck disable=SC2034
+export CONST_SCREEN_NOT_RUN_IN_SCREEN="__not_run_in_screen__"
+# shellcheck disable=SC2034
+export CONST_SCREEN_DEFAULT_SESS_NAME="server-init"
 
-    local env_fun="phase_${phase}_disable_env"
-    if declare -F "$env_fun" > /dev/null; then
-        env_name="$("$env_fun")"
+export CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
+# shellcheck disable=SC2034
+export CONST_SCREEN_ENV_ENABLE="SCREEN_ENABLE_RUN_VIA_SCREEN"
+
+# shellcheck disable=SC2034
+export CONST_SCREEN_ARG_RECORD_DIR="--screen-records-dir"
+# shellcheck disable=SC2034
+export CONST_SCREEN_ENV_RECORD_DIR="SCREEN_RECORDS_DIR"
+
+# shellcheck disable=SC2034
+export CONST_SCREEN_ARG_SESS_NAME="--screen-session-name-prefix"
+# shellcheck disable=SC2034
+export CONST_SCREEN_ENV_SESS_NAME="SCREEN_SESSION_NAME_PREFIX"
+
+# shellcheck disable=SC2329
+function __screen_sess_prefix_default() {
+    local screen_sess_name="$1"
+    local passed="${2:-}"
+
+    if [[ "$screen_sess_name" == "" || "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
+        screen_sess_name="$CONST_SCREEN_DEFAULT_SESS_NAME"
     fi
 
-    echo -n "$env_name"
+    echo -n "$screen_sess_name"
+    return 0
 }
 
-function phase_is_not_disabled() {
-    local phase="$1"
+# shellcheck disable=SC2329
+function __screen_root_dir_default() {
+    local screen_records_dir="$1"
+    local sess_name="${2}"
 
-     # shellcheck disable=SC2155
-    local env_name="$(disable_env "$phase")"
+    if [ -z "$screen_records_dir" ]; then
+        if [ -n "${HOME:-}" ]; then
+            screen_records_dir="${HOME}/${sess_name}"
+        else
+            screen_records_dir="/root"
+        fi
+    fi
 
-    if [ -z "$env_name" ]; then
+    echo -n "$screen_records_dir"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function screen_install() {
+    # shellcheck disable=SC2155
+    local pkg_manager="$(get_package_manager)"
+    local screen_pkg=""
+    if [[ -v CONST_PRIVATE_SCREEN_PACKAGES["$pkg_manager"] ]]; then
+        screen_pkg="${CONST_PRIVATE_SCREEN_PACKAGES["$pkg_manager"]}"
+    else
+        echo_error "Cannot find screen package for package manager '$pkg_manager'"
+        return 1
+    fi
+
+    if check_packages_installed "$screen_pkg"; then
+        echo_debug "screen package '$screen_pkg' already installed"
         return 0
     fi
 
-    if [ -v "$env_name" ]; then
-        if [[ "${!env_name:-}" == "$CONST_FLAG_SET" ]]; then
+    if ! install_packages "$screen_pkg"; then
+        echo_error "Cannot install screen package '$screen_pkg'"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function screen_replace_run_with_screen() {
+    local need_screen_run="${1}"
+    local screen_sess_name="${2:-}"
+    local screen_records_dir="${3:-}"
+    local script_file="${4:-}"
+
+    shift
+    shift
+    shift
+    shift
+
+    local envs_set_str=""
+    if envs_set_str="$(env)"; then
+        local -a screen_envs_list=()
+        if split_by_new_line "screen_envs_list" "$envs_set_str"; then
+            for se_e in "${screen_envs_list[@]}"; do
+                local screen_env=""
+                if screen_env="$(echo "$se_e" | grep -i "_screen")"; then
+                    true
+                elif screen_env="$(echo "$se_e" | grep -iP "^term=")"; then
+                    true
+                else
+                    continue
+                fi
+                echo_debug "Found screen env: '$screen_env'"
+            done
+        else
+            echo_debug "Error split envs for out screen envs"
+        fi
+    else
+        echo_debug "Error 'env' run for out screen envs"
+    fi
+
+
+    if [[ "$need_screen_run" == "$CONST_SCREEN_NOT_RUN_IN_SCREEN"  ]]; then
+        echo_debug "Disable run in screen. Skip replace"
+        return 0
+    fi
+
+    if [[ "${SYNC_SCREEN_REPLACED:-}" == "$CONST_SCREEN_REPLACED_VAL" || "${TERM:-}" == screen* ]]; then
+        echo_debug "Already run with screen. Skip replace"
+        return 0
+    fi
+
+    if ! screen_install; then
+        echo_error "Cannot install screen"
+        return 1
+    fi
+
+    if ! screen_sess_name="$(__screen_sess_prefix_default "$screen_sess_name" "$CONST_ARG_PASSED")"; then
+        echo_error "Cannot apply screen session name"
+        return 1
+    fi
+
+
+    if ! screen_records_dir="$(__screen_root_dir_default "$screen_records_dir" "$screen_sess_name")"; then
+        echo_error "Cannot apply screen records log dir argument"
+        return 1
+    fi
+
+    if [ ! -d "$screen_records_dir" ]; then
+        if ! mkdir -p "$screen_records_dir"; then
+            echo_error "Cannot create screen records log '$screen_records_dir'"
             return 1
         fi
     fi
 
-    return 0
-}
-
-function disable_help() {
-    local phase="$1"
-
-    # shellcheck disable=SC2155
-    local env_name="$(disable_env "$phase")"
-
-    if [ -n "$env_name" ]; then
-        echo "Can be disabled with set env ${env_name}=true"
-        return 0
+    local dt=""
+    if dt="$(date +'%Y-%m-%d_%H-%M-%S')"; then
+        dt="${dt}-"
+    else
+        dt=""
     fi
 
-    echo "This phase is required and not be disabled!"
-}
+    # shellcheck disable=SC2155
+    export SYNC_ID="${screen_sess_name}-$(__rand_str_n "6")"
 
-function extract_argument() {
-    local arg_name="$1"
-    local env_name="$2"
-    local is_flag="$3"
-    local validator="$4"
+    export SYNC_SCREEN_SESS_NAME="$SYNC_ID"
 
-    shift
-    shift
-    shift
-    shift
+    export SYNC_SCREEN_SESS_LOG_FILE="${screen_records_dir}/${dt}record-${SYNC_SCREEN_SESS_NAME}.log"
 
-    local val=""
+    if [ -z "$script_file" ]; then
+        script_file="$CONST_SCRIPT_NAME"
+    fi
 
-    local arg_passed="$CONST_ARG_NOT_PASSED"
+    echo_debug "Star replace to screen"
+    export SYNC_SCREEN_REPLACED="$CONST_SCREEN_REPLACED_VAL"
 
-    local extract_and_break=""
-    for arg in "$@"; do
-        if [[ "$extract_and_break" == "true" ]]; then
-            val="$arg"
-            break
-        fi
+    local ret_code_screen="0"
+    # shellcheck disable=SC2091
+    # shellcheck disable=SC2154
+    if $(exec screen -S "$SYNC_SCREEN_SESS_NAME" -L -Logfile "$SYNC_SCREEN_SESS_LOG_FILE" "$script_file" "$@"); then
+        true
+    else
+        ret_code_screen="$?"
+        echo_warn "screen returns error code $ret_code_screen"
+    fi
 
-        if [[ "$arg" == "$arg_name" ]]; then
-            arg_passed="$CONST_ARG_PASSED"
-            if [[ "$is_flag" == "$CONST_IS_FLAG" ]]; then
-                val="$CONST_FLAG_SET"
-            else
-                extract_and_break="true"
+    local exit_code="255"
+
+    if [ -f "$SYNC_SCREEN_SESS_LOG_FILE" ]; then
+        cat "$SYNC_SCREEN_SESS_LOG_FILE" || true
+        echo_warn "Screen log: '$SYNC_SCREEN_SESS_LOG_FILE'. If need, remove with command"
+        echo_warn "  rm -fv '$SYNC_SCREEN_SESS_LOG_FILE'"
+        local exit_code_msg=""
+        if exit_code_msg="$(grep -Po "${CONST_FAIL_MAIN_EXIT_CODE_PREFIX}\\d+" "$SYNC_SCREEN_SESS_LOG_FILE")"; then
+            local exit_code_num=""
+            if exit_code_num="$(echo "$exit_code_msg" | grep -Po "\\d+")"; then
+                exit_code="$(trim_spaces "$exit_code_num")"
+                echo_debug "Extracted exit code from screen log: '$exit_code'"
             fi
-        fi
-    done
-
-    if [ -n "$env_name" ]; then
-        if [ -v "$env_name" ]; then
-            val="${!env_name:-}"
-            arg_passed="$CONST_ARG_PASSED"
+        else
+            exit_code="0"
         fi
     fi
 
-    if [[ "$is_flag" == "$CONST_IS_FLAG" ]]; then
-        echo -n "$val"
-        return 0
-    fi
-
-    if [[ "$validator" == "" || "$validator" == "$CONST_NO_VALIDATE" ]]; then
-        echo -n "$val"
-        return 0
-    fi
-
-    if ! declare -F "$validator" > /dev/null; then
-        echo_error "Internal error: '$validator' func not declared!"
-        return 1
-    fi
-
-    local prepared
-    if ! prepared="$($validator "$val" "$arg_passed")"; then
-        echo_error "Incorrect: $prepared"
-        return 1
-    fi
-
-    echo -n "$prepared"
-    return 0
-}
-
-function arg_flag_is_set() {
-    # shellcheck disable=SC2155
-    local res="$(extract_argument "$@")"
-    if [[ "$res" == "$CONST_FLAG_SET" ]]; then
-        return 0
-    fi
-
-    return 1
+    exit "$exit_code"
 }
 
 # shellcheck disable=SC2329
-function parse_not_ask() {
-    if arg_flag_is_set "--not-ask" "NOT_ASK" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
-        echo -n "$CONST_NOT_ASK_VAL"
-        return 0
+function parse_screen_args() {
+    local enable_screen_dest_name="$1"
+    local screen_records_dir_dest_name="$2"
+    local screen_sess_name_dest_name="$3"
+
+    if [ -z "$enable_screen_dest_name" ]; then
+        echo_error "enable screen dest name variable is empty"
+        return 1
     fi
 
-    echo "$CONST_ASK_VAL"
-    return 0
-}
+    if [ -z "$screen_records_dir_dest_name" ]; then
+        echo_error "screen records dest name variable is empty"
+        return 1
+    fi
 
-function is_help_flag_set() {
-    local -a help_flags=("-h" "--help")
+    if [ -z "$screen_sess_name_dest_name" ]; then
+        echo_error "screen session name variable name is empty"
+        return 1
+    fi
 
-    for ha in "${help_flags[@]}"; do 
-        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
-            return 0
+    local -n enable_screen_ref="$enable_screen_dest_name"
+    local -n screen_records_dir_ref="$screen_records_dir_dest_name"
+    local -n screen_sess_name_ref="$screen_sess_name_dest_name"
+
+    enable_screen_ref="$CONST_SCREEN_NOT_RUN_IN_SCREEN"
+    screen_records_dir_ref=""
+    screen_sess_name_ref=""
+
+    shift
+    shift
+    shift
+
+    if arg_flag_is_set "$CONST_SCREEN_ARG_ENABLE" "$CONST_SCREEN_ENV_ENABLE" "$@"; then
+        # shellcheck disable=SC2034
+        if ! screen_sess_name_ref="$(extract_value_argument "$CONST_SCREEN_ARG_SESS_NAME" "$CONST_SCREEN_ENV_SESS_NAME" "__screen_sess_prefix_default" "$@")"; then
+            echo_error "Cannot extract screen session name  argument"
+            return 1
         fi
-    done
 
-    return 1
+        if ! screen_records_dir_ref="$(extract_value_argument_no_validate "$CONST_SCREEN_ARG_RECORD_DIR" "$CONST_SCREEN_ENV_RECORD_DIR" "$@")"; then
+            echo_error "Cannot extract screen records log dir argument"
+            return 1
+        fi
+
+        # shellcheck disable=SC2034
+        if ! screen_records_dir_ref="$(__screen_root_dir_default "$screen_records_dir_ref" "$screen_sess_name_ref")"; then
+            echo_error "Cannot apply screen records log dir argument"
+            return 1
+        fi
+        # shellcheck disable=SC2034
+        enable_screen_ref="$CONST_SCREEN_SHOULD_REPLACED"
+    fi
+    
+    return 0
 }
 
 # shellcheck disable=SC2329
-function get_env_value_or_default() {
-    local var_name="$1"
-    local default_val="${2-}"
-
-    if ! [[ -v "$var_name" ]]; then
-        echo -n "$default_val"
-        return 0
-    fi
-
-    echo -n "${!var_name}"
-    return 0
+function screen_args_help() {
+    echo "
+    Run via screen options:
+    $CONST_SCREEN_ARG_ENABLE
+      By default, script run without GNU screen.
+      If passed, enable run via screen.
+      Env ${CONST_SCREEN_ENV_ENABLE}=true for set.
+    $CONST_SCREEN_ARG_RECORD_DIR 'DIR_PATH'
+      Dir for save output screen.
+      If dir not exists, it will create.
+      By default, \${HOME} is set, will be \${HOME}/\${session_name_prefix}, else /root
+      Env $CONST_SCREEN_ENV_RECORD_DIR for set.
+    $CONST_SCREEN_ARG_SESS_NAME 'NAME'
+      Screen session name prefix.
+      By default, $CONST_SCREEN_DEFAULT_SESS_NAME
+      Env $CONST_SCREEN_ENV_SESS_NAME for set."
 }
 
-# End vps-init/src/include/05_base_args.sh
+# End vps-init/src/include/05_base_screen.sh
 
 # Start vps-init/src/include/06_validate_01_base.sh
 
@@ -2024,260 +2755,6 @@ function get_loginable_users() {
 }
 
 # End vps-init/src/include/20_base_user.sh
-
-# Start vps-init/src/include/21_base_pkg.sh
-
-# shellcheck disable=SC2034
-export SYS_PACKAGES_ENGINE_APT="apt"
-# shellcheck disable=SC2034
-export SYS_PACKAGES_ENGINE_APK="apk"
-
-if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
-    export SYS_PACKAGES_ENGINE="$SYS_PACKAGES_ENGINE_APT"
-fi
-
-
-# shellcheck disable=SC2329
-function get_package_manager() {
-    echo -n "$SYS_PACKAGES_ENGINE"
-}
-
-
-# shellcheck disable=SC2329
-function apt_update() {
-    if ! apt update; then 
-        echo_error "Cannot run apt update!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_upgrade() {
-    if ! apt upgrade -y; then 
-        echo_error "Cannot run apt upgrade!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_install() {
-    if ! apt install -y "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_search() {
-    if dpkg-query -s "$1" &> /dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function apt_remove() {
-    if ! apt purge -y --auto-remove "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_upgrade() {
-    if ! apk upgrade; then 
-        echo_error "Cannot run apk upgrade!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_update() {
-    if ! apk update; then 
-        echo_error "Cannot run apk update!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_install() {
-    if ! apk add --no-cache "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_search() {
-    if apk info -e "$1" &> /dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function apk_remove() {
-    if ! apk del "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function get_package_cmd() {
-    local cmd_name="$1"
-    case "$SYS_PACKAGES_ENGINE" in
-        "$SYS_PACKAGES_ENGINE_APT")
-            true
-        ;;
-
-        "$SYS_PACKAGES_ENGINE_APK")
-            true
-        ;;
-
-        *)
-            echo_error "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
-            return 1
-        ;;
-    esac
-
-    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
-
-    if ! declare -F "$res" > /dev/null; then
-        echo_error "Internal error: '$res' func not declared!"
-        return 1
-    fi
-
-    echo -n "$res"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function upgrade_all_packages() {
-    local update_fun=""
-    if ! update_fun="$(get_package_cmd update)"; then
-        return 1
-    fi
-
-    local upgrade_fun=""
-    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
-        return 1
-    fi
-
-    if ! "$update_fun"; then
-        echo_error "Cannot run update"
-        return 1
-    fi
-
-    if ! "$upgrade_fun"; then
-        echo_error "Cannot run apt upgrade"
-        return 1
-    fi
-}
-
-# shellcheck disable=SC2329
-function install_packages() {
-    echo_info "Install apt packages $* ..."
-
-    local update_fun=""
-    if ! update_fun="$(get_package_cmd update)"; then
-        return 1
-    fi
-
-    local install_fun=""
-    if ! install_fun="$(get_package_cmd install)"; then
-        return 1
-    fi
-
-    if ! "$update_fun"; then 
-        echo_error "Cannot run update indexes!"
-        return 1
-    fi
-
-    if ! "$install_fun" "$@"; then
-        echo_error "Cannot run apt install!"
-        return 1
-    fi
-
-    echo_info "Packages $* installed!"
-}
-
-# shellcheck disable=SC2329
-function check_packages_installed() {
-    local search_fun=""
-    if ! search_fun="$(get_package_cmd search)"; then
-        return 1
-    fi
-
-    local all="true"
-    while [[ $# -gt 0 ]]; do
-        local name="$1"
-        if ! "$search_fun" "$name"; then
-            echo_warn "$name not installed..."
-            all="false"
-        fi
-        shift
-    done
-
-    if [[ "$all" == "false" ]]; then
-        return 1
-    fi
-    
-    return 0
-}
-
-# shellcheck disable=SC2329
-function remove_packages() {
-    local search_fun=""
-    if ! search_fun="$(get_package_cmd search)"; then
-        return 1
-    fi
-
-    local remove_fun=""
-    if ! remove_fun="$(get_package_cmd remove)"; then
-        return 1
-    fi
-
-    local -a for_remove=()
-
-    while [[ $# -gt 0 ]]; do
-        local name="$1"
-        if "$search_fun" "$name"; then
-            for_remove+=("$name")
-        fi
-        shift
-    done
-
-    if [[ "${#for_remove[@]}" == "0" ]]; then
-        echo_info "All passed packages already removed"
-        return 0
-    fi
-
-    echo_info "Remove packages ${for_remove[*]}"
-    
-    if ! "$remove_fun" "${for_remove[@]}"; then
-        echo_error "Some packages not removed!"
-        return 1
-    fi
-
-    return 0
-}
-
-# End vps-init/src/include/21_base_pkg.sh
 
 # Start vps-init/src/include/22_base_service.sh
 
@@ -3367,8 +3844,8 @@ function virtualbox_prepare_viso() {
     local -a files_to_viso=()
 
     # shellcheck disable=SC2154
-    if ! cp "$bin_name" "$bundle_file"; then
-        echo_error "Cannot copy init script $bin_name to $vm_dir"
+    if ! cp "$CONST_SCRIPT_NAME" "$bundle_file"; then
+        echo_error "Cannot copy init script $CONST_SCRIPT_NAME to $vm_dir"
         return 1
     fi
 
@@ -3395,14 +3872,7 @@ function virtualbox_prepare_viso() {
 
     local init_file="${vm_dir}/init.sh"
 
-    # bash not correct handle shebang and set 
-    # when write file! 
-    {
-        echo -n "#"
-        echo '!/usr/bin/env bash'
-        echo -n 'se'
-        echo 't -Eeuo pipefail'
-    } > "$init_file"
+    write_shebang_header "$init_file"
 
     cat <<EOF >> "$init_file"
 run_dir=\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" &> /dev/null && pwd)
@@ -3929,6 +4399,46 @@ function cmd_virtualbox_init_vm_help() {
 }
 
 # End vps-init/src/include/cmd_virtualbox_init_vm.sh
+
+# Start vps-init/src/include/phase_01_test.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["test_run"]="01"
+
+# shellcheck disable=SC2329
+function phase_test_run_run() {
+    echo_debug "Start test run"
+    if arg_flag_is_set "--test-run-fail" "TEST_RUN_FAIL" "$@"; then
+        echo_error "Fail flag is set!"
+        return 1
+    fi
+
+    local not_ask=""
+    not_ask="$(parse_not_ask "$@")"
+
+    if ask_user "Continue?" "$not_ask"; then
+        echo_green "Allow"
+        return 0
+    fi
+
+    echo_warn "Disallow"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function phase_test_run_help() {
+    echo -n "
+    Test run.
+    No options.
+"
+}
+
+# shellcheck disable=SC2329
+function phase_test_run_disable_env() {
+    echo -n "DISABLE_TEST_RUN"
+}
+
+# End vps-init/src/include/phase_01_test.sh
 
 # Start vps-init/src/include/phase_01_upgrade_pkgs.sh
 

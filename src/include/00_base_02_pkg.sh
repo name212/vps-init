@@ -11,12 +11,10 @@ if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
     export SYS_PACKAGES_ENGINE="$SYS_PACKAGES_ENGINE_APT"
 fi
 
-
 # shellcheck disable=SC2329
 function get_package_manager() {
     echo -n "$SYS_PACKAGES_ENGINE"
 }
-
 
 # shellcheck disable=SC2329
 function apt_update() {
