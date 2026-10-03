@@ -41,19 +41,6 @@ export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
 export CONST_COLOR_NO=$'\033[0m'
 
-# shellcheck disable=SC2034
-export CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
-# shellcheck disable=SC2034
-export CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
-# shellcheck disable=SC2034
-export CONST_LOG_ARG_FILE="--log-file"
-# shellcheck disable=SC2034
-export CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
-# shellcheck disable=SC2034
-export CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
-# shellcheck disable=SC2034
-export CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
-
 # shellcheck disable=SC2329
 function echo_green (){
     echo -e "${CONST_COLOR_GREEN}${1:-}${CONST_COLOR_NO}"

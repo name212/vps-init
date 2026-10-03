@@ -6,23 +6,6 @@ export CONST_VALIDATE_SHOULD_OPTIONAL="optional"
 export CONST_VALIDATE_SHOULD_PASSED="passed"
 
 # shellcheck disable=SC2329
-function is_function_declared() {
-    local fun="${1:-}"
-
-    if [ -z "$fun" ]; then
-        echo_error "Function is not passed"
-        return 1
-    fi
-
-    if ! declare -F "$fun" > /dev/null; then
-        echo_error "Function '$fun' is not declared"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
 function call_validate_fun() {
     local is_optional="$1"
     local validate_fun="$2"

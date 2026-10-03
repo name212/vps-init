@@ -5,93 +5,6 @@
 
 set -Eeuo pipefail
 
-export CONST_PRIVATE_LIB_LOADED_VAL="__lib_loaded__"
-export CONST_PRIVATE_SCRIPT_RERAN_VAL="__script_re_ran__"
-
-function remove_idempotent_run_strings() {
-    local content="$1"
-
-    content="$(echo "$content" | sed "/${CONST_IDEMPOTENT_START_COMMENT}/,+1d")"
-    content="$(echo "$content" | sed "/${CONST_IDEMPOTENT_END_COMMENT}/,+1d")"
-
-    echo -n "$content"
-
-    return 0
-}
-
-function load_lib() {
-    if [[ "${CONST_PRIVATE_LIB_LOADED:-}" == "$CONST_PRIVATE_LIB_LOADED_VAL" ]]; then
-        echo_debug "Lib already reloaded"
-        return 0
-    fi
-
-    local lib_file="${WORKING_DIR}/${CONST_LIB_FILE_NAME}"
-    if [ ! -s "$lib_file" ]; then
-        echo_error "Lib file '$lib_file' not found or empty"
-        return 1
-    fi
-
-    local lib_sum_all=""
-    if ! lib_sum_all="$(sha256sum "$lib_file")"; then
-        echo_error "Cannot calculate sha256sum for '$lib_file'"
-        return 1
-    fi
-
-    local lib_sum=""
-    if ! lib_sum="$(echo "$lib_sum_all" | cut -c -16)"; then
-        echo_error "Cannot extract 16 symbols sum for '$lib_file' from ''"
-        return 1
-    fi
-
-    echo_debug "Library sum is '$lib_sum'"
-
-    local main_content=""
-    if ! main_content="$(cat "$CONST_SCRIPT_NAME")"; then
-        rm -f "$tmp_reloaded_script" || true
-        echo_error "Cannot load main content from'$CONST_SCRIPT_NAME'"
-        return 1
-    fi
-
-    local tmp_reloaded_script=""
-    if ! tmp_reloaded_script="$(mktemp)"; then
-        echo_error "tmp file for reload not found"
-        return 1
-    fi
-
-    if ! chmod 755 "$tmp_reloaded_script"; then
-        echo_error "Cannot chmod 755 $tmp_reloaded_script"
-        return 1
-    fi
-
-    main_content="$(remove_idempotent_run_strings "$main_content")"
-    
-    write_shebang_header "$tmp_reloaded_script"
-
-    # shellcheck disable=SC2129
-    {
-        echo "$CONST_IDEMPOTENT_START_COMMENT";
-        echo "{";
-        echo "";
-    } >> "$tmp_reloaded_script"
-
-    cat "$lib_file" >> "$tmp_reloaded_script"
-    echo "$main_content" >> "$tmp_reloaded_script"
-
-    # shellcheck disable=SC2129
-    {
-        echo "$CONST_IDEMPOTENT_END_COMMENT";
-        echo "}";
-        echo "";
-    } >> "$tmp_reloaded_script"
-
-    if ! mv "$tmp_reloaded_script" "$CONST_SCRIPT_NAME"; then
-        echo_error "Cannot replace script from '$tmp_reloaded_script' '$CONST_SCRIPT_NAME'"
-        return 1
-    fi
-
-    return 0
-}
-
 function enter_in_screen() {
     local enable_screen="$CONST_SCREEN_SHOULD_REPLACED"
     local screen_records_dir=""
@@ -115,73 +28,6 @@ function enter_in_screen() {
     fi
 
     return 0
-
-    # if [[ "${CONST_PRIVATE_SCRIPT_RERAN:-}" == "$CONST_PRIVATE_SCRIPT_RERAN_VAL" ]]; then
-    #     echo_debug "Script already rerun"
-    #     return 0
-    # fi
-
-    # local ret_code="0"
-
-    # # shellcheck disable=SC2091
-    # # shellcheck disable=SC2154
-    # if $(exec "$CONST_SCRIPT_NAME" "$@"); then
-    #     exit 0
-    # else
-    #     ret_code="$?"
-    #     exit "$ret_code"
-    # fi
-}
-
-function get_hostname() {
-    local hst=""
-    if ! hst="$(uname -n)"; then
-        hst="host"
-    fi
-
-    echo -n "$hst"
-
-    return 0
-}
-
-function phase_change_order() {
-    local phase="$1"
-    local cur_order="$2"
-
-    local reorder_func="global_reorder_phase"
-
-    if ! declare -F "$reorder_func" > /dev/null; then
-        echo -n "$cur_order"
-        return 0
-    fi
-
-    local new_order=""
-    if ! new_order="$("$reorder_func" "$phase" "$cur_order")"; then
-        echo_error "Cannot call '$reorder_func' to get order for phase '$phase'"
-        return 1
-    fi
-
-    if [ -z "$new_order" ]; then
-        echo_error "'$reorder_func' returned empty order for phase '$phase'"
-        return 1
-    fi
-
-    echo -n "$new_order"
-    return 0
-}
-
-function phase_run_func() {
-    local phase="$1"
-
-    local phase_func="phase_${phase}_run"
-
-    if ! declare -F "$phase_func" > /dev/null; then
-        echo_error "Internal error: '$phase_func' func not declared for phase '$phase'!"
-        return 1
-    fi
-
-    echo -n "$phase_func"
-    return 0
 }
 
 # shellcheck disable=SC2120
@@ -199,27 +45,23 @@ function usage() {
     echo "Usage: $CONST_SCRIPT_NAME [ [global parameters] phase PHASE_FOR_RUN | [global parameters] cmd CMD_FOR_RUN] [args...]"
     echo ""
 
-    echo_green "  Global parameters:"
-    echo "$(echo_help_args_help)
+    # shellcheck disable=SC2155
+    local help_about_help="$(echo_help_args_help)"
+    help_about_help="$(trim_spaces_left "$help_about_help")"
 
-    --config 'PATH'
-      Path to config with envs to settings.
-      Should be .env format
-      Env CONFIG_PATH 
-    
-    $(not_ask_help)
-    $(log_settings_help)
-    $(screen_args_help)
-    
-  If passed 'phase' as first arg and name of phase as second
-  only run only one phase.
-  Otherwise, run all phases. For disable some phase 
-  you can use disable env variable (see phase params).  
-  
-  Phases.
+    echo_green "Global parameters:"
+    echo "  $help_about_help
+  $(config_file_help)
+  $(not_ask_help)
+  $(log_settings_help)
+  $(screen_args_help)
 "
-    echo_green "  If you run one phase or cmd pass global parameters before 'phase/cmd' argument or use envs"
-
+    echo_green "Phases."
+    echo_green "If passed 'phase' as first arg and name of phase as second"
+    echo_green "  only run only one phase."
+    echo_green "Otherwise, run all phases. For disable some phase"
+    echo_green "  you can use disable env variable (see phase params)."
+    echo_yellow "If you run one phase pass global parameters before 'phase' argument or use envs."
     echo_green  "Phases for run in order:"
 
     for p in "$@"; do
@@ -232,7 +74,7 @@ function usage() {
         echo -n "  Phase " 
         echo_yellow "$p"
         "$help_fun"
-        echo "    $(disable_help "$p")"
+        echo "    $(phase_print_disable_help "$p")"
     done
 
     echo ""
@@ -242,11 +84,9 @@ function usage() {
         return 0
     fi
 
-    echo "
-  If passed 'cmd' as first argument and name os command as second
-  will run command
-
-"
+    echo_green "Commands."
+    echo_green "If passed 'cmd' as first argument and name as command as second will run command"
+    echo_yellow "If you run cmd pass global parameters before 'cmd' argument or use envs."
     echo_green "Commands available:"
 
     for cm in "${COMMANDS_LIST[@]}"; do
@@ -260,62 +100,6 @@ function usage() {
         echo_yellow "$cm"
         "$cmd_help_fun"
     done
-}
-
-function run_passed_command() {
-    local cmd_name="${1-}"
-    
-    local found=""
-    for cmd in "${COMMANDS_LIST[@]}"; do
-        if [[ "$cmd_name" == "$cmd" ]]; then
-            found="true"
-            break
-        fi
-    done
-
-    if [[ "$found" != "true" ]]; then
-        echo_error "Command '$cmd_name' not found!"
-        return 1
-    fi
-
-    local run_func="cmd_${cmd_name}_run"
-
-    if ! declare -F "$run_func" > /dev/null; then
-        echo_error "Run function $run_func for command $cmd_name not found!"
-        return 1
-    fi
-
-    shift
-
-    if ! "$run_func" "$@"; then
-        echo_error "Command $cmd_name failed" 
-        return 1
-    fi
-
-    return 0
-}
-
-function parse_and_apply_config_file() {
-    if is_help_flag_set "$@"; then
-        return 0
-    fi
-
-    local config=""
-
-    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file_optional" "$@")"; then
-        echo_error "Passed config is incorrect: $config"
-        return 1
-    fi
-
-    if [ -n "$config" ]; then
-        echo_info "Load config $config"
-        # shellcheck disable=SC1090
-        set -a && source "$config" && set +a
-
-        if declare -F "set_passed_config_file" > /dev/null; then
-            set_passed_config_file "$config"
-        fi
-    fi
 }
 
 function main() {
