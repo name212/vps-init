@@ -180,6 +180,7 @@ function write_main_footer() {
 function write_lib_files() {
     local parent_dir="${1:-}"
     if [ -n "$parent_dir" ]; then
+        echo_green "Passes non empty parent dir '$parent_dir'. Cd to it"
         if ! pushd . > /dev/null; then
             echo_red "Cannot pushd ."
             return 1
@@ -323,7 +324,7 @@ function main() {
 
     for lib_dir in "${libs_dirs[@]}"; do
         echo_green "Write libs from '$lib_dir'"
-        if ! write_lib_files; then
+        if ! write_lib_files "$lib_dir"; then
             fail_build "write lib files from '$lib_dir'"
         fi
     done
