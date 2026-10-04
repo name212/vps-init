@@ -6,6 +6,7 @@ set -Eeuo pipefail
 
 # shellcheck disable=SC2034
 export CONST_SCRIPT_NAME="$0"
+
 # shellcheck disable=SC2034
 export CONST_SCRIPT_NAME_FULL="$CONST_SCRIPT_NAME"
 if ! CONST_SCRIPT_NAME_FULL="$(realpath "$CONST_SCRIPT_NAME")"; then
@@ -40,6 +41,22 @@ function __escape_new_line() {
 	local val="${1:-}"
 	echo -n "${val//${CONST_NEW_LINE}/\\n}"
 	return 0
+}
+
+function get_original_script_name() {
+    if [ -n "${SCRIPT_ORIGINAL_PATH:-}" ]; then
+        echo -n "$SCRIPT_ORIGINAL_PATH"
+        return 0
+    fi
+
+    if [ -n "${CONST_SCRIPT_NAME:-}" ]; then
+        echo -n "$CONST_SCRIPT_NAME"
+        return 0
+    fi
+
+    echo -n "unknown-name-script.sh"
+
+    return 0
 }
 
 # End vps-init/src/include/00_base_const_fn.sh
@@ -379,8 +396,13 @@ rerun_script_with_new_shebang() {
 
     shift
 
+    if ! __pwd_shebang_script="$(pwd)"; then
+        __echo_red_shebang "Cannot run pwd"
+        return 1
+    fi
+
     export SCRIPT_RAN_WITH_NEW_SHEBANG_FILE=""
-    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp)"; then
+    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp -p "$__pwd_shebang_script" XXXXXXXX.sync.sh)"; then
         __echo_red_shebang "Cannot create tempt file for new shebang replace"
         return 1
     fi
@@ -409,6 +431,7 @@ rerun_script_with_new_shebang() {
         return 1
     fi
 
+    export SCRIPT_ORIGINAL_PATH="$__script_path_shebang"
     export SCRIPT_RAN_WITH_NEW_SHEBANG="$CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL"
     
     __ret_code="0"

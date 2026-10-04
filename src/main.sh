@@ -40,9 +40,13 @@ function usage() {
     # shellcheck disable=SC2154
     echo "$init_msg"
     echo ""
+
+    # shellcheck disable=SC2155
+    # shellcheck disable=SC2034
+    local script_name="$(get_original_script_name)"
     
     # shellcheck disable=SC2154
-    echo "Usage: $CONST_SCRIPT_NAME [ [global parameters] phase PHASE_FOR_RUN | [global parameters] cmd CMD_FOR_RUN] [args...]"
+    echo "Usage: $script_name [ [global parameters] phase PHASE_FOR_RUN | [global parameters] cmd CMD_FOR_RUN] [args...]"
     echo ""
 
     # shellcheck disable=SC2155

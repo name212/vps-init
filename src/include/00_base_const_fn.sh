@@ -4,6 +4,7 @@ set -Eeuo pipefail
 
 # shellcheck disable=SC2034
 export CONST_SCRIPT_NAME="$0"
+
 # shellcheck disable=SC2034
 export CONST_SCRIPT_NAME_FULL="$CONST_SCRIPT_NAME"
 if ! CONST_SCRIPT_NAME_FULL="$(realpath "$CONST_SCRIPT_NAME")"; then
@@ -38,4 +39,20 @@ function __escape_new_line() {
 	local val="${1:-}"
 	echo -n "${val//${CONST_NEW_LINE}/\\n}"
 	return 0
+}
+
+function get_original_script_name() {
+    if [ -n "${SCRIPT_ORIGINAL_PATH:-}" ]; then
+        echo -n "$SCRIPT_ORIGINAL_PATH"
+        return 0
+    fi
+
+    if [ -n "${CONST_SCRIPT_NAME:-}" ]; then
+        echo -n "$CONST_SCRIPT_NAME"
+        return 0
+    fi
+
+    echo -n "unknown-name-script.sh"
+
+    return 0
 }

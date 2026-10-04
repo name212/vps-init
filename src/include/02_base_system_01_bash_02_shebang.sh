@@ -47,8 +47,13 @@ rerun_script_with_new_shebang() {
 
     shift
 
+    if ! __pwd_shebang_script="$(pwd)"; then
+        __echo_red_shebang "Cannot run pwd"
+        return 1
+    fi
+
     export SCRIPT_RAN_WITH_NEW_SHEBANG_FILE=""
-    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp)"; then
+    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp -p "$__pwd_shebang_script" XXXXXXXX.sync.sh)"; then
         __echo_red_shebang "Cannot create tempt file for new shebang replace"
         return 1
     fi
@@ -77,6 +82,7 @@ rerun_script_with_new_shebang() {
         return 1
     fi
 
+    export SCRIPT_ORIGINAL_PATH="$__script_path_shebang"
     export SCRIPT_RAN_WITH_NEW_SHEBANG="$CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL"
     
     __ret_code="0"
