@@ -37,6 +37,42 @@ function is_lib_build() {
     return 1
 }
 
+function get_parent_dir() {
+    local parent_dir="${PARENT_BUILD_ROOT_DIR:-}"
+
+    if [ -n "$parent_dir" ]; then
+        echo -n "$parent_dir"
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function get_path_for_file() {
+    local path="$1"
+
+    if [ -f "$path" ]; then
+        echo -n "$path"
+        return 0
+    fi
+
+    local full_path=""
+
+    local parent_dir=""
+    if parent_dir="$(get_parent_dir)"; then
+        full_path="${parent_dir}/$path"
+        if [ -f "$full_path" ]; then
+            echo -n "$full_path"
+            return 0
+        fi
+    fi
+    
+    echo_red "Cannot found '$path' when build"
+    echo_red "If you use this as submodule, please pass PARENT_BUILD_ROOT_DIR env"
+    return 1
+}
+
 function calc_skipped_files() {
     if [ -z "${SKIP_FILES:-}" ]; then
         return 0
@@ -85,13 +121,44 @@ function write_file() {
     return 0
 }
 
+function get_shebang_lib_path() {
+    local shebang_lib_source="src/include/02_base_system_01_bash_02_shebang.sh"
+    if ! shebang_lib_source="$(get_path_for_file "$shebang_lib_source")"; then
+        return 1
+    fi
+
+    echo -n "$shebang_lib_source"
+    return 0
+}
+
 function write_main_header() {
+    local should_append=""
+
+    if [ -n "${WRITE_SHEBANG_LIB_BEFORE_MAIN:-}" ]; then
+        local shebang_lib_source=""
+        if ! shebang_lib_source="$(get_shebang_lib_path)"; then
+            echo_red "Cannot found shebang source"
+            return 1
+        fi
+
+        echo_green "Write shebang lib $shebang_lib_source to $destination"
+        cat "$shebang_lib_source" > "$destination"
+        should_append="true"
+    fi
+
     local header="src/main_header.sh"
 
     if [ -s "$header" ]; then
         echo_green "Write main header $header to $destination"
-        cat "$header" > "$destination"
+        if [ -z "$should_append" ]; then
+            cat "$header" > "$destination"
+        else
+            echo "" >> "$destination"
+            cat "$header" >> "$destination"
+        fi
     fi
+
+    return 0
 }
 
 function write_main_footer() {
@@ -103,8 +170,22 @@ function write_main_footer() {
     fi
 }
 
-function write_lib_files() { 
-    for fl in $(find src/include -name "*.sh" -type f | sort -n); do
+function write_lib_files() {
+    local parent_dir="${1:-}"
+    if [ -n "$parent_dir" ]; then
+        if ! pushd . > /dev/null; then
+            echo_red "Cannot pushd ."
+            return 1
+        fi
+
+        if ! cd "$parent_dir"; then
+            popd || true
+            echo_red "cd $parent_dir"
+            return 1
+        fi
+    fi
+     
+    for fl in $(find "src/include" -name "*.sh" -type f | sort -n); do
         bs="$(basename "$fl")"
         if [[ "$bs" == *.test.sh ]]; then
             echo_yellow "Found test file '$fl' Skip"
@@ -118,12 +199,28 @@ function write_lib_files() {
 
         write_file "$fl" "$destination"
     done
+
+    if [ -n "$parent_dir" ]; then
+        if ! popd > /dev/null; then
+            echo_red "cannot popd"
+            return 1
+        fi
+    fi
+
+    return 0
 }
 
 function write_main() {
-    if ! is_lib_build; then
-        write_file "src/main.sh" "$destination"
+    if is_lib_build; then
+        return 0
     fi
+
+    local main_path="src/main.sh"
+    if ! main_path="$(get_path_for_file "$main_path")"; then
+        return 1
+    fi
+
+    write_file "$main_path" "$destination"
 }
 
 function create_shebang_lib_if_need() {
@@ -136,19 +233,18 @@ function create_shebang_lib_if_need() {
     local shebang_lib_dest="${destination%.sh}"
     shebang_lib_dest="${shebang_lib_dest}-shebang.sh"
     
-    echo_green "Remove previous shebang lib '$$shebang_lib_dest'"
+    echo_green "Remove previous shebang lib '$shebang_lib_dest'"
     if ! rm -f "$shebang_lib_dest"; then
         echo_red "Cannot remove '$shebang_lib_dest'"
         return 1
     fi
-    
-    local shebang_lib_source="src/include/02_base_system_01_bash_02_shebang.sh"
-    
-    if [ ! -s "$shebang_lib_source" ]; then
-        echo_red "Shebang source '$shebang_lib_source' not found"
+
+    local shebang_lib_source=""
+    if ! shebang_lib_source="$(get_shebang_lib_path)"; then
+        echo_red "Cannot found shebang source"
         return 1
     fi
-
+    
     echo_green "Copy shebang lib from '$shebang_lib_source' to '$shebang_lib_dest'"
 
     if ! cp "$shebang_lib_source" "$shebang_lib_dest"; then
@@ -211,9 +307,19 @@ function main() {
         fail_build "write main header"
     fi
 
-    if ! write_lib_files; then
-        fail_build "write lib files"
+    local -a libs_dirs=("")
+
+    local parent_dir=""
+    if parent_dir="$(get_parent_dir)"; then
+        libs_dirs=("$parent_dir" "")
     fi
+
+    for lib_dir in "${libs_dirs[@]}"; do
+        echo_green "Write libs from '$lib_dir'"
+        if ! write_lib_files; then
+            fail_build "write lib files from '$lib_dir'"
+        fi
+    done
 
     if ! write_main; then
         fail_build "write main body"
