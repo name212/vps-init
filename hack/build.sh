@@ -2,6 +2,13 @@
 
 set -Eeuo pipefail
 
+# Args passwd va envs:
+#   PARENT_BUILD_ROOT_DIR - pass this module dir if use as submodule
+#   DEST_FILE - pass if need rewrite destination of sync script
+#   SKIP_FILES - comma separated files names in libs to skip
+#   BUILD_AS_LIB - if passed build libraries file only
+#   WRITE_SHEBANG_LIB_BEFORE_MAIN - pass non empty if need write shebang lib before main header
+
 WORKING_DIR="$(pwd)"
 WORKING_DIR="$(realpath "$WORKING_DIR")"
 
