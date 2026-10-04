@@ -85,10 +85,11 @@ function calc_skipped_files() {
         return 0
     fi
 
-    echo_yellow "Skip files passed. Calculate"
+    echo_yellow "Skip files passed:"
     declare -a list_skip_build=()
     IFS=',' read -r -a list_skip_build <<< "$SKIP_FILES"
     for sk in "${list_skip_build[@]}"; do
+        echo_yellow "  $sk"
         skip_build["$sk"]="true"
     done
 
