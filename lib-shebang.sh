@@ -83,10 +83,10 @@ rerun_script_with_new_shebang() {
     if bash "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE" "$@"; then
         true
     else
-        ret_code="$?"
+        __ret_code="$?"
     fi
     
     __cleanup_shebang_run_tmp_file
 
-    exit "$ret_code"
+    exit "$__ret_code"
 }
