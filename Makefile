@@ -3,8 +3,15 @@ SHELL = /usr/bin/env bash
 run-with-cleanup = $(1) && $(2) || (ret=$$?; $(2) && exit $$ret)
 
 LIB_FILE = $(CURDIR)/lib.sh
+SYNC_FILE = $(CURDIR)/sync.sh
 
-build: export DEST_FILE = $(CURDIR)/init.sh
+REMOTE_TMP_SYNC="/tmp/sync.sh"
+REMOTE_DEST_SYNC_DIR="/root/sync"
+REMOTE_DEST_SYNC="$(REMOTE_DEST_SYNC_DIR)/sync.sh"
+REMOTE_TMP_CONF="/tmp/sync-conf.env"
+REMOTE_DEST_CONF="$(REMOTE_DEST_SYNC_DIR)/conf.env"
+
+build: export DEST_FILE = $(SYNC_FILE)
 build:
 	@./hack/build.sh
 
@@ -19,17 +26,17 @@ check/host-passed:
 	@[ ! -z "$$host" ] || { echo "host not passed"; exit 1; }
 
 deploy/copy-init-to-tmp:
-	@scp init.sh "$$host:/tmp/init.sh"
+	@scp "$(SYNC_FILE)" "$$host:$(REMOTE_TMP_SYNC)"
 
 deploy/copy-conf-to-tmp:
 	@if [ -n "$$conf" ]; then \
-		echo "Conf passed. Copy to /tmp/init-conf.env"; \
-		scp "$$conf" "$$host:/tmp/init-conf.env"; \
+		echo "Conf passed. Copy to $(REMOTE_TMP_CONF)"; \
+		scp "$$conf" "$$host:$(REMOTE_TMP_CONF)"; \
 	fi
 
 deploy/cleanup-tmp:
 	@if [ -n "$$host" ]; then \
-		ssh "$$host" "rm -f /tmp/init-conf.env" || ssh "$$host" "rm -f /tmp/init.sh"; \
+		ssh "$$host" "rm -f $(REMOTE_TMP_CONF)" || ssh "$$host" "rm -f $(REMOTE_TMP_SYNC)"; \
 	fi
 
 deploy/cleanup/with-sudo-password: check/host-passed deploy/cleanup-tmp
@@ -37,24 +44,24 @@ deploy/cleanup/with-sudo-password: check/host-passed deploy/cleanup-tmp
 		read -p "Sudo Password: " PASSD; \
 		stty echo; \
 		echo ""; \
-		ssh "$$host" "echo $$PASSD | sudo -S sh -c 'rm -f /root/init/init.sh; rm -f /root/init/conf.env; rmdir /root/init || true'";
+		ssh "$$host" "echo $$PASSD | sudo -S sh -c 'rm -f $(REMOTE_DEST_SYNC); rm -f $(REMOTE_DEST_CONF); rmdir $(REMOTE_DEST_SYNC_DIR) || true'";
 
 _deploy/with-sudo-password: check/host-passed deploy/copy-init-to-tmp deploy/copy-conf-to-tmp
 	@stty -echo; \
 		read -p "Sudo Password: " PASSD; \
 		stty echo; \
 		echo ""; \
-		ssh "$$host" "echo $$PASSD | sudo -S mkdir -p /root/init"; \
-		ssh "$$host" "echo $$PASSD | sudo -S mv /tmp/init.sh /root/init/init.sh"; \
+		ssh "$$host" "echo $$PASSD | sudo -S mkdir -p $(REMOTE_DEST_SYNC_DIR)"; \
+		ssh "$$host" "echo $$PASSD | sudo -S mv $(REMOTE_TMP_SYNC) $(REMOTE_DEST_SYNC)"; \
 		if [ -n "$$conf" ]; then \
-			ssh "$$host" "echo $$PASSD | sudo -S mv /tmp/init-conf.env /root/init/conf.env"; \
+			ssh "$$host" "echo $$PASSD | sudo -S mv $(REMOTE_TMP_CONF) $(REMOTE_DEST_CONF)"; \
 		fi
 
 _deploy/no-sudo-password: check/host-passed deploy/copy-init-to-tmp deploy/copy-conf-to-tmp
-	@ssh "$$host" "echo $$PASSD | sudo -S mkdir -p /root/init"; \
-		ssh "$$host" "echo $$PASSD | sudo -S mv /tmp/init.sh /root/init/init.sh"; \
+	@ssh "$$host" "echo $$PASSD | sudo -S mkdir -p $(REMOTE_DEST_SYNC_DIR)"; \
+		ssh "$$host" "echo $$PASSD | sudo -S mv $(REMOTE_TMP_SYNC) $(REMOTE_DEST_SYNC)"; \
 		if [ -n "$$conf" ]; then \
-			ssh "$$host" "echo $$PASSD | sudo -S mv /tmp/init-conf.env /root/init/conf.env"; \
+			ssh "$$host" "echo $$PASSD | sudo -S mv $(REMOTE_TMP_CONF) $(REMOTE_DEST_CONF)"; \
 		fi
 
 deploy/with-sudo-password:

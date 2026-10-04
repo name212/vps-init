@@ -4,12 +4,19 @@ set -Eeuo pipefail
 
 # shellcheck disable=SC2034
 export CONST_SCRIPT_NAME="$0"
+# shellcheck disable=SC2034
+export CONST_SCRIPT_NAME_FULL="$CONST_SCRIPT_NAME"
+if ! CONST_SCRIPT_NAME_FULL="$(realpath "$CONST_SCRIPT_NAME")"; then
+    CONST_SCRIPT_NAME_FULL="$CONST_SCRIPT_NAME"
+fi
 
 # shellcheck disable=SC2155
 export WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # shellcheck disable=SC2034
 export CONST_NEW_LINE=$'\n'
+
+
 # shellcheck disable=SC2034
 export CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
 

@@ -20,6 +20,28 @@ function is_function_declared() {
 }
 
 # shellcheck disable=SC2329
+function trap_all() {
+    local fn="${1:-}"
+    
+    if [ -z "$fn" ]; then
+        return 0
+    fi
+
+    if ! is_function_declared "$fn"; then
+        echo_error "Function '$fn' is not declared for trap"
+    fi
+
+    # shellcheck disable=SC2086
+    trap $fn EXIT
+    # shellcheck disable=SC2086
+    trap $fn SIGINT
+    # shellcheck disable=SC2086
+    trap $fn SIGTERM
+
+    echo_debug "Set trap function '$fn' for EXIT SIGINT SIGTERM"
+}
+
+# shellcheck disable=SC2329
 function get_env_value_or_default() {
     local var_name="$1"
     local default_val="${2-}"
@@ -31,19 +53,4 @@ function get_env_value_or_default() {
 
     echo -n "${!var_name}"
     return 0
-}
-
-
-# shellcheck disable=SC2329
-function write_shebang_header() {
-	local des_file="${1}"
-
-    # bash not correct handle shebang and set 
-    # when write file! 
-	{
-        echo -n "#"
-        echo '!/usr/bin/env bash'
-        echo -n 'se'
-        echo 't -Eeuo pipefail'
-    } > "$des_file"
 }
