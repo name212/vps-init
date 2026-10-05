@@ -11,10 +11,9 @@ get_shebang_header() {
     # bash not correct handle shebang and set 
     # when write file! 
     printf "#"
-    printf '!/usr/bin/env bash'
+    printf '!/usr/bin/env bash\n\n'
     printf 'se'
-    printf 't -Eeuo pipefail'
-    echo ""
+    printf 't -Eeuo pipefail\n\n'
     return 0
 }
 

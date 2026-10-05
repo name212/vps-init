@@ -737,30 +737,29 @@ function cmd_virtualbox_init_vm_run() {
     fi
 
     local vm_name=""
-    if ! vm_name="$(extract_argument "--virtualbox-vm-name" "VIRTUALBOX_VM_NAME" "$CONST_NOT_FLAG" "validate_arg_not_empty" "$@")"; then
+    if ! vm_name="$(extract_value_argument "--virtualbox-vm-name" "VIRTUALBOX_VM_NAME" "validate_arg_not_empty" "$@")"; then
         echo_error "Vm name not passed: $vm_name"
         return 1
     fi
 
     local attach_address=""
-    if ! attach_address="$(extract_argument "--virtualbox-attach-address" "VIRTUALBOX_ATTACH_ADDRESS" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! attach_address="$(extract_value_argument_no_validate "--virtualbox-attach-address" "VIRTUALBOX_ATTACH_ADDRESS" "$@")"; then
         echo_error "Attach address incorrect: $attach_address"
         return 1
     fi
 
     local ssh_key_file=""
-    if ! ssh_key_file="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! ssh_key_file="$(extract_value_argument_no_validate "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$@")"; then
         echo_error "SSH key file incorrect: $ssh_key_file"
         return 1
     fi
 
     local skip_vsio=""
-    if ! skip_vsio="$(extract_argument "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
-        echo_error "Skip VSIO flag parse error"
-        return 1
+    if arg_flag_is_set "--virtualbox-skip-prepare-init-iso" "VIRTUALBOX_SKIP_PREPARE_INIT_ISO" "$@"; then
+        skip_vsio="true"
     fi
 
-    if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
+    if [ -z "$skip_vsio" ]; then
         if ! command -v vbox-img &> /dev/null; then
             echo_error "vbox-img executable not found!"
             echo_error "Probably you run virtualbox_init_vm command inside vm"
@@ -942,7 +941,7 @@ function cmd_virtualbox_init_vm_run() {
 
     export VIRTUALBOX_HOST_NET_ATTACHED_ADDRESS="$attach_address"
 
-    if [[ "$skip_vsio" != "$CONST_FLAG_SET" ]]; then
+    if [ -z "$skip_vsio" ]; then
         local opticals_str=""
         if ! opticals_str="$(jq_get_key_or_empty "$vm_info_json" '.opticals | join(";")' "false")"; then
             echo_error "Cannot get opticals from vm info"

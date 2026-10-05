@@ -44,6 +44,18 @@ function is_lib_build() {
     return 1
 }
 
+function get_lib_dest() {
+    local suff="$1"
+
+    if [ -z "$suff" ]; then
+        echo_red "get_lib_name: suffix is empty"
+        return 1
+    fi
+
+    echo -n "${destination%.sh}-${suff}.sh"
+    return 0
+}
+
 function get_parent_dir() {
     local parent_dir="${PARENT_BUILD_ROOT_DIR:-}"
 
@@ -55,7 +67,6 @@ function get_parent_dir() {
     return 1
 }
 
-# shellcheck disable=SC2329
 function get_path_for_file() {
     local path="$1"
 
@@ -180,6 +191,17 @@ function write_main_footer() {
 
 function write_lib_files() {
     local parent_dir="${1:-}"
+    local dest="${2:-}"
+    local parent="${3:-}"
+    
+    if [ -z "$parent" ]; then
+        parent=".+\\.sh"
+    fi
+
+    if [ -z "$dest" ]; then
+        dest="$destination"
+    fi
+
     if [ -n "$parent_dir" ]; then
         echo_green "Passes non empty parent dir '$parent_dir'. Cd to it"
         if ! pushd . > /dev/null; then
@@ -194,7 +216,7 @@ function write_lib_files() {
         fi
     fi
      
-    for fl in $(find "src/include" -name "*.sh" -type f | sort -n); do
+    for fl in $(find "src/include" -regextype posix-egrep -regex "$parent" -type f | sort -n); do
         bs="$(basename "$fl")"
         if [[ "$bs" == *.test.sh ]]; then
             echo_yellow "Found test file '$fl' Skip"
@@ -202,11 +224,11 @@ function write_lib_files() {
         fi
 
         if [[ -v skip_build["$bs"] ]]; then
-            echo_yellow "Skip add $fl to $destination because it in skip"
+            echo_yellow "Skip add $fl to $dest because it in skip"
             continue
         fi
 
-        write_file "$fl" "$destination"
+        write_file "$fl" "$dest"
     done
 
     if [ -n "$parent_dir" ]; then
@@ -239,8 +261,11 @@ function create_shebang_lib_if_need() {
 
     echo_green "Create shebang lib file"
 
-    local shebang_lib_dest="${destination%.sh}"
-    shebang_lib_dest="${shebang_lib_dest}-shebang.sh"
+    local shebang_lib_dest=""
+    if ! shebang_lib_dest="$(get_lib_dest "shebang")"; then
+        echo_red "Cannot get shebang lib dest"
+        return 1
+    fi
     
     echo_green "Remove previous shebang lib '$shebang_lib_dest'"
     if ! rm -f "$shebang_lib_dest"; then
@@ -262,6 +287,44 @@ function create_shebang_lib_if_need() {
     fi
 
     for_chmod+=("$shebang_lib_dest")
+}
+
+function get_shebang_header() {
+    # bash not correct handle shebang and set 
+    # when write file! 
+    printf "#"
+    printf '!/usr/bin/env bash\n\n'
+    printf 'se'
+    printf 't -Eeuo pipefail\n\n'
+    return 0
+}
+
+function create_bash_lib_if_need() {
+    if ! is_lib_build; then
+        return 0
+    fi
+
+    local bash_lib_dest=""
+    if ! bash_lib_dest="$(get_lib_dest "bash")"; then
+        echo_red "Cannot get bash lib dest"
+        return 1
+    fi
+
+    if ! rm -f "$bash_lib_dest"; then
+        echo_red "Cannot remove '$bash_lib_dest'"
+        return 1
+    fi
+
+    get_shebang_header > "$bash_lib_dest"
+
+    if ! write_lib_files "" "$bash_lib_dest" ".*\\/[0-9]+_base_.+\\.sh"; then
+        echo_red "Cannot write bash lib to dest '$bash_lib_dest'"
+        return 1
+    fi
+
+    for_chmod+=("$bash_lib_dest")
+
+    return 0
 }
 
 function make_files_executable() {
@@ -340,6 +403,10 @@ function main() {
 
     if ! create_shebang_lib_if_need; then
         fail_build "create shebang lib"
+    fi
+
+    if ! create_bash_lib_if_need; then
+        fail_build "create bash lib"
     fi
 
     if ! make_files_executable "${for_chmod[@]}"; then

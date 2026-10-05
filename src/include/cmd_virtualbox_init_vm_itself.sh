@@ -66,21 +66,21 @@ function cmd_virtualbox_init_vm_itself_run() {
 
     local nat_mac=""
 
-    if ! nat_mac="$(extract_argument "--virtualbox-nat-mac" "VIRTUALBOX_NAT_MAC" "$CONST_NOT_FLAG" "validate_arg_mac_address" "$@")"; then
+    if ! nat_mac="$(extract_value_argument "--virtualbox-nat-mac" "VIRTUALBOX_NAT_MAC" "validate_arg_mac_address" "$@")"; then
         echo_error "NAT MAC address: $nat_mac"
         return 1
     fi
 
     local static_mac=""
 
-    if ! static_mac="$(extract_argument "--virtualbox-static-mac" "VIRTUALBOX_STATIC_MAC" "$CONST_NOT_FLAG" "validate_arg_mac_address" "$@")"; then
+    if ! static_mac="$(extract_value_argument "--virtualbox-static-mac" "VIRTUALBOX_STATIC_MAC" "validate_arg_mac_address" "$@")"; then
         echo_error "Static MAC address: $static_mac"
         return 1
     fi
 
     local ip_static=""
 
-    if ! ip_static="$(extract_argument "--virtualbox-static-ip" "VIRTUALBOX_STATIC_IP" "$CONST_NOT_FLAG" "validate_arg_ipv4" "$@")"; then
+    if ! ip_static="$(extract_value_argument "--virtualbox-static-ip" "VIRTUALBOX_STATIC_IP" "validate_arg_ipv4" "$@")"; then
         echo_error "Static IP address: $ip_static"
         return 1
     fi
@@ -101,7 +101,7 @@ function cmd_virtualbox_init_vm_itself_run() {
     fi
 
     local ssh_key=""
-    if ! ssh_key="$(extract_argument "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! ssh_key="$(extract_value_argument_no_validate "--virtualbox-ssh-key" "VIRTUALBOX_SSH_KEY" "$@")"; then
         echo_error "SSH key: $$ssh_key"
         return 1
     fi
@@ -113,7 +113,7 @@ function cmd_virtualbox_init_vm_itself_run() {
     fi
 
     local remove_sudo_pass=""
-    if ! remove_sudo_pass="$(extract_argument "--virtualbox-sudo-no-password" "VIRTUALBOX_SUDO_NO_PASSWORD" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! remove_sudo_pass="$(extract_value_argument_no_validate "--virtualbox-sudo-no-password" "VIRTUALBOX_SUDO_NO_PASSWORD" "$@")"; then
         echo_error "Remove sudo pass: $$remove_sudo_pass"
         return 1
     fi
