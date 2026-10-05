@@ -2,8 +2,9 @@
 
 set -Eeuo pipefail
 
+export __PRIVATE_TEST_TRIM_STRING_RES="true"
+
 function __run_tests_trim_by_string() {
-    export __PRIVATE_TEST_TRIM_STRING_RES="true"
     function __test_trim_by_string() {
         local fun="$1"
         local symbol="$2"
@@ -371,6 +372,8 @@ EO_TST_2
     if [[ "$__PRIVATE_TEST_TRIM_STRING_RES" == "true" ]]; then
         return 0
     fi
+
+    echo_error "Trim by string tests FAILED"
 
     return 1
 }

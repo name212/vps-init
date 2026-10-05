@@ -91,7 +91,7 @@ tests/run: build/lib
 		echo -e "\033[1;33mWill run only '$$RUN_ONLY' test!\033[0m" >&2; \
 	fi; \
 	failed_tests=(); \
-	for fl in $$(find src/include -name "*test.sh" -type f | sort -n); do \
+	for fl in $$(find src/include -name "*.test.sh" -type f | sort -n); do \
     	bs=""; \
 		if ! bs="$$(basename "$$fl")"; then \
 			echo_red "Cannot get base name for '$$fl'"; \

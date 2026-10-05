@@ -14,7 +14,9 @@ function append_str_with_separator() {
 			str="${str}${sep}${app}"
 		fi
 	fi
+	
 	echo -n "$str"
+	return 0
 }
 
 # shellcheck disable=SC2329

@@ -880,10 +880,10 @@ function escape_regexp_str() {
 	if [ -z "$str" ]; then
 		echo -n ""
 		return 0
-	fi; \
+	fi
 	# shellcheck disable=SC2016
 	# shellcheck disable=SC2155
-	local escaped="$(printf '%s' "$str" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+	local escaped="$(printf '%s' "$str" | sed 's/[].[\*^$()+?{|]/\\&/g')"
 	echo -n "$escaped"
 	return 0
 }
@@ -932,6 +932,51 @@ function num_less_eq() {
 	fi
 
 	return 1
+}
+
+# shellcheck disable=SC2329
+function check_is_number() {
+    local val="$1"
+
+    if ! [[ $val =~ ^-?[0-9]+$ ]]; then
+        echo_error "'$val' is not number!"
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function is_number_positive() {
+    local val="$1"
+    local have_zero="${2:-}"
+
+    if ! val="$(check_is_number "$val")"; then
+        return 1
+    fi
+
+    local err_num="1"
+	local fun_check="num_great_than"
+
+    if [ -n "$have_zero" ]; then
+        err_num="0"
+		fun_check="num_great_eq"
+    fi
+
+	if ! "$fun_check" "$val" "0"; then
+    	echo_error "Number '$val' < $err_num"
+		return 1
+	fi
+
+	echo -n "$val"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function is_number_positive_or_zero() {
+    is_number_positive "$1" "true"
+    return $?
 }
 
 # End vps-init/src/include/03_base_str_03_num.sh
@@ -1195,7 +1240,9 @@ function append_str_with_separator() {
 			str="${str}${sep}${app}"
 		fi
 	fi
+	
 	echo -n "$str"
+	return 0
 }
 
 # shellcheck disable=SC2329
@@ -1362,6 +1409,100 @@ function files_has_not_diff() {
 }
 
 # End vps-init/src/include/03_base_str_07_diff.sh
+
+# Start vps-init/src/include/03_base_str_08_password.sh
+
+# shellcheck disable=SC2034
+export CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL="__should_contains_spec_symbols__"
+
+# shellcheck disable=SC2034
+export PASSWORD_STR_MIN_LEN="12"
+# shellcheck disable=SC2034
+export PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS="$CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL"
+
+# shellcheck disable=SC2329
+function check_valid_password_enable_specials() { 
+	PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS="$CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL"
+}
+
+# shellcheck disable=SC2329
+function check_valid_password_disable_specials() { 
+	PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS=""
+}
+
+# shellcheck disable=SC2329
+function check_valid_password_set_min_symbols() {
+	local num="$1"
+
+	if ! num="$(is_number_positive "$num")"; then
+		echo_error "Cannot set min password len. '$num' is not number or not positive"
+		return 1
+	fi
+
+	PASSWORD_STR_MIN_LEN="$num"
+	return 0
+}
+
+# shellcheck disable=SC2329
+function check_valid_password_reset_min_symbols() {
+	check_valid_password_set_min_symbols "12" || true
+}
+
+check_valid_password_enable_specials || true
+check_valid_password_reset_min_symbols || true
+
+# shellcheck disable=SC2329
+function check_valid_password() {
+    local val="$1"
+
+    if [ -z "$val" ]; then
+        echo_error "Password cannot be empty!"
+        return 1
+    fi
+
+    local pass_len=""
+    if ! pass_len="$(echo -n "$val" | wc -c)"; then
+        echo_error "Cannot get count of password str"
+        return 1
+    fi
+
+    if num_less_than "$pass_len" "$PASSWORD_STR_MIN_LEN"; then
+        echo_error "Len of password should minimum $PASSWORD_STR_MIN_LEN symbols. Got $pass_len"
+        return 1
+    fi
+
+    local -A symbols_to_check=()
+
+    symbols_to_check["a-z"]="lower symbols"
+    symbols_to_check["A-Z"]="upper symbols"
+    symbols_to_check["0-9"]="numbers"
+
+    if [[ "$PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS" == "$CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL" ]]; then
+        local spec_syms='.|,\/?!;]:[*%$^@><#&~'
+        spec_syms="$(escape_regexp_str "$spec_syms")"
+        symbols_to_check["$spec_syms"]="special symbols '$spec_syms'"
+    fi
+
+    local res_err=""
+    for re_syms in "${!symbols_to_check[@]}"; do
+        local err_msg="${symbols_to_check["$re_syms"]}"
+        local re="[$re_syms]+"
+
+        if ! echo -n "$val" | grep -qP "$re"; then
+            res_err="$(append_str_with_separator ", " "$res_err" "$err_msg")"
+        fi
+    done
+
+    if [ -n "$res_err" ]; then
+        echo_error "Password not contains next symbols types: $res_err"
+        return 1
+    fi
+
+    echo -n "$val"
+    return 0
+}
+
+# End vps-init/src/include/03_base_str_08_password.sh
 
 # Start vps-init/src/include/04_base_input.sh
 
@@ -1908,19 +2049,6 @@ function validate_arg_not_empty() {
 }
 
 # shellcheck disable=SC2329
-function check_is_number() {
-    local val="$1"
-
-    if ! [[ $val =~ ^-?[0-9]+$ ]]; then
-        echo_error "'$val' is not number!"
-        return 1
-    fi
-
-    echo -n "$val"
-    return 0
-}
-
-# shellcheck disable=SC2329
 function validate_arg_number() {
     local val="$1"
     local passed="$2"
@@ -1939,41 +2067,6 @@ function validate_arg_number_optional() {
 }
 
 # shellcheck disable=SC2329
-function is_number_positive() {
-    local val="$1"
-    local have_zero="${2:-}"
-
-    if ! val="$(check_is_number "$val")"; then
-        return 1
-    fi
-
-    local err_num="1"
-
-    if [ -n "$have_zero" ]; then
-        err_num="0"
-        if [ "$val" -ge "0" ]; then
-            echo -n "$val"
-            return 0
-        fi
-    else 
-        err_num="1"
-        if [ "$val" -gt "0" ]; then
-            echo -n "$val"
-            return 0
-        fi
-    fi
-
-    echo_error "Number '$val' < $err_num"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function is_number_positive_or_zero() {
-    is_number_positive "$1" "true"
-    return $?
-}
-
-# shellcheck disable=SC2329
 function validate_arg_number_positive() {
     local val="$1"
     local passed="$2"
@@ -1988,6 +2081,15 @@ function validate_arg_number_positive_or_zero() {
     local passed="$2"
 
     call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "is_number_positive_or_zero" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_password() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_valid_password" "$val" "$passed"
     return $?
 }
 

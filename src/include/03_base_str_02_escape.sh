@@ -8,10 +8,10 @@ function escape_regexp_str() {
 	if [ -z "$str" ]; then
 		echo -n ""
 		return 0
-	fi; \
+	fi
 	# shellcheck disable=SC2016
 	# shellcheck disable=SC2155
-	local escaped="$(printf '%s' "$str" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+	local escaped="$(printf '%s' "$str" | sed 's/[].[\*^$()+?{|]/\\&/g')"
 	echo -n "$escaped"
 	return 0
 }
