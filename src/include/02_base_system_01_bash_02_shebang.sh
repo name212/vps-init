@@ -52,7 +52,7 @@ rerun_script_with_new_shebang() {
     fi
 
     export SCRIPT_RAN_WITH_NEW_SHEBANG_FILE=""
-    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp -p "$__pwd_shebang_script" XXXXXXXX.sync.sh)"; then
+    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp -p "$__pwd_shebang_script" "tmp-sync.sh.XXXXXX")"; then
         __echo_red_shebang "Cannot create tempt file for new shebang replace"
         return 1
     fi
