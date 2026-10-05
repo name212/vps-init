@@ -164,7 +164,7 @@ function upgrade_all_packages() {
 
 # shellcheck disable=SC2329
 function install_packages() {
-    echo_info "Install apt packages $* ..."
+    echo_info "Install packages $* ..."
 
     local update_fun=""
     if ! update_fun="$(get_package_cmd update)"; then
@@ -182,7 +182,7 @@ function install_packages() {
     fi
 
     if ! "$install_fun" "$@"; then
-        echo_error "Cannot run apt install!"
+        echo_error "Cannot run install packages!"
         return 1
     fi
 
