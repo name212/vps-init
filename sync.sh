@@ -6336,7 +6336,7 @@ function usage() {
     help_about_help="$(trim_spaces_left "$help_about_help")"
 
     echo_green "Global parameters:"
-    echo "  $help_about_help
+    echo "    $help_about_help
   $(config_file_help)
   $(not_ask_help)
   $(log_settings_help)
