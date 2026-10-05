@@ -406,6 +406,11 @@ rerun_script_with_new_shebang() {
         return 1
     fi
 
+    if ! chmod 755 "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"; then
+        __echo_red_shebang "Cannot chmod 755 '$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE'"
+        return 1
+    fi
+
     __cleanup_shebang_run_tmp_file() {
         __script_file_shebang_rm="${SCRIPT_RAN_WITH_NEW_SHEBANG_FILE:-}"
         
