@@ -1708,7 +1708,7 @@ function run_passed_command() {
 # Start vps-init/src/include/05_base_args.sh
 
 # shellcheck disable=SC2034
-export CONST_FLAG_SET="__flag_is_set__"
+export CONST_FLAG_SET="true"
 # shellcheck disable=SC2034
 export CONST_IS_FLAG="__is_flag__"
 # shellcheck disable=SC2034
