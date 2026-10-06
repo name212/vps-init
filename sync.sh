@@ -20,9 +20,6 @@ export WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null &
 export CONST_NEW_LINE=$'\n'
 
 
-# shellcheck disable=SC2034
-export CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
-
 # shellcheck disable=SC2329
 function __rand_str_n() {
     local num=${1:-1}
@@ -2572,6 +2569,8 @@ export CONST_SCREEN_SHOULD_REPLACED="__should_run_in_screen__"
 export CONST_SCREEN_NOT_RUN_IN_SCREEN="__not_run_in_screen__"
 # shellcheck disable=SC2034
 export CONST_SCREEN_DEFAULT_SESS_NAME="server-init"
+# shellcheck disable=SC2034
+export CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
 
 # shellcheck disable=SC2329
 function screen_install() {
@@ -2594,6 +2593,29 @@ function screen_install() {
         echo_error "Cannot install screen package '$screen_pkg'"
         return 1
     fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function screen_print_exit_code_for_extract() {
+    local exit_code="${1:-}"
+    
+    if [[ "${SYNC_SCREEN_REPLACED:-}" != "$CONST_SCREEN_REPLACED_VAL" ]]; then
+        return 0
+    fi
+
+    if [ -z "$exit_code" ]; then
+        exit_code="1"
+    fi
+
+    exit_code="$(trim_spaces "$exit_code")"
+
+    if ! exit_code="$(is_number_positive_or_zero "$exit_code")"; then
+        exit_code="1"
+    fi
+
+    echo "${CONST_FAIL_MAIN_EXIT_CODE_PREFIX}${exit_code}"
 
     return 0
 }
@@ -6573,7 +6595,7 @@ if main "$@"; then
     true
 else
     main_exit_code="$?"
-    echo "${CONST_FAIL_MAIN_EXIT_CODE_PREFIX}${main_exit_code}"
+    screen_print_exit_code_for_extract
 fi
 
 exit "$main_exit_code"

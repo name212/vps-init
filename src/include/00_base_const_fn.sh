@@ -18,9 +18,6 @@ export WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null &
 export CONST_NEW_LINE=$'\n'
 
 
-# shellcheck disable=SC2034
-export CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
-
 # shellcheck disable=SC2329
 function __rand_str_n() {
     local num=${1:-1}

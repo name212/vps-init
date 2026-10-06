@@ -291,7 +291,7 @@ if main "$@"; then
     true
 else
     main_exit_code="$?"
-    echo "${CONST_FAIL_MAIN_EXIT_CODE_PREFIX}${main_exit_code}"
+    screen_print_exit_code_for_extract
 fi
 
 exit "$main_exit_code"
