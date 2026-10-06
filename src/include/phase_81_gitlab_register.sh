@@ -7,11 +7,11 @@ PHASES_WITH_INDEX["gitlab_register"]="81"
 
 # shellcheck disable=SC2329
 function phase_gitlab_register_run() {
-    echo_green "Gitlab register runner..."
+    echo_info "Gitlab register runner..."
     if ! cmd_gitlab_register_runner_run "$@"; then
         return 1
     fi
-    echo_green "Gitlab runner registered!"
+    echo_info "Gitlab runner registered!"
     return 0
 }
 

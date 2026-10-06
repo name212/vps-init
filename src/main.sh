@@ -1,265 +1,300 @@
 #!/usr/bin/env bash
 
+# start idempotent run
+{
+
 set -Eeuo pipefail
 
-function phase_run_func() {
-    local phase="$1"
+function enter_in_screen() {
+    local enable_screen="$CONST_SCREEN_SHOULD_REPLACED"
+    local screen_records_dir=""
+    local screen_sess_name=""
 
-    local phase_func="phase_${phase}_run"
-
-    if ! declare -F "$phase_func" > /dev/null; then
-        echo_red "Internal error: '$phase_func' func not declared for phase $phase!"
+    if ! parse_screen_args "enable_screen" "screen_records_dir" "screen_sess_name" "$@"; then
+        echo_error "Cannot parse screen arguments"
         return 1
     fi
 
-    echo -n "$phase_func"
+    echo_debug "Screen enabled: $enable_screen"
+    echo_debug "Screen record dir: $screen_records_dir"
+    echo_debug "Screen session name prefix: $screen_sess_name"
+
+     if [[ "$enable_screen" == "$CONST_SCREEN_SHOULD_REPLACED" ]]; then
+        if ! screen_replace_run_with_screen "$enable_screen" "$screen_sess_name" "$screen_records_dir" "" "$@"; then
+            echo_error "Cannot replace to run in screen"
+            return 1
+        fi
+        return 0
+    fi
+
     return 0
 }
 
 # shellcheck disable=SC2120
 function usage() {
-     echo "
-Usage: $bin_name [phase PHASE_FOR_RUN | cmd CMD_FOR_RUN] [args...]
-  Init server.
-  Global parameters
-    --not-ask
-      If passed will not ask user about actions.
-      Env NOT_ASK=true for set.
+    local init_msg="Init ubuntu server."
+    if [ -n "${INIT_MSG_HELP:-}" ]; then
+        init_msg="$INIT_MSG_HELP"
+    fi
 
-    --config 'PATH'
-      Path to config with envs to settings.
-      Should be .env format
-      Env CONFIG_PATH 
+    # shellcheck disable=SC2154
+    echo "$init_msg"
+    echo ""
+
+    # shellcheck disable=SC2155
+    # shellcheck disable=SC2034
+    local script_name="$(get_original_script_name)"
     
-    -h|--help
-      Show this message.
-  
-  If passed 'phase' as first arg and name of phase as second
-  only run only one phase.
-  Otherwise, run all phases. For disable some phase 
-  you can use disable env variable (see phase params).  
-  
-  Phases for run in order:
+    # shellcheck disable=SC2154
+    echo "Usage: $script_name [ [global parameters] phase PHASE_FOR_RUN | [global parameters] cmd CMD_FOR_RUN] [args...]"
+    echo ""
+
+    # shellcheck disable=SC2155
+    local help_about_help="$(echo_help_args_help)"
+    help_about_help="$(trim_spaces_left "$help_about_help")"
+
+    echo_green "Global parameters:"
+    echo "    $help_about_help
+  $(config_file_help)
+  $(not_ask_help)
+  $(log_settings_help)
+  $(screen_args_help)
 "
+    echo_green "Phases."
+    echo_green "If passed 'phase' as first arg and name of phase as second"
+    echo_green "  only run only one phase."
+    echo_green "Otherwise, run all phases. For disable some phase"
+    echo_green "  you can use disable env variable (see phase params)."
+    echo_yellow "If you run one phase pass global parameters before 'phase' argument or use envs."
+    echo_green  "Phases for run in order:"
 
     for p in "$@"; do
         local help_fun="phase_${p}_help"
         if ! declare -F "$help_fun" > /dev/null; then
-            echo_red "Help function not found for phase $p"
+            echo_error "Help function not found for phase $p"
             exit 1
         fi
         echo ""
-        echo "  Phase $p"
+        echo -n "  Phase " 
+        echo_yellow "$p"
         "$help_fun"
-        echo "    $(disable_help "$p")"
+        echo "    $(phase_print_disable_help "$p")"
     done
-
-    if [[ "${#COMMANDS_LIST[@]}" == "0" ]]; then
-        return 0
-    fi
 
     echo ""
 
-    echo "
-  If passed 'cmd' as first argument and name os command as second
-  will run command
+    if [[ "${#COMMANDS_LIST[@]}" == "0" ]]; then
+        echo_yellow "Not any commands found for run."
+        return 0
+    fi
 
-  Commands available:
-"
+    echo_green "Commands."
+    echo_green "If passed 'cmd' as first argument and name as command as second will run command"
+    echo_yellow "If you run cmd pass global parameters before 'cmd' argument or use envs."
+    echo_green "Commands available:"
+
     for cm in "${COMMANDS_LIST[@]}"; do
         local cmd_help_fun="cmd_${cm}_help"
         if ! declare -F "$cmd_help_fun" > /dev/null; then
-            echo_red "Help function not found for command $cm"
+            echo_error "Help function not found for command $cm"
             exit 1
         fi
         echo ""
-        echo "  Command $cm"
+        echo -n "  Command " 
+        echo_yellow "$cm"
         "$cmd_help_fun"
     done
 }
 
-function run_passed_command() {
-    local cmd_name="${1-}"
-    
-    local found=""
-    for cmd in "${COMMANDS_LIST[@]}"; do
-        if [[ "$cmd_name" == "$cmd" ]]; then
-            found="true"
-            break
-        fi
-    done
-
-    if [[ "$found" != "true" ]]; then
-        echo_red "Command '$cmd_name' not found!"
-        return 1
-    fi
-
-    local run_func="cmd_${cmd_name}_run"
-
-    if ! declare -F "$run_func" > /dev/null; then
-        echo_red "Run function $run_func for command $cmd_name not found!"
-        return 1
-    fi
-
-    shift
-
-    if ! "$run_func" "$@"; then
-        echo_red "Command $cmd_name failed" 
-        return 1
-    fi
-
-    return 0
-}
-
 function main() {
+    if ! parse_and_apply_config_file "$@"; then
+        echo_error "Cannot apply config"
+        return 1
+    fi
+
+    if ! is_help_flag_set "$@"; then
+        if ! parse_and_apply_log_settings "$@"; then
+            echo_error "Cannot apply log settings"
+            return 1
+        fi
+    fi
+
+    if ! enter_in_screen "$@"; then
+        echo_error "Cannot restart script"
+        return 1
+    fi
+
+    print_debug_log_file
+
     local -a not_ordered_phases=()
 
     for pi in "${!PHASES_WITH_INDEX[@]}"; do
         if [ -z "$pi" ]; then
-            echo_red "Got empty phase name!"
-            exit 1
+            echo_error "Got empty phase name!"
+            return 1
         fi
-        not_ordered_phases+=("${PHASES_WITH_INDEX[$pi]}:${pi}")
+
+        local phase_index="${PHASES_WITH_INDEX[$pi]}"
+        local index_for_set=""
+        if ! index_for_set="$(phase_change_order "$pi" "$phase_index")"; then
+            return 1
+        fi
+
+        if [ -z "$index_for_set" ]; then
+            echo_error "Empty index for phase '$pi'"
+            return 1
+        fi
+
+        not_ordered_phases+=("${index_for_set}:${pi}")
     done
 
     local -a phases_sorted=()
-    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort)
+    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort -n)
 
     local -a phases=()
     for ps in "${phases_sorted[@]}"; do
         local phase_to_add="${ps#*:}"
         local func_err=""
         if ! func_err="$(phase_run_func "$phase_to_add")"; then
-            echo_red "$func_err"
-            exit 1
+            echo_error "$func_err"
+            return 1
         fi 
         phases+=("$phase_to_add")
     done
 
-    local -a help_flags=("-h" "--help")
-
-    for ha in "${help_flags[@]}"; do 
-        if arg_flag_is_set "$ha" "" "$CONST_IS_FLAG" "$CONST_NO_VALIDATE" "$@"; then
-            usage "${phases[@]}"
-            exit 0
-        fi
-    done
+    if is_help_flag_set "$@"; then
+        usage "${phases[@]}"
+        return 0
+    fi
 
     local not_ask=""
     not_ask="$(parse_not_ask "$@")" || true
 
-    local config=""
+    local got_run_one_phase=""
+    local got_run_cmd=""
 
-    if ! config="$(extract_argument "--config" "CONFIG_PATH" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
-        echo_red "Passed config is incorrect: $config"
-        exit 1
+    local -a args_to_pass=()
+
+    while [[ $# -gt 0 ]]; do
+        local got_arg="${1}"
+        shift
+
+        if [[ "$got_arg" == "phase" ]]; then
+            got_run_one_phase="${1-}"
+            if [ -z "$got_run_one_phase" ]; then
+                usage "${phases[@]}"
+                echo_error "Pass 'phase' arg without phase"
+                return 1
+            fi
+
+            if ! [[ -v PHASES_WITH_INDEX["$got_run_one_phase"] ]]; then
+                usage "${phases[@]}"
+                echo_error "Not found phase $got_run_one_phase"
+                return 1
+            fi
+
+            shift
+
+            args_to_pass=()
+            continue
+        elif [[ "$got_arg" == "cmd" ]]; then
+            got_run_cmd="${1-}"
+            if [ -z "$got_run_cmd" ]; then
+                usage "${phases[@]}"
+                echo_error "Pass 'cmd' arg without cmd name"
+                return 1
+            fi
+
+            shift
+
+            args_to_pass=()
+            continue
+        fi
+        args_to_pass+=("$got_arg")
+    done
+
+    if [[ "$got_run_one_phase" != "" || "$got_run_cmd" != ""  ]]; then
+        if [[ "$not_ask" == "$CONST_NOT_ASK_VAL" ]]; then
+            args_to_pass+=("$CONST_NOT_ASK_ARG")
+        fi
     fi
 
-    if [ -n "$config" ]; then
-        echo_green "Load config $config"
-        # shellcheck disable=SC1090
-        set -a && source "$config" && set +a
+    if [[ "$got_run_cmd" != "" ]]; then
+        if ! run_passed_command "$got_run_cmd" "${args_to_pass[@]}"; then
+            return 1
+        fi
+
+        return 0
     fi
-
-    local got_phase_to_run=""
-
-    case "${1-}" in
-        "phase")
-            got_phase_to_run="${2-}"
-
-            if [ -z "$got_phase_to_run" ]; then
-                usage "${phases[@]}"
-                echo_red "Phase not provided"
-                exit 1
-            fi
-        
-            if ! [[ -v PHASES_WITH_INDEX["$got_phase_to_run"] ]]; then
-                usage "${phases[@]}"
-                echo_red "Not found phase $got_phase_to_run"
-                exit 1
-            fi
-
-            shift
-            shift
-        ;;
-
-        "cmd")
-            local got_command_to_run="${2-}"
-            if [ -z "$got_command_to_run" ]; then
-                usage "${phases[@]}"
-                echo_red "Command not provided"
-                exit 1
-            fi
-
-            shift
-            shift
-
-            if ! run_passed_command "$got_command_to_run" "$@"; then
-                exit 1
-            fi
-
-            exit 0
-        ;;
-    esac
 
     local -a phases_to_run=()
 
-    if [ -z "$got_phase_to_run" ]; then
+    if [ -z "$got_run_one_phase" ]; then
         for pp in "${phases[@]}"; do
             if phase_is_not_disabled "$pp"; then
                 phases_to_run+=("$pp")
             else
-                echo_yellow "Phase $pp is skipped!"
+                echo_warn "Phase $pp is skipped!"
             fi
         done
     else
-        phases_to_run=("$got_phase_to_run")
+        phases_to_run=("$got_run_one_phase")
     fi
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then
-        echo_red "No one phase to run found!"
-        exit 1
+        echo_error "No one phase to run found!"
+        return 1
     fi
 
-    local old_hostname=""
-    if ! old_hostname="$(hostnamectl hostname)"; then
-         old_hostname="ERROR GET"
-    fi
+    # shellcheck disable=SC2155
+    local old_hostname="$(get_hostname)"
 
-    echo_green "Have next phases for run: ${phases_to_run[*]}"
-    if ! ask_user "Start init ${old_hostname} ?" "$not_ask"; then
-        echo_red "Disallow start!"
-        exit 1
+    echo_info "Have next phases for run:"
+    for ph_p in "${phases_to_run[@]}"; do
+        echo_info "  $ph_p"
+    done
+    if ! ask_user "Start init '${old_hostname}'?" "$not_ask"; then
+        echo_error "Disallow start!"
+        return 1
     fi
 
     for ph in "${phases_to_run[@]}"; do
         local phase_run=""
 
         if ! phase_run="$(phase_run_func "$ph")"; then
-            echo_red "$phase_run"
-            exit 1
+            echo_error "$phase_run"
+            return 1
         fi 
 
         echo ""
-        echo_green "Run phase ${ph} with func '$phase_run'..."
+        echo_info "Run phase ${ph} with func '$phase_run'..."
 
-        if ! "$phase_run" "$@"; then
-            echo_red "Phase $ph failed! Exit"
-            exit 1
+        if ! "$phase_run" "${args_to_pass[@]}"; then
+            echo_error "Phase $ph failed! Exit"
+            return 1
         fi
         
-        echo_green "Phase ${ph} successed!"
+        echo_info "Phase ${ph} succeeded!"
         echo ""
     done
 
-    local new_hostname=""
-    if ! new_hostname="$(hostnamectl hostname)"; then
-         new_hostname="ERROR GET"
-    fi
+    # shellcheck disable=SC2155
+    local new_hostname="$(get_hostname)"
 
     echo_green "Init server $old_hostname done! New hostname: $new_hostname"
     return 0
 }
 
-main "$@"
-exit $?
+main_exit_code="0"
+
+if main "$@"; then
+    true
+else
+    main_exit_code="$?"
+    echo "${CONST_FAIL_MAIN_EXIT_CODE_PREFIX}${main_exit_code}"
+fi
+
+exit "$main_exit_code"
+
+# end idempotent run
+}
