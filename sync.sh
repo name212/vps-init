@@ -1215,6 +1215,18 @@ function split_by_space() {
 }
 
 # shellcheck disable=SC2329
+function split_by_eq() {
+	local _dest="${1:-}"
+	local _str="${2:-}"
+	local _transform="${3:-}"
+	if ! split_by '=' "$_dest" "$_str" "$_transform"; then
+		return 1
+	fi
+
+	return 0
+}
+
+# shellcheck disable=SC2329
 function split_by_new_line() {
 	local _dest="${1:-}"
 	local _str="${2:-}"
