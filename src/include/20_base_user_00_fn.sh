@@ -2,8 +2,12 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
 export CONST_REMOVE_PASSWORD="true"
+# shellcheck disable=SC2034
 export CONST_SUDO_NO_PASS="true"
+# shellcheck disable=SC2034
+export CONST_SHOULD_SUDO="true"
 
 # shellcheck disable=SC2329
 function update_passwd_for_user() {

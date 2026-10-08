@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
 export CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
 # shellcheck disable=SC2034
 export CONST_SCREEN_ENV_ENABLE="SCREEN_ENABLE_RUN_VIA_SCREEN"
