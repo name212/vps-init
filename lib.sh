@@ -3355,35 +3355,35 @@ function users_extract_configuration() {
     fi
     shift
 
-    local users_no_pass_dest="$2"
+    local users_no_pass_dest="$1"
     if [ -z "$users_no_pass_dest" ]; then
         echo_error "users no pass setting destination array name not passed"
         return 1
     fi
     shift
     
-    local users_passwords_dest="$3"
+    local users_passwords_dest="$1"
     if [ -z "$users_passwords_dest" ]; then
         echo_error "users password setting destination array name not passed"
         return 1
     fi
     shift
     
-    local users_sudo_dest="$4"
+    local users_sudo_dest="$1"
     if [ -z "$users_sudo_dest" ]; then
         echo_error "users sudo setting destination array name not passed"
         return 1
     fi
     shift
     
-    local users_sudo_no_pass_dest="$5"
+    local users_sudo_no_pass_dest="$1"
     if [ -z "$users_sudo_no_pass_dest" ]; then
         echo_error "users sudo no password setting destination array name not passed"
         return 1
     fi
     shift
     
-    local users_keys_dest="$6"
+    local users_keys_dest="$1"
     if [ -z "$users_keys_dest" ]; then
         echo_error "users keys setting destination array name not passed"
         return 1
