@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2329
 function get_hostname() {
     local hst=""
     if ! hst="$(uname -n)"; then

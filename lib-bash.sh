@@ -308,8 +308,10 @@ function is_function_declared() {
 
 # shellcheck disable=SC2329
 function is_array_var() {
+    local var_name="$1"
+
     local declare_out=""
-    if declare_out="$(declare -p -- "$1" 2>&1)"; then
+    if declare_out="$(declare -p -- "$var_name" 2>&1)"; then
         if [[ "$declare_out" == "declare -a "* ]]; then 
             return 0
         fi
@@ -320,13 +322,28 @@ function is_array_var() {
 
 # shellcheck disable=SC2329
 function is_dict_var() {
+    local var_name="$1"
+
     local declare_out=""
-    if declare_out="$(declare -p -- "$1" 2>&1)"; then
+    if declare_out="$(declare -p -- "$var_name" 2>&1)"; then
         if [[ "$declare_out" == "declare -A "* ]]; then 
             return 0
         fi
     fi
     
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_array_or_dict_var() {
+    local var_name="$1"
+
+    if is_array_var "$var_name"; then
+        return 0
+    elif is_dict_var "$var_name"; then
+        return 0
+    fi
+
     return 1
 }
 
@@ -727,7 +744,9 @@ function remove_packages() {
 
 # Start vps-init/src/include/02_base_system_04_service.sh
 
+# shellcheck disable=SC2034
 export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+# shellcheck disable=SC2034
 export CONST_SYS_SERVICE_ENGINE_INITD="service"
 
 declare -A _SYS_SERVICE_ENGINES_MAP=()
@@ -872,6 +891,7 @@ function service_enable_service() {
 
 # Start vps-init/src/include/02_base_system_05_net.sh
 
+# shellcheck disable=SC2329
 function get_hostname() {
     local hst=""
     if ! hst="$(uname -n)"; then

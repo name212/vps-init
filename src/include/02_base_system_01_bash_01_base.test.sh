@@ -61,7 +61,16 @@ function _run_is_array_test() {
 
     for var in "${!_test_cases_arrays[@]}"; do
         local should_be="${_test_cases_arrays[$var]}"
+
+        echo_info "Call 'is_array_var'"
         if is_array_var "$var"; then 
+            __check_test_is_array_dict "$should_be" "$_PRIVATE_SHOULD_ARRAY" "$var"
+        else
+            __check_test_is_array_dict "$should_be" "$_PRIVATE_NOT_SHOULD_ARRAY" "$var"
+        fi
+
+        echo_info "Call 'is_array_or_dict_var'"
+        if is_array_or_dict_var "$var"; then 
             __check_test_is_array_dict "$should_be" "$_PRIVATE_SHOULD_ARRAY" "$var"
         else
             __check_test_is_array_dict "$should_be" "$_PRIVATE_NOT_SHOULD_ARRAY" "$var"
@@ -98,7 +107,16 @@ function _run_is_dict_test() {
 
     for var in "${!_test_cases_dicts[@]}"; do
         local should_be="${_test_cases_dicts[$var]}"
+
+        echo_info "Call 'is_dict_var'"
         if is_dict_var "$var"; then 
+            __check_test_is_array_dict "$should_be" "$_PRIVATE_SHOULD_DICT" "$var"
+        else
+            __check_test_is_array_dict "$should_be" "$_PRIVATE_NOT_SHOULD_DICT" "$var"
+        fi
+
+        echo_info "Call 'is_array_or_dict_var'"
+        if is_array_or_dict_var "$var"; then 
             __check_test_is_array_dict "$should_be" "$_PRIVATE_SHOULD_DICT" "$var"
         else
             __check_test_is_array_dict "$should_be" "$_PRIVATE_NOT_SHOULD_DICT" "$var"

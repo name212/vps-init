@@ -308,8 +308,10 @@ function is_function_declared() {
 
 # shellcheck disable=SC2329
 function is_array_var() {
+    local var_name="$1"
+
     local declare_out=""
-    if declare_out="$(declare -p -- "$1" 2>&1)"; then
+    if declare_out="$(declare -p -- "$var_name" 2>&1)"; then
         if [[ "$declare_out" == "declare -a "* ]]; then 
             return 0
         fi
@@ -320,13 +322,28 @@ function is_array_var() {
 
 # shellcheck disable=SC2329
 function is_dict_var() {
+    local var_name="$1"
+
     local declare_out=""
-    if declare_out="$(declare -p -- "$1" 2>&1)"; then
+    if declare_out="$(declare -p -- "$var_name" 2>&1)"; then
         if [[ "$declare_out" == "declare -A "* ]]; then 
             return 0
         fi
     fi
     
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_array_or_dict_var() {
+    local var_name="$1"
+
+    if is_array_var "$var_name"; then
+        return 0
+    elif is_dict_var "$var_name"; then
+        return 0
+    fi
+
     return 1
 }
 
@@ -727,7 +744,9 @@ function remove_packages() {
 
 # Start vps-init/src/include/02_base_system_04_service.sh
 
+# shellcheck disable=SC2034
 export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+# shellcheck disable=SC2034
 export CONST_SYS_SERVICE_ENGINE_INITD="service"
 
 declare -A _SYS_SERVICE_ENGINES_MAP=()
@@ -872,6 +891,7 @@ function service_enable_service() {
 
 # Start vps-init/src/include/02_base_system_05_net.sh
 
+# shellcheck disable=SC2329
 function get_hostname() {
     local hst=""
     if ! hst="$(uname -n)"; then
@@ -884,32 +904,6 @@ function get_hostname() {
 }
 
 # End vps-init/src/include/02_base_system_05_net.sh
-
-# Start vps-init/src/include/03_base_array.sh
-
-# shellcheck disable=SC2329
-# function array_is_empty() {
-#     local arr_name="${1:-}"
-
-# 	local -n "arr_is_empty_target"
-
-# 	local count="1"
-# 	local -a symbols=('"' "'")
-
-# 	local res="$str"
-# 	for ss in "${symbols[@]}"; do
-# 		res="$(trim_by_string "$ss" "$count" "$str")"
-# 		if [[ "$res" != "$str" ]]; then
-# 			break
-# 		fi
-# 	done
-
-# 	echo -n "$res"
-
-# 	return 0
-# }
-
-# End vps-init/src/include/03_base_array.sh
 
 # Start vps-init/src/include/03_base_str_01_generate.sh
 
