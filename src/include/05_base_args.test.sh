@@ -46,7 +46,7 @@ function _run_is_argument_val_tests() {
     fi
 
     for val in "${!_TEST_ARGS_CASES[@]}"; do
-        should_arg="${_TEST_ARGS_CASES[$val]}"
+        local should_arg="${_TEST_ARGS_CASES[$val]}"
         if is_argument_val "$val"; then
             __check_test_is_argument_val "$should_arg" "$__PRIVATE_SHOULD_ARG" "$val"
         else

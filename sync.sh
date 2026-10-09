@@ -307,6 +307,30 @@ function is_function_declared() {
 }
 
 # shellcheck disable=SC2329
+function is_array_var() {
+    local declare_out=""
+    if declare_out="$(declare -p -- "$1" 2>&1)"; then
+        if [[ "$declare_out" == "declare -a "* ]]; then 
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_dict_var() {
+    local declare_out=""
+    if declare_out="$(declare -p -- "$1" 2>&1)"; then
+        if [[ "$declare_out" == "declare -A "* ]]; then 
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# shellcheck disable=SC2329
 function trap_all() {
     local fn="${1:-}"
     
@@ -860,6 +884,32 @@ function get_hostname() {
 }
 
 # End vps-init/src/include/02_base_system_05_net.sh
+
+# Start vps-init/src/include/03_base_array.sh
+
+# shellcheck disable=SC2329
+# function array_is_empty() {
+#     local arr_name="${1:-}"
+
+# 	local -n "arr_is_empty_target"
+
+# 	local count="1"
+# 	local -a symbols=('"' "'")
+
+# 	local res="$str"
+# 	for ss in "${symbols[@]}"; do
+# 		res="$(trim_by_string "$ss" "$count" "$str")"
+# 		if [[ "$res" != "$str" ]]; then
+# 			break
+# 		fi
+# 	done
+
+# 	echo -n "$res"
+
+# 	return 0
+# }
+
+# End vps-init/src/include/03_base_array.sh
 
 # Start vps-init/src/include/03_base_str_01_generate.sh
 
