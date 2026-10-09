@@ -291,7 +291,7 @@ if main "$@"; then
     true
 else
     main_exit_code="$?"
-    screen_print_exit_code_for_extract
+    screen_print_exit_code_for_extract "$main_exit_code"
 fi
 
 exit "$main_exit_code"

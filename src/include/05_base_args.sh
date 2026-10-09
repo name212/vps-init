@@ -25,6 +25,21 @@ function __no_validate() {
 }
 
 # shellcheck disable=SC2329
+function is_argument_val() {
+    local val="$1"
+
+    if [ -z "$val" ]; then
+        return 1
+    fi
+
+    if [[ "$val" == -* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function extract_argument() {
     local arg_name="$1"
     local env_name="$2"
@@ -89,6 +104,7 @@ function extract_argument() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function extract_value_argument() { 
     local arg_name="$1"
     local env_name="$2"
@@ -108,6 +124,7 @@ function extract_value_argument() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function extract_value_argument_no_validate() { 
     local arg_name="$1"
     local env_name="$2"
@@ -125,6 +142,7 @@ function extract_value_argument_no_validate() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function arg_flag_is_set() {
     local arg_name="$1"
     local env_name="${2}"
