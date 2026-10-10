@@ -1304,7 +1304,7 @@ function get_envs_dict() {
         fi
 
         if is_array_has_len "key_val" "1"; then
-            echo_warn "One env str $indx has not val. Skip"
+            get_envs_map_target["${key_val[0]}"]=""
             continue
         fi
 
