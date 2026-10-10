@@ -15,7 +15,7 @@ fi
 export WORKING_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # shellcheck disable=SC2034
-export CONST_NEW_LINE=$'\n'
+CONST_NEW_LINE=$'\n'
 
 
 # shellcheck disable=SC2329
