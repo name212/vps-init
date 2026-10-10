@@ -2827,8 +2827,6 @@ function parse_and_apply_config_file() {
         return 1
     fi
 
-    PROTECTED_PASSED_CONFIG_FILE="$config"
-
     local -A system_envs_after=()
     if ! get_envs_dict "system_envs_after"; then
         echo_warn "Cannot get current envs after source config '$config'"
@@ -2849,6 +2847,8 @@ function parse_and_apply_config_file() {
         echo_warn "Config env '$env_name' found in system env passed before load config and changed. Restore to before load config val"
         export "$env_name"="$before_val"
     done
+
+    PROTECTED_PASSED_CONFIG_FILE="$config"
 }
 
 # shellcheck disable=SC2329
