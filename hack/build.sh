@@ -142,7 +142,7 @@ function write_file() {
 }
 
 function get_shebang_lib_path() {
-    local shebang_lib_source="src/include/02_base_system_01_bash_02_shebang.sh"
+    local shebang_lib_source="src/include/03_base_system_01_bash_02_shebang.sh"
     if ! shebang_lib_source="$(get_path_for_file "$shebang_lib_source")"; then
         return 1
     fi

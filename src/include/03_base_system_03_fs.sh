@@ -116,3 +116,28 @@ function sync_file_content() {
 
     return 0
 }
+
+# shellcheck disable=SC2329
+function check_file_is_not_empty() {
+    local val="$1"
+
+    local real=""
+
+    if ! real="$(realpath "$val")"; then
+        echo_error "Cannot extract real path for '$val'"
+        return 1
+    fi
+
+    if [ ! -f "$real" ]; then
+        echo_error "'$val' is not file!"
+        return 1
+    fi
+
+    if [ ! -s "$real" ]; then
+        echo_error "'$val' is empty file!"
+        return 1
+    fi
+
+    echo -n "$real"
+    return 0
+}

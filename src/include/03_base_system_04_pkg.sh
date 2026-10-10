@@ -130,7 +130,7 @@ function get_package_cmd() {
 
     local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
 
-    if ! declare -F "$res" > /dev/null; then
+    if ! is_function_declared "$res"; then
         echo_error "Internal error: '$res' func not declared!"
         return 1
     fi
@@ -235,7 +235,7 @@ function remove_packages() {
         shift
     done
 
-    if [[ "${#for_remove[@]}" == "0" ]]; then
+    if is_array_empty "for_remove"; then
         echo_info "All passed packages already removed"
         return 0
     fi

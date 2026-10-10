@@ -287,7 +287,7 @@ function tee_log_command_out() {
 
 # End vps-init/src/include/01_base_echo.sh
 
-# Start vps-init/src/include/02_base_system_01_bash_01_base.sh
+# Start vps-init/src/include/02_base_type_01_bash.sh
 
 # shellcheck disable=SC2329
 function is_function_declared() {
@@ -347,565 +347,9 @@ function is_array_or_dict_var() {
     return 1
 }
 
-# shellcheck disable=SC2329
-function trap_all() {
-    local fn="${1:-}"
-    
-    if [ -z "$fn" ]; then
-        return 0
-    fi
+# End vps-init/src/include/02_base_type_01_bash.sh
 
-    if ! is_function_declared "$fn"; then
-        echo_error "Function '$fn' is not declared for trap"
-    fi
-
-    # shellcheck disable=SC2086
-    trap $fn EXIT
-    # shellcheck disable=SC2086
-    trap $fn SIGINT
-    # shellcheck disable=SC2086
-    trap $fn SIGTERM
-
-    echo_debug "Set trap function '$fn' for EXIT SIGINT SIGTERM"
-}
-
-# shellcheck disable=SC2329
-function get_env_value_or_default() {
-    local var_name="$1"
-    local default_val="${2-}"
-
-    if ! [[ -v "$var_name" ]]; then
-        echo -n "$default_val"
-        return 0
-    fi
-
-    echo -n "${!var_name}"
-    return 0
-}
-
-# End vps-init/src/include/02_base_system_01_bash_01_base.sh
-
-# Start vps-init/src/include/02_base_system_01_bash_02_shebang.sh
-
-# Use should only sh support only function here
-# because this file can be imported standalone
-
-# shellcheck disable=SC2034
-export CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL="__re_ren_with_new_shebang__"
-
-# shellcheck disable=SC2329
-get_shebang_header() {
-    # bash not correct handle shebang and set 
-    # when write file! 
-    printf "#"
-    printf '!/usr/bin/env bash\n\n'
-    printf 'se'
-    printf 't -Eeuo pipefail\n\n'
-    return 0
-}
-
-# shellcheck disable=SC2329
-write_shebang_header() {
-    get_shebang_header > "$1"
-}
-
-# shellcheck disable=SC2329
-rerun_script_with_new_shebang() {
-    if [ "${SCRIPT_RAN_WITH_NEW_SHEBANG:-}" = "$CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL" ]; then
-        return 255
-    fi
-
-    __echo_red_shebang(){
-        printf "\033[1;31m%s\033[0m\n" "${1:-}" >&2
-    }
-
-    __script_path_shebang="${1:-}"
-
-    if [ -z "$__script_path_shebang" ]; then
-        __echo_red_shebang "Script path is empty"
-        return 1
-    fi
-
-    if [ ! -s "$__script_path_shebang" ]; then
-        __echo_red_shebang "Script '$__script_path_shebang' not found or empty"
-        return 1
-    fi
-
-    shift
-
-    if ! __pwd_shebang_script="$(pwd)"; then
-        __echo_red_shebang "Cannot run pwd"
-        return 1
-    fi
-
-    export SCRIPT_RAN_WITH_NEW_SHEBANG_FILE=""
-    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp -p "$__pwd_shebang_script" "tmp-sync.sh.XXXXXX")"; then
-        __echo_red_shebang "Cannot create tempt file for new shebang replace"
-        return 1
-    fi
-
-    if ! chmod 755 "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"; then
-        __echo_red_shebang "Cannot chmod 755 '$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE'"
-        return 1
-    fi
-
-    __cleanup_shebang_run_tmp_file() {
-        __script_file_shebang_rm="${SCRIPT_RAN_WITH_NEW_SHEBANG_FILE:-}"
-        
-        if [ -z "$__script_file_shebang_rm" ]; then
-            return 0
-        fi
-
-        if [ ! -f "$__script_file_shebang_rm" ]; then
-            return 0
-        fi
-
-        if ! rm -f "$__script_file_shebang_rm"; then
-            __echo_red_shebang "Cannot remove temp script file '$__script_file_shebang_rm'"
-        fi
-    }
-
-    trap __cleanup_shebang_run_tmp_file EXIT
-
-    write_shebang_header "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"
-    if ! cat "$__script_path_shebang" >> "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"; then
-        __echo_red_shebang "Cannot write script content to '$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE'"
-        return 1
-    fi
-
-    export SCRIPT_ORIGINAL_PATH="$__script_path_shebang"
-    export SCRIPT_RAN_WITH_NEW_SHEBANG="$CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL"
-    
-    __ret_code="0"
-    if bash "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE" "$@"; then
-        true
-    else
-        __ret_code="$?"
-    fi
-    
-    __cleanup_shebang_run_tmp_file
-
-    exit "$__ret_code"
-}
-
-# End vps-init/src/include/02_base_system_01_bash_02_shebang.sh
-
-# Start vps-init/src/include/02_base_system_02_pkg.sh
-
-# shellcheck disable=SC2034
-export SYS_PACKAGES_ENGINE_APT="apt"
-# shellcheck disable=SC2034
-export SYS_PACKAGES_ENGINE_APK="apk"
-
-if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
-    export SYS_PACKAGES_ENGINE="$SYS_PACKAGES_ENGINE_APT"
-fi
-
-# shellcheck disable=SC2329
-function get_package_manager() {
-    echo -n "$SYS_PACKAGES_ENGINE"
-}
-
-# shellcheck disable=SC2329
-function apt_update() {
-    if ! apt update; then 
-        echo_error "Cannot run apt update!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_upgrade() {
-    if ! apt upgrade -y; then 
-        echo_error "Cannot run apt upgrade!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_install() {
-    if ! apt install -y "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apt_search() {
-    if dpkg-query -s "$1" &> /dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function apt_remove() {
-    if ! apt purge -y --auto-remove "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_upgrade() {
-    if ! apk upgrade; then 
-        echo_error "Cannot run apk upgrade!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_update() {
-    if ! apk update; then 
-        echo_error "Cannot run apk update!"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_install() {
-    if ! apk add --no-cache "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function apk_search() {
-    if apk info -e "$1" &> /dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
-# shellcheck disable=SC2329
-function apk_remove() {
-    if ! apk del "$@"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function get_package_cmd() {
-    local cmd_name="$1"
-    case "$SYS_PACKAGES_ENGINE" in
-        "$SYS_PACKAGES_ENGINE_APT")
-            true
-        ;;
-
-        "$SYS_PACKAGES_ENGINE_APK")
-            true
-        ;;
-
-        *)
-            echo_error "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
-            return 1
-        ;;
-    esac
-
-    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
-
-    if ! declare -F "$res" > /dev/null; then
-        echo_error "Internal error: '$res' func not declared!"
-        return 1
-    fi
-
-    echo -n "$res"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function upgrade_all_packages() {
-    local update_fun=""
-    if ! update_fun="$(get_package_cmd update)"; then
-        return 1
-    fi
-
-    local upgrade_fun=""
-    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
-        return 1
-    fi
-
-    if ! "$update_fun"; then
-        echo_error "Cannot run update"
-        return 1
-    fi
-
-    if ! "$upgrade_fun"; then
-        echo_error "Cannot run apt upgrade"
-        return 1
-    fi
-}
-
-# shellcheck disable=SC2329
-function install_packages() {
-    echo_info "Install packages $* ..."
-
-    local update_fun=""
-    if ! update_fun="$(get_package_cmd update)"; then
-        return 1
-    fi
-
-    local install_fun=""
-    if ! install_fun="$(get_package_cmd install)"; then
-        return 1
-    fi
-
-    if ! "$update_fun"; then 
-        echo_error "Cannot run update indexes!"
-        return 1
-    fi
-
-    if ! "$install_fun" "$@"; then
-        echo_error "Cannot run install packages!"
-        return 1
-    fi
-
-    echo_info "Packages $* installed!"
-}
-
-# shellcheck disable=SC2329
-function check_packages_installed() {
-    local search_fun=""
-    if ! search_fun="$(get_package_cmd search)"; then
-        return 1
-    fi
-
-    local all="true"
-    while [[ $# -gt 0 ]]; do
-        local name="$1"
-        if ! "$search_fun" "$name"; then
-            echo_warn "$name not installed..."
-            all="false"
-        fi
-        shift
-    done
-
-    if [[ "$all" == "false" ]]; then
-        return 1
-    fi
-    
-    return 0
-}
-
-# shellcheck disable=SC2329
-function remove_packages() {
-    local search_fun=""
-    if ! search_fun="$(get_package_cmd search)"; then
-        return 1
-    fi
-
-    local remove_fun=""
-    if ! remove_fun="$(get_package_cmd remove)"; then
-        return 1
-    fi
-
-    local -a for_remove=()
-
-    while [[ $# -gt 0 ]]; do
-        local name="$1"
-        if "$search_fun" "$name"; then
-            for_remove+=("$name")
-        fi
-        shift
-    done
-
-    if [[ "${#for_remove[@]}" == "0" ]]; then
-        echo_info "All passed packages already removed"
-        return 0
-    fi
-
-    echo_info "Remove packages ${for_remove[*]}"
-    
-    if ! "$remove_fun" "${for_remove[@]}"; then
-        echo_error "Some packages not removed!"
-        return 1
-    fi
-
-    return 0
-}
-
-# End vps-init/src/include/02_base_system_02_pkg.sh
-
-# Start vps-init/src/include/02_base_system_04_service.sh
-
-# shellcheck disable=SC2034
-export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
-# shellcheck disable=SC2034
-export CONST_SYS_SERVICE_ENGINE_INITD="service"
-
-declare -A _SYS_SERVICE_ENGINES_MAP=()
-_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
-_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_INITD"]="true"
-
-if [ -z "${SYS_SERVICE_ENGINE:-}" ]; then
-    export SYS_SERVICE_ENGINE="$CONST_SYS_SERVICE_ENGINE_SYSTEMD"
-fi
-
-# shellcheck disable=SC2329
-function get_sys_service_engine() {
-    if [[ -v _SYS_SERVICE_ENGINES_MAP["$SYS_SERVICE_ENGINE"] ]]; then
-        echo -n "$SYS_SERVICE_ENGINE"
-        return 0
-    fi
-
-    echo_error "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
-    return 1
-}
-
-# shellcheck disable=SC2329
-function systemd_disable_all() {
-    local srv="$1"
-
-    if [ -z "$srv" ]; then
-        echo_error "Service to disable not passed"
-        return 1
-    fi
-
-    if ! systemctl is-active "$srv"; then
-        return 0
-    fi
-
-    echo_info "systemd service $srv is active. Disable..."
-
-    if ! systemctl disable --now "$srv"; then
-        echo_error "Cannot disable $srv"
-        return 1
-    fi
-
-    if ! systemctl stop "$srv"; then
-        echo_error "Cannot stop $srv"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function service_disable_all() {
-    local srv="$1"
-
-    if [ -z "$srv" ]; then
-        echo_error "Service to disable not passed"
-        return 1
-    fi
-
-    if ! service "$srv" disable; then
-        echo_error "Cannot disable $srv"
-        return 1
-    fi
-
-    if ! service "$srv" stop; then
-        echo_error "Cannot stop $srv"
-        return 1
-    fi
-    return 0
-}
-
-# shellcheck disable=SC2329
-function disable_and_stop_services() {
-    if ! service_engine="$(get_sys_service_engine)"; then
-        echo_error "Cannot resolve system service engine"
-        return 1
-    fi
-
-    disable_fun="${service_engine}_disable_all"
-
-    if ! declare -F "$disable_fun" > /dev/null; then
-        echo_error "Internal error: '$disable_fun' func not declared!"
-        return 1
-    fi
-
-    local -a not_disabled=()
-
-    for srv in "$@"; do
-        if ! "$disable_fun" "$srv"; then
-            not_disabled+=("$srv")
-        fi
-    done
-
-    if [[ "${#not_disabled[@]}" == 0 ]]; then
-        return 0
-    fi
-
-    echo_error "Next services not disabled: ${not_disabled[*]}"
-    return 1
-}
-
-# shellcheck disable=SC2329
-function systemd_enable_service() {
-    local srv="${1:-}"
-
-    if [ -z "$srv" ]; then
-        echo_error "Service for enable not passed"
-        return 1
-    fi
-
-
-    if ! systemctl enable --now "$srv"; then
-        echo_error "Service '$srv' cannot enable"
-        return 1
-    fi
-}
-
-
-# shellcheck disable=SC2329
-function service_enable_service() {
-    local srv="${1:-}"
-
-    if [ -z "$srv" ]; then
-        echo_error "Service for enable not passed"
-        return 1
-    fi
-
-
-    if ! service "$srv" enable; then
-        echo_error "Service '$srv' cannot enable"
-        return 1
-    fi
-
-    if ! service "$srv" restart; then
-        echo_error "Service '$srv' cannot restarted"
-        return 1
-    fi
-
-    return 0
-}
-
-# End vps-init/src/include/02_base_system_04_service.sh
-
-# Start vps-init/src/include/02_base_system_05_net.sh
-
-# shellcheck disable=SC2329
-function get_hostname() {
-    local hst=""
-    if ! hst="$(uname -n)"; then
-        hst="host"
-    fi
-
-    echo -n "$hst"
-
-    return 0
-}
-
-# End vps-init/src/include/02_base_system_05_net.sh
-
-# Start vps-init/src/include/03_base_type_01_str_01_generate.sh
+# Start vps-init/src/include/02_base_type_02_str_01_generate.sh
 
 # shellcheck disable=SC2329
 function rand_str_n() {
@@ -916,9 +360,9 @@ function rand_str_n() {
 	fi
 }
 
-# End vps-init/src/include/03_base_type_01_str_01_generate.sh
+# End vps-init/src/include/02_base_type_02_str_01_generate.sh
 
-# Start vps-init/src/include/03_base_type_01_str_02_escape.sh
+# Start vps-init/src/include/02_base_type_02_str_02_escape.sh
 
 # shellcheck disable=SC2329
 function escape_regexp_str() {
@@ -940,9 +384,9 @@ function escape_new_line() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_type_01_str_02_escape.sh
+# End vps-init/src/include/02_base_type_02_str_02_escape.sh
 
-# Start vps-init/src/include/03_base_type_01_str_03_num.sh
+# Start vps-init/src/include/02_base_type_02_str_03_num.sh
 
 # shellcheck disable=SC2329
 function num_great_than() {
@@ -1034,9 +478,9 @@ function is_number_positive_or_zero() {
     return $?
 }
 
-# End vps-init/src/include/03_base_type_01_str_03_num.sh
+# End vps-init/src/include/02_base_type_02_str_03_num.sh
 
-# Start vps-init/src/include/03_base_type_01_str_04_trim.sh
+# Start vps-init/src/include/02_base_type_02_str_04_trim.sh
 
 # shellcheck disable=SC2034
 export CONST_STR_TRIM_LEFT="__left__"
@@ -1194,9 +638,9 @@ function trim_string_wrapper() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_type_01_str_04_trim.sh
+# End vps-init/src/include/02_base_type_02_str_04_trim.sh
 
-# Start vps-init/src/include/03_base_type_01_str_05_split.sh
+# Start vps-init/src/include/02_base_type_02_str_05_split.sh
 
 # shellcheck disable=SC2329
 function split_by() {
@@ -1291,9 +735,9 @@ function split_by_new_line() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_type_01_str_05_split.sh
+# End vps-init/src/include/02_base_type_02_str_05_split.sh
 
-# Start vps-init/src/include/03_base_type_01_str_06_join.sh
+# Start vps-init/src/include/02_base_type_02_str_06_join.sh
 
 # shellcheck disable=SC2329
 function append_str_with_separator() {
@@ -1341,9 +785,9 @@ function join_args_with_separator() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_type_01_str_06_join.sh
+# End vps-init/src/include/02_base_type_02_str_06_join.sh
 
-# Start vps-init/src/include/03_base_type_01_str_07_diff.sh
+# Start vps-init/src/include/02_base_type_02_str_07_diff.sh
 
 export CONST_OUT_DIFF_OR_HAS_DIFF="true"
 export CONST_DIFF_ADD_ARGS=("--color=always")
@@ -1475,9 +919,9 @@ function files_has_not_diff() {
     return "$ret_diff"
 }
 
-# End vps-init/src/include/03_base_type_01_str_07_diff.sh
+# End vps-init/src/include/02_base_type_02_str_07_diff.sh
 
-# Start vps-init/src/include/03_base_type_01_str_08_password.sh
+# Start vps-init/src/include/02_base_type_02_str_08_password.sh
 
 # shellcheck disable=SC2034
 export CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL="__should_contains_spec_symbols__"
@@ -1569,9 +1013,9 @@ function check_valid_password() {
     return 0
 }
 
-# End vps-init/src/include/03_base_type_01_str_08_password.sh
+# End vps-init/src/include/02_base_type_02_str_08_password.sh
 
-# Start vps-init/src/include/03_base_type_02_base_arrays.sh
+# Start vps-init/src/include/02_base_type_03_base_arrays.sh
 
 # shellcheck disable=SC2329
 function __get_array_type_str() { 
@@ -1648,9 +1092,9 @@ function __is_array_dict_has_len() {
     return $?
 }
 
-# End vps-init/src/include/03_base_type_02_base_arrays.sh
+# End vps-init/src/include/02_base_type_03_base_arrays.sh
 
-# Start vps-init/src/include/03_base_type_03_arrays.sh
+# Start vps-init/src/include/02_base_type_04_arrays.sh
 
 # shellcheck disable=SC2329
 function is_array_has_len() {
@@ -1743,9 +1187,9 @@ function is_args_has_val() {
     return 1
 }
 
-# End vps-init/src/include/03_base_type_03_arrays.sh
+# End vps-init/src/include/02_base_type_04_arrays.sh
 
-# Start vps-init/src/include/03_base_type_04_dict.sh
+# Start vps-init/src/include/02_base_type_05_dict.sh
 
 # shellcheck disable=SC2329
 function is_dict_has_len() {
@@ -1783,9 +1227,211 @@ function is_dict_has_key() {
     return 1
 }
 
-# End vps-init/src/include/03_base_type_04_dict.sh
+# End vps-init/src/include/02_base_type_05_dict.sh
 
-# Start vps-init/src/include/04_base_input.sh
+# Start vps-init/src/include/03_base_system_01_bash_01_base.sh
+
+# shellcheck disable=SC2329
+function trap_all() {
+    local fn="${1:-}"
+    
+    if [ -z "$fn" ]; then
+        return 0
+    fi
+
+    if ! is_function_declared "$fn"; then
+        echo_error "Function '$fn' is not declared for trap"
+    fi
+
+    # shellcheck disable=SC2086
+    trap $fn EXIT
+    # shellcheck disable=SC2086
+    trap $fn SIGINT
+    # shellcheck disable=SC2086
+    trap $fn SIGTERM
+
+    echo_debug "Set trap function '$fn' for EXIT SIGINT SIGTERM"
+}
+
+# shellcheck disable=SC2329
+function get_env_value_or_default() {
+    local var_name="$1"
+    local default_val="${2-}"
+
+    if ! [[ -v "$var_name" ]]; then
+        echo -n "$default_val"
+        return 0
+    fi
+
+    echo -n "${!var_name}"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_envs_dict() {
+    local var_name="$1"
+    
+    local env_out=""
+    if ! env_out="$(env)"; then
+        echo_error "Cannot get current envs"
+        return 1
+    fi
+
+    local -a envs_strings=()
+
+    if ! split_by_new_line "envs_strings" "$env_out"; then
+        echo_error "Cannot split env out by new line"
+        return 1
+    fi
+
+    local -n get_envs_map_target="$var_name"
+
+    local indx="-1"
+    for one_env_str in "${envs_strings[@]}"; do
+        ((indx++))
+
+        if [ -z "$one_env_str" ]; then
+            continue
+        fi
+
+        local -a key_val=()
+        if ! split_by_eq "key_val" "$one_env_str"; then
+            echo_error "Cannot split one env str $indx by '='"
+            return 1
+        fi
+
+        if is_array_has_len "key_val" "1"; then
+            echo_warn "One env str $indx has not val. Skip"
+            continue
+        fi
+
+        local name="${key_val[0]}"
+        local val=""
+
+        local kv_indx="-1"
+        for vv in "${key_val[@]}"; do
+            ((kv_indx++))
+            if  num_eq "$kv_indx" "0"; then
+                continue
+            fi
+            val="$(append_str_with_separator "=" "$val" "$vv")"
+        done
+
+        # shellcheck disable=SC2034
+        get_envs_map_target["$name"]="$val"
+    done
+
+    return 0
+}
+
+# End vps-init/src/include/03_base_system_01_bash_01_base.sh
+
+# Start vps-init/src/include/03_base_system_01_bash_02_shebang.sh
+
+# Use should only sh support only function here
+# because this file can be imported standalone
+
+# shellcheck disable=SC2034
+export CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL="__re_ren_with_new_shebang__"
+
+# shellcheck disable=SC2329
+get_shebang_header() {
+    # bash not correct handle shebang and set 
+    # when write file! 
+    printf "#"
+    printf '!/usr/bin/env bash\n\n'
+    printf 'se'
+    printf 't -Eeuo pipefail\n\n'
+    return 0
+}
+
+# shellcheck disable=SC2329
+write_shebang_header() {
+    get_shebang_header > "$1"
+}
+
+# shellcheck disable=SC2329
+rerun_script_with_new_shebang() {
+    if [ "${SCRIPT_RAN_WITH_NEW_SHEBANG:-}" = "$CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL" ]; then
+        return 255
+    fi
+
+    __echo_red_shebang(){
+        printf "\033[1;31m%s\033[0m\n" "${1:-}" >&2
+    }
+
+    __script_path_shebang="${1:-}"
+
+    if [ -z "$__script_path_shebang" ]; then
+        __echo_red_shebang "Script path is empty"
+        return 1
+    fi
+
+    if [ ! -s "$__script_path_shebang" ]; then
+        __echo_red_shebang "Script '$__script_path_shebang' not found or empty"
+        return 1
+    fi
+
+    shift
+
+    if ! __pwd_shebang_script="$(pwd)"; then
+        __echo_red_shebang "Cannot run pwd"
+        return 1
+    fi
+
+    export SCRIPT_RAN_WITH_NEW_SHEBANG_FILE=""
+    if ! SCRIPT_RAN_WITH_NEW_SHEBANG_FILE="$(mktemp -p "$__pwd_shebang_script" "tmp-sync.sh.XXXXXX")"; then
+        __echo_red_shebang "Cannot create tempt file for new shebang replace"
+        return 1
+    fi
+
+    if ! chmod 755 "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"; then
+        __echo_red_shebang "Cannot chmod 755 '$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE'"
+        return 1
+    fi
+
+    __cleanup_shebang_run_tmp_file() {
+        __script_file_shebang_rm="${SCRIPT_RAN_WITH_NEW_SHEBANG_FILE:-}"
+        
+        if [ -z "$__script_file_shebang_rm" ]; then
+            return 0
+        fi
+
+        if [ ! -f "$__script_file_shebang_rm" ]; then
+            return 0
+        fi
+
+        if ! rm -f "$__script_file_shebang_rm"; then
+            __echo_red_shebang "Cannot remove temp script file '$__script_file_shebang_rm'"
+        fi
+    }
+
+    trap __cleanup_shebang_run_tmp_file EXIT
+
+    write_shebang_header "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"
+    if ! cat "$__script_path_shebang" >> "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE"; then
+        __echo_red_shebang "Cannot write script content to '$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE'"
+        return 1
+    fi
+
+    export SCRIPT_ORIGINAL_PATH="$__script_path_shebang"
+    export SCRIPT_RAN_WITH_NEW_SHEBANG="$CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL"
+    
+    __ret_code="0"
+    if bash "$SCRIPT_RAN_WITH_NEW_SHEBANG_FILE" "$@"; then
+        true
+    else
+        __ret_code="$?"
+    fi
+    
+    __cleanup_shebang_run_tmp_file
+
+    exit "$__ret_code"
+}
+
+# End vps-init/src/include/03_base_system_01_bash_02_shebang.sh
+
+# Start vps-init/src/include/03_base_system_02_input.sh
 
 # shellcheck disable=SC2034
 export CONST_NOT_ASK_VAL="__not_ask__"
@@ -1988,7 +1634,598 @@ function ask_user_raw() {
     return 0
 }
 
-# End vps-init/src/include/04_base_input.sh
+# End vps-init/src/include/03_base_system_02_input.sh
+
+# Start vps-init/src/include/03_base_system_03_fs.sh
+
+# shellcheck disable=SC2329
+function delete_file() {
+    if ! rm "$1"; then
+        echo_error "$1 not deleted!"
+        return 1
+    fi
+
+    echo_info "$1 deleted"
+}
+
+# shellcheck disable=SC2329
+function temp_file_with_content() {
+    local content="${1:-}"
+
+    local content_tmp_file=""
+    if ! content_tmp_file="$(mktemp)"; then
+        echo_error "Cannot create temp file"
+        return 1
+    fi
+
+    if [ -z "$content_tmp_file" ]; then
+        echo_error "Cannot create temp file"
+        return 1
+    fi
+
+    echo -n "$content" > "$content_tmp_file"
+
+    echo -n "$content_tmp_file"
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function replace_file() {
+    local src="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local remove_src="${4:-true}"
+    local not_ask="${5:-false}"
+
+    local ret_diff="0"
+
+    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
+        ret_diff="0"
+    else
+        ret_diff="$?"
+    fi
+
+    if [[ "$ret_diff" == "255" ]]; then
+        echo_error "Internal diff error"
+        return 1
+    fi
+
+    if [[ "$ret_diff" == "0" ]]; then
+        echo_info "No diff. Skip"
+        return 0
+    fi
+    
+    # prevent to break output
+    sleep 1
+
+    if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
+        if [[ "$remove_src" == "true" ]]; then
+            echo_info "$title delete source $src"
+            if ! rm "$src"; then
+                echo_warn "$title source file $src not deleted!"
+            fi
+        fi
+        echo_error "Disallow replace $dest"
+        return 1
+    fi
+
+    if ! cp "$src" "$dest"; then
+        echo_error "$title not replaced. Source $src not deleted"
+        return 1
+    fi
+
+    if [[ "$remove_src" == "true" ]]; then
+        echo_info "$title delete source $src"
+        if ! rm "$src"; then
+            echo_warn "$title source file $src not deleted!"
+            return 0
+        fi
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function sync_file_content() {
+    local content="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local not_ask="${4:-false}"
+
+    if [ -z "$dest" ]; then
+        echo_error "File for sync not passed"
+        return 1
+    fi
+
+    local temp_file=""
+
+    if ! temp_file="$(temp_file_with_content "$content")"; then
+        echo_error "Cannot create temp file for content"
+        return 1
+    fi
+
+    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
+        echo_error "Cannot sync file '$dest'"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function check_file_is_not_empty() {
+    local val="$1"
+
+    local real=""
+
+    if ! real="$(realpath "$val")"; then
+        echo_error "Cannot extract real path for '$val'"
+        return 1
+    fi
+
+    if [ ! -f "$real" ]; then
+        echo_error "'$val' is not file!"
+        return 1
+    fi
+
+    if [ ! -s "$real" ]; then
+        echo_error "'$val' is empty file!"
+        return 1
+    fi
+
+    echo -n "$real"
+    return 0
+}
+
+# End vps-init/src/include/03_base_system_03_fs.sh
+
+# Start vps-init/src/include/03_base_system_04_pkg.sh
+
+# shellcheck disable=SC2034
+export SYS_PACKAGES_ENGINE_APT="apt"
+# shellcheck disable=SC2034
+export SYS_PACKAGES_ENGINE_APK="apk"
+
+if [ -z "${SYS_PACKAGES_ENGINE:-}" ]; then
+    export SYS_PACKAGES_ENGINE="$SYS_PACKAGES_ENGINE_APT"
+fi
+
+# shellcheck disable=SC2329
+function get_package_manager() {
+    echo -n "$SYS_PACKAGES_ENGINE"
+}
+
+# shellcheck disable=SC2329
+function apt_update() {
+    if ! apt update; then 
+        echo_error "Cannot run apt update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_upgrade() {
+    if ! apt upgrade -y; then 
+        echo_error "Cannot run apt upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_install() {
+    if ! apt install -y "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apt_search() {
+    if dpkg-query -s "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apt_remove() {
+    if ! apt purge -y --auto-remove "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_upgrade() {
+    if ! apk upgrade; then 
+        echo_error "Cannot run apk upgrade!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_update() {
+    if ! apk update; then 
+        echo_error "Cannot run apk update!"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_install() {
+    if ! apk add --no-cache "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function apk_search() {
+    if apk info -e "$1" &> /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function apk_remove() {
+    if ! apk del "$@"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_package_cmd() {
+    local cmd_name="$1"
+    case "$SYS_PACKAGES_ENGINE" in
+        "$SYS_PACKAGES_ENGINE_APT")
+            true
+        ;;
+
+        "$SYS_PACKAGES_ENGINE_APK")
+            true
+        ;;
+
+        *)
+            echo_error "SYS_PACKAGES_ENGINE '${SYS_PACKAGES_ENGINE}' incorrect"
+            return 1
+        ;;
+    esac
+
+    local res="${SYS_PACKAGES_ENGINE}_${cmd_name}"
+
+    if ! is_function_declared "$res"; then
+        echo_error "Internal error: '$res' func not declared!"
+        return 1
+    fi
+
+    echo -n "$res"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function upgrade_all_packages() {
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local upgrade_fun=""
+    if ! upgrade_fun="$(get_package_cmd upgrade)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then
+        echo_error "Cannot run update"
+        return 1
+    fi
+
+    if ! "$upgrade_fun"; then
+        echo_error "Cannot run apt upgrade"
+        return 1
+    fi
+}
+
+# shellcheck disable=SC2329
+function install_packages() {
+    echo_info "Install packages $* ..."
+
+    local update_fun=""
+    if ! update_fun="$(get_package_cmd update)"; then
+        return 1
+    fi
+
+    local install_fun=""
+    if ! install_fun="$(get_package_cmd install)"; then
+        return 1
+    fi
+
+    if ! "$update_fun"; then 
+        echo_error "Cannot run update indexes!"
+        return 1
+    fi
+
+    if ! "$install_fun" "$@"; then
+        echo_error "Cannot run install packages!"
+        return 1
+    fi
+
+    echo_info "Packages $* installed!"
+}
+
+# shellcheck disable=SC2329
+function check_packages_installed() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local all="true"
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if ! "$search_fun" "$name"; then
+            echo_warn "$name not installed..."
+            all="false"
+        fi
+        shift
+    done
+
+    if [[ "$all" == "false" ]]; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# shellcheck disable=SC2329
+function remove_packages() {
+    local search_fun=""
+    if ! search_fun="$(get_package_cmd search)"; then
+        return 1
+    fi
+
+    local remove_fun=""
+    if ! remove_fun="$(get_package_cmd remove)"; then
+        return 1
+    fi
+
+    local -a for_remove=()
+
+    while [[ $# -gt 0 ]]; do
+        local name="$1"
+        if "$search_fun" "$name"; then
+            for_remove+=("$name")
+        fi
+        shift
+    done
+
+    if is_array_empty "for_remove"; then
+        echo_info "All passed packages already removed"
+        return 0
+    fi
+
+    echo_info "Remove packages ${for_remove[*]}"
+    
+    if ! "$remove_fun" "${for_remove[@]}"; then
+        echo_error "Some packages not removed!"
+        return 1
+    fi
+
+    return 0
+}
+
+# End vps-init/src/include/03_base_system_04_pkg.sh
+
+# Start vps-init/src/include/03_base_system_05_service.sh
+
+# shellcheck disable=SC2034
+export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+# shellcheck disable=SC2034
+export CONST_SYS_SERVICE_ENGINE_INITD="service"
+
+declare -A _SYS_SERVICE_ENGINES_MAP=()
+_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
+_SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_INITD"]="true"
+
+if [ -z "${SYS_SERVICE_ENGINE:-}" ]; then
+    export SYS_SERVICE_ENGINE="$CONST_SYS_SERVICE_ENGINE_SYSTEMD"
+fi
+
+# shellcheck disable=SC2329
+function get_sys_service_engine() {
+    if [[ -v _SYS_SERVICE_ENGINES_MAP["$SYS_SERVICE_ENGINE"] ]]; then
+        echo -n "$SYS_SERVICE_ENGINE"
+        return 0
+    fi
+
+    echo_error "SYS_SERVICE_ENGINE '${SYS_SERVICE_ENGINE}' incorrect"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function systemd_disable_all() {
+    local srv="$1"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service to disable not passed"
+        return 1
+    fi
+
+    if ! systemctl is-active "$srv"; then
+        return 0
+    fi
+
+    echo_info "systemd service $srv is active. Disable..."
+
+    if ! systemctl disable --now "$srv"; then
+        echo_error "Cannot disable $srv"
+        return 1
+    fi
+
+    if ! systemctl stop "$srv"; then
+        echo_error "Cannot stop $srv"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function service_disable_all() {
+    local srv="$1"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service to disable not passed"
+        return 1
+    fi
+
+    if ! service "$srv" disable; then
+        echo_error "Cannot disable $srv"
+        return 1
+    fi
+
+    if ! service "$srv" stop; then
+        echo_error "Cannot stop $srv"
+        return 1
+    fi
+    return 0
+}
+
+# shellcheck disable=SC2329
+function disable_and_stop_services() {
+    if ! service_engine="$(get_sys_service_engine)"; then
+        echo_error "Cannot resolve system service engine"
+        return 1
+    fi
+
+    disable_fun="${service_engine}_disable_all"
+
+    if ! declare -F "$disable_fun" > /dev/null; then
+        echo_error "Internal error: '$disable_fun' func not declared!"
+        return 1
+    fi
+
+    local -a not_disabled=()
+
+    for srv in "$@"; do
+        if ! "$disable_fun" "$srv"; then
+            not_disabled+=("$srv")
+        fi
+    done
+
+    if [[ "${#not_disabled[@]}" == 0 ]]; then
+        return 0
+    fi
+
+    echo_error "Next services not disabled: ${not_disabled[*]}"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function systemd_enable_service() {
+    local srv="${1:-}"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service for enable not passed"
+        return 1
+    fi
+
+
+    if ! systemctl enable --now "$srv"; then
+        echo_error "Service '$srv' cannot enable"
+        return 1
+    fi
+}
+
+
+# shellcheck disable=SC2329
+function service_enable_service() {
+    local srv="${1:-}"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service for enable not passed"
+        return 1
+    fi
+
+
+    if ! service "$srv" enable; then
+        echo_error "Service '$srv' cannot enable"
+        return 1
+    fi
+
+    if ! service "$srv" restart; then
+        echo_error "Service '$srv' cannot restarted"
+        return 1
+    fi
+
+    return 0
+}
+
+# End vps-init/src/include/03_base_system_05_service.sh
+
+# Start vps-init/src/include/03_base_system_06_net.sh
+
+# shellcheck disable=SC2329
+function get_hostname() {
+    local hst=""
+    if ! hst="$(uname -n)"; then
+        hst="host"
+    fi
+
+    echo -n "$hst"
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function check_is_number_port() {
+    local port="$1"
+
+    if ! port="$(check_is_number "$port" "$CONST_ARG_PASSED")"; then
+        echo_error "Port is not number"
+        return 1
+    fi
+
+    if [ "$port" -gt "0" ] && [ "$port" -le "65535" ]; then
+        echo -n "$port"
+        return 0
+    fi
+
+    echo_error "Port '$port' should be >= 1 and <=  65535"
+    return 1
+}
+
+# shellcheck disable=SC2329
+function check_is_ipv4() {
+    local val="$1"
+    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+
+    if [[ "$val" =~ $regexp ]]; then
+        echo -n "$val"
+        return 0
+    fi 
+
+    echo_error "Incorrect IPv4 '$val'"
+    return 1
+}
+
+# End vps-init/src/include/03_base_system_06_net.sh
 
 # Start vps-init/src/include/04_base_phases.sh
 
@@ -2426,31 +2663,6 @@ function validate_arg_func_declared_optional() {
 # Start vps-init/src/include/06_base_validate_04_fs.sh
 
 # shellcheck disable=SC2329
-function check_file_is_not_empty() {
-    local val="$1"
-
-    local real=""
-
-    if ! real="$(realpath "$val")"; then
-        echo_error "Cannot extract real path for '$val'"
-        return 1
-    fi
-
-    if [ ! -f "$real" ]; then
-        echo_error "'$val' is not file!"
-        return 1
-    fi
-
-    if [ ! -s "$real" ]; then
-        echo_error "'$val' is empty file!"
-        return 1
-    fi
-
-    echo -n "$real"
-    return 0
-}
-
-# shellcheck disable=SC2329
 function validate_arg_not_empty_file() {
     local val="$1"
     local passed="$2"
@@ -2473,24 +2685,6 @@ function validate_arg_not_empty_file_optional() {
 # Start vps-init/src/include/06_base_validate_05_net.sh
 
 # shellcheck disable=SC2329
-function check_is_number_port() {
-    local port="$1"
-
-    if ! port="$(check_is_number "$port" "$CONST_ARG_PASSED")"; then
-        echo_error "Port is not number"
-        return 1
-    fi
-
-    if [ "$port" -gt "0" ] && [ "$port" -le "65535" ]; then
-        echo -n "$port"
-        return 0
-    fi
-
-    echo_error "Port '$port' should be >= 1 and <=  65535"
-    return 1
-}
-
-# shellcheck disable=SC2329
 function validate_arg_port() {
     local val="$1"
     local passed="$2"
@@ -2506,20 +2700,6 @@ function validate_arg_port_optional() {
 
     call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_number_port" "$val" "$passed"
     return $?
-}
-
-# shellcheck disable=SC2329
-function check_is_ipv4() {
-    local val="$1"
-    local regexp='^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-
-    if [[ "$val" =~ $regexp ]]; then
-        echo -n "$val"
-        return 0
-    fi 
-
-    echo_error "Incorrect IPv4 '$val'"
-    return 1
 }
 
 # shellcheck disable=SC2329
@@ -3039,125 +3219,6 @@ function screen_replace_run_with_screen() {
 }
 
 # End vps-init/src/include/08_base_screen.sh
-
-# Start vps-init/src/include/10_base_fs.sh
-
-# shellcheck disable=SC2329
-function delete_file() {
-    if ! rm "$1"; then
-        echo_error "$1 not deleted!"
-        return 1
-    fi
-
-    echo_info "$1 deleted"
-}
-
-# shellcheck disable=SC2329
-function temp_file_with_content() {
-    local content="${1:-}"
-
-    local content_tmp_file=""
-    if ! content_tmp_file="$(mktemp)"; then
-        echo_error "Cannot create temp file"
-        return 1
-    fi
-
-    if [ -z "$content_tmp_file" ]; then
-        echo_error "Cannot create temp file"
-        return 1
-    fi
-
-    echo -n "$content" > "$content_tmp_file"
-
-    echo -n "$content_tmp_file"
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function replace_file() {
-    local src="$1"
-    local dest="$2"
-    local title="${3-Unknown}"
-    local remove_src="${4:-true}"
-    local not_ask="${5:-false}"
-
-    local ret_diff="0"
-
-    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
-        ret_diff="0"
-    else
-        ret_diff="$?"
-    fi
-
-    if [[ "$ret_diff" == "255" ]]; then
-        echo_error "Internal diff error"
-        return 1
-    fi
-
-    if [[ "$ret_diff" == "0" ]]; then
-        echo_info "No diff. Skip"
-        return 0
-    fi
-    
-    # prevent to break output
-    sleep 1
-
-    if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
-        if [[ "$remove_src" == "true" ]]; then
-            echo_info "$title delete source $src"
-            if ! rm "$src"; then
-                echo_warn "$title source file $src not deleted!"
-            fi
-        fi
-        echo_error "Disallow replace $dest"
-        return 1
-    fi
-
-    if ! cp "$src" "$dest"; then
-        echo_error "$title not replaced. Source $src not deleted"
-        return 1
-    fi
-
-    if [[ "$remove_src" == "true" ]]; then
-        echo_info "$title delete source $src"
-        if ! rm "$src"; then
-            echo_warn "$title source file $src not deleted!"
-            return 0
-        fi
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function sync_file_content() {
-    local content="$1"
-    local dest="$2"
-    local title="${3-Unknown}"
-    local not_ask="${4:-false}"
-
-    if [ -z "$dest" ]; then
-        echo_error "File for sync not passed"
-        return 1
-    fi
-
-    local temp_file=""
-
-    if ! temp_file="$(temp_file_with_content "$content")"; then
-        echo_error "Cannot create temp file for content"
-        return 1
-    fi
-
-    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
-        echo_error "Cannot sync file '$dest'"
-        return 1
-    fi
-
-    return 0
-}
-
-# End vps-init/src/include/10_base_fs.sh
 
 # Start vps-init/src/include/11_base_jq.sh
 
