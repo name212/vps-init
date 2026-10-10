@@ -168,6 +168,22 @@ function _run_dicts_key_tests() {
             __PRIVATE_TEST_DICTS_RES="false"
         fi
     done
+
+    for k in "${keys[@]}"; do
+        local ret_code="0"
+        if is_dict_has_key "keys" "$k"; then
+            echo_red "FAIL: run is_dict_has_key on 'keys' array returns has key '$k', but should fail with internal error"
+            __PRIVATE_TEST_DICTS_RES="false"
+        else
+            ret_code="$?"
+            if [[ "$ret_code" == "255" ]]; then
+                echo_green "OK: run is_dict_has_key on 'keys' array has key '$k', returns internal error"
+            else
+                 echo_red "FAIL: run is_dict_has_key on 'keys' array returns has not key '$k', but should fail with internal error"
+                __PRIVATE_TEST_DICTS_RES="false"
+            fi
+        fi
+    done
 }
 
 _run_dicts_len_tests
