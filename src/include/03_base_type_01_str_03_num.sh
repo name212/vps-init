@@ -39,6 +39,15 @@ function num_less_eq() {
 }
 
 # shellcheck disable=SC2329
+function num_eq() {
+	if [ "$1" -eq "$2" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# shellcheck disable=SC2329
 function check_is_number() {
     local val="$1"
 

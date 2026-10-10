@@ -905,7 +905,7 @@ function get_hostname() {
 
 # End vps-init/src/include/02_base_system_05_net.sh
 
-# Start vps-init/src/include/03_base_str_01_generate.sh
+# Start vps-init/src/include/03_base_type_01_str_01_generate.sh
 
 # shellcheck disable=SC2329
 function rand_str_n() {
@@ -916,9 +916,9 @@ function rand_str_n() {
 	fi
 }
 
-# End vps-init/src/include/03_base_str_01_generate.sh
+# End vps-init/src/include/03_base_type_01_str_01_generate.sh
 
-# Start vps-init/src/include/03_base_str_02_escape.sh
+# Start vps-init/src/include/03_base_type_01_str_02_escape.sh
 
 # shellcheck disable=SC2329
 function escape_regexp_str() {
@@ -940,9 +940,9 @@ function escape_new_line() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_str_02_escape.sh
+# End vps-init/src/include/03_base_type_01_str_02_escape.sh
 
-# Start vps-init/src/include/03_base_str_03_num.sh
+# Start vps-init/src/include/03_base_type_01_str_03_num.sh
 
 # shellcheck disable=SC2329
 function num_great_than() {
@@ -974,6 +974,15 @@ function num_great_eq() {
 # shellcheck disable=SC2329
 function num_less_eq() {
 	if [ "$1" -le "$2" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# shellcheck disable=SC2329
+function num_eq() {
+	if [ "$1" -eq "$2" ]; then
 		return 0
 	fi
 
@@ -1025,9 +1034,9 @@ function is_number_positive_or_zero() {
     return $?
 }
 
-# End vps-init/src/include/03_base_str_03_num.sh
+# End vps-init/src/include/03_base_type_01_str_03_num.sh
 
-# Start vps-init/src/include/03_base_str_04_trim.sh
+# Start vps-init/src/include/03_base_type_01_str_04_trim.sh
 
 # shellcheck disable=SC2034
 export CONST_STR_TRIM_LEFT="__left__"
@@ -1185,9 +1194,9 @@ function trim_string_wrapper() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_str_04_trim.sh
+# End vps-init/src/include/03_base_type_01_str_04_trim.sh
 
-# Start vps-init/src/include/03_base_str_05_split.sh
+# Start vps-init/src/include/03_base_type_01_str_05_split.sh
 
 # shellcheck disable=SC2329
 function split_by() {
@@ -1282,9 +1291,9 @@ function split_by_new_line() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_str_05_split.sh
+# End vps-init/src/include/03_base_type_01_str_05_split.sh
 
-# Start vps-init/src/include/03_base_str_06_join.sh
+# Start vps-init/src/include/03_base_type_01_str_06_join.sh
 
 # shellcheck disable=SC2329
 function append_str_with_separator() {
@@ -1332,9 +1341,9 @@ function join_args_with_separator() {
 	return 0
 }
 
-# End vps-init/src/include/03_base_str_06_join.sh
+# End vps-init/src/include/03_base_type_01_str_06_join.sh
 
-# Start vps-init/src/include/03_base_str_07_diff.sh
+# Start vps-init/src/include/03_base_type_01_str_07_diff.sh
 
 export CONST_OUT_DIFF_OR_HAS_DIFF="true"
 export CONST_DIFF_ADD_ARGS=("--color=always")
@@ -1466,9 +1475,9 @@ function files_has_not_diff() {
     return "$ret_diff"
 }
 
-# End vps-init/src/include/03_base_str_07_diff.sh
+# End vps-init/src/include/03_base_type_01_str_07_diff.sh
 
-# Start vps-init/src/include/03_base_str_08_password.sh
+# Start vps-init/src/include/03_base_type_01_str_08_password.sh
 
 # shellcheck disable=SC2034
 export CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL="__should_contains_spec_symbols__"
@@ -1560,7 +1569,221 @@ function check_valid_password() {
     return 0
 }
 
-# End vps-init/src/include/03_base_str_08_password.sh
+# End vps-init/src/include/03_base_type_01_str_08_password.sh
+
+# Start vps-init/src/include/03_base_type_02_base_arrays.sh
+
+# shellcheck disable=SC2329
+function __get_array_type_str() { 
+    local check_fun="$1"
+
+    local type_str=""
+
+    case "$check_fun" in
+
+    "is_array_or_dict_var")
+        type_str="array or dict"
+    ;;
+    
+    "is_array_var")
+        type_str="array"
+    ;;
+
+    "is_dict_var")
+        type_str="dict"
+    ;;
+
+    *)
+        type_str="\"array type not resolved for function '$check_fun'\""
+    ;;
+
+    esac
+
+    echo -n "$type_str"
+} 
+
+# shellcheck disable=SC2329
+function __get_array_dict_len() { 
+    local check_type_fun="$1"
+    local var_name="$2"
+
+    if [ -z "$var_name" ]; then
+        echo_error "var name not passed for get len"
+        return 1
+    fi
+
+    if ! "$check_type_fun" "$var_name"; then
+        # shellcheck disable=SC2155
+        local type_str="$(__get_array_type_str "$check_type_fun")"
+        echo_error "Variable '$var_name' is not $type_str for get len"
+
+        return 1
+    fi
+
+    local -n __get_array_dict_len_target="$var_name"
+
+    echo -n "${#__get_array_dict_len_target[@]}"
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function __is_array_dict_has_len() { 
+    local check_type_fun="$1"
+    local should_len="$2"
+    local var_name="$3"
+
+    if ! check_is_number "$should_len" > /dev/null; then
+        echo_error "should len '$should_len' is not number"
+        return 255
+    fi
+
+
+    local len_var=""
+    if ! len_var="$(__get_array_dict_len "$check_type_fun" "$var_name")"; then
+        return 255
+    fi
+
+    num_eq "$len_var" "$should_len"
+    return $?
+}
+
+# End vps-init/src/include/03_base_type_02_base_arrays.sh
+
+# Start vps-init/src/include/03_base_type_03_arrays.sh
+
+# shellcheck disable=SC2329
+function is_array_has_len() {
+    local var_name="$1"
+    local should_len="$2"
+
+    __is_array_dict_has_len "is_array_or_dict_var" "$should_len" "$var_name"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_strict_array_has_len() {
+    local var_name="$1"
+    local should_len="$2"
+
+    __is_array_dict_has_len "is_array_var" "$should_len" "$var_name"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_array_empty() {
+    local var_name="$1"
+
+    is_array_has_len "$var_name" "0"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_strict_array_empty() {
+    local var_name="$1"
+
+    is_strict_array_has_len "$var_name" "0"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_array_has_val() {
+    local var_name="$1"
+    local val="$2"
+
+    if ! is_array_var "$var_name"; then
+        echo_error "Variable '$var_name' is not array"
+        return 255
+    fi
+
+    local -n is_array_has_val_arr="$var_name"
+    
+    for ar_val in "${is_array_has_val_arr[@]}"; do
+        if [[ "$arg" == "$ar_val" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_args_has_len() {
+    local should_len="$1"
+    shift
+
+    if ! check_is_number "$should_len"; then
+        echo_error "should len '$should_len' is not number"
+        return 255
+    fi
+
+    local len_args="$#"
+    
+    num_eq "$len_args" "$should_len"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_args_empty() {
+    is_args_has_len "0" "$@"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_args_has_val() {
+    local val="$1"
+    shift
+    
+    for arg in "$@"; do
+        if [[ "$arg" == "$val" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# End vps-init/src/include/03_base_type_03_arrays.sh
+
+# Start vps-init/src/include/03_base_type_04_dict.sh
+
+# shellcheck disable=SC2329
+function is_dict_has_len() {
+    local var_name="$1"
+    local should_len="$2"
+
+    __is_array_dict_has_len "is_dict_var" "$should_len" "$var_name"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_dict_empty() {
+    local var_name="$1"
+
+    is_dict_has_len "$var_name" "0"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_dict_has_key() {
+    local var_name="$1"
+    local key="$2"
+
+    if ! is_dict_var "$var_name"; then
+        echo_error "Variable '$var_name' is not dict"
+        return 255
+    fi
+
+    local -n is_dict_has_key_dict="$var_name"
+
+    if [[ -v is_dict_has_key_dict["$key"] ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# End vps-init/src/include/03_base_type_04_dict.sh
 
 # Start vps-init/src/include/04_base_input.sh
 

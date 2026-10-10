@@ -95,7 +95,7 @@ __test_run_one_password_check "Ab1.a6?a\$9,1@" "Valid with min len after reset" 
 
 
 if [[ "$__PRIVATE_TEST_PASSWORDS_RES" == "true" ]]; then
-    echo_info "Tests check passwords passed"
+    echo_info "PASSED: Tests check passwords"
     exit 0
 fi
 
