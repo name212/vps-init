@@ -37,3 +37,19 @@ function is_dict_has_key() {
 
     return 1
 }
+
+# shellcheck disable=SC2329
+function dict_get_key() {
+    local var_name="$1"
+    local key="$2"
+
+    if ! is_dict_has_key "$var_name" "$key"; then
+        return 1
+    fi
+
+    local -n dict_get_key_dict="$var_name"
+
+    echo -n "${dict_get_key_dict[$key]}"
+
+    return 0
+}
