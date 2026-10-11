@@ -39,7 +39,7 @@ function is_dict_has_key() {
 }
 
 # shellcheck disable=SC2329
-function dict_get_key() {
+function dict_get_val() {
     local var_name="$1"
     local key="$2"
 
