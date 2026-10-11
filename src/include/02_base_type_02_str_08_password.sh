@@ -21,6 +21,13 @@ function check_valid_password_disable_specials() {
 }
 
 # shellcheck disable=SC2329
+function check_valid_password_get_special_symbols() {
+	echo -n '.|,\/?!;]:[*%$^@><#&~'
+    
+    return 0
+}
+
+# shellcheck disable=SC2329
 function check_valid_password_set_min_symbols() {
 	local num="$1"
 
@@ -68,7 +75,8 @@ function check_valid_password() {
     symbols_to_check["0-9"]="numbers"
 
     if [[ "$PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS" == "$CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL" ]]; then
-        local spec_syms='.|,\/?!;]:[*%$^@><#&~'
+        # shellcheck disable=SC2155
+        local spec_syms="$(check_valid_password_get_special_symbols)"
         spec_syms="$(escape_regexp_str "$spec_syms")"
         symbols_to_check["$spec_syms"]="special symbols '$spec_syms'"
     fi
