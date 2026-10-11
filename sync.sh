@@ -1240,15 +1240,15 @@ function dict_get_val() {
     local var_name="$1"
     local key="$2"
 
-    if ! is_dict_has_key "$var_name" "$key"; then
-        return 1
+    local ret_code="0"
+    if is_dict_has_key "$var_name" "$key"; then
+        local -n dict_get_key_dict="$var_name"
+        echo -n "${dict_get_key_dict[$key]}"
+        return 0
+    else
+        ret_code="$?"
+        return "$ret_code"
     fi
-
-    local -n dict_get_key_dict="$var_name"
-
-    echo -n "${dict_get_key_dict[$key]}"
-
-    return 0
 }
 
 # End vps-init/src/include/02_base_type_05_dict.sh
