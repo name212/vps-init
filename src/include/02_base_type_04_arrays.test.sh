@@ -8,6 +8,8 @@ __PRIVATE_ARRAY_TEST_STRICT="__strict_fun__"
 __PRIVATE_ARRAY_TEST_NOT_SHOULD_OK="not should ok"
 __PRIVATE_ARRAY_TEST_EMPTY_TEST_EMPTY="__empty_test_ok__"
 __PRIVATE_ARRAY_TEST_EMPTY_TEST_NOT_EMPTY="__not_empty_test_ok__"
+__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST="__with_dest__"
+__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK="__only_check__"
 
 function _run_arrays_len_test() {
     local array_name="$1"
@@ -177,12 +179,277 @@ function _run_arrays_len_tests() {
     _run_arrays_len_test "not_empty_str" "$__PRIVATE_ARRAY_TEST_NOT_SHOULD_OK" "0"
 }
 
+# shellcheck disable=SC2329
+function _run_arrays_contains_all_with_dest_tests() { 
+     # shellcheck disable=SC2034
+    local test_arr="$1"
+    local vals_arr_name="$2"
+    local only_check="$3"
+
+    shift
+    shift
+    shift
+
+    local -a not_in_array=()
+    for vv in "$@"; do
+        not_in_array+=("$vv")
+    done
+
+    if [[ "$only_check" == "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" ]]; then
+        echo_info "Run 'is_array_check_only_contains_all' on '$test_arr'"
+
+        if is_array_check_only_contains_all "$test_arr" "$vals_arr_name"; then
+            if is_array_empty "not_in_array"; then
+                echo_green "OK: '$test_arr' contains all vals with only check"
+                return 0
+            else
+                echo_error "FAIL: '$test_arr' should contains all vals, but not contains '${not_in_array[*]}' with only check"
+                __PRIVATE_TEST_ARRAYS_RES="false"
+                return 0
+            fi
+        else
+            if ! is_array_empty "not_in_array"; then
+                echo_green "OK: '$test_arr' not contains all vals with only check"
+                return 0
+            else
+                echo_error "FAIL: '$test_arr' should not contains all vals, but contains all with only check"
+                __PRIVATE_TEST_ARRAYS_RES="false"
+                return 0
+            fi
+        fi
+    fi
+
+    # shellcheck disable=SC2034
+    local -a has_not_arr=()
+
+    echo_info "Run 'is_array_contains_all' on '$test_arr'"
+
+    if is_array_contains_all "$test_arr" "$vals_arr_name" "has_not_arr"; then
+        if is_array_empty "not_in_array"; then
+            echo_green "OK: '$test_arr' contains all vals with not have dest"
+            return 0
+        else
+            local -a not_should=()
+            for ii in "${not_in_array[@]}"; do
+                if ! is_array_has_val "has_not_arr" "$ii"; then
+                    not_should+=("$ii")
+                fi
+            done
+
+            if is_array_empty "not_should"; then
+                echo_green "OK: '$test_arr' not contains vals with not have dest"
+                return 0
+            fi
+
+            echo_error "FAIL: '$test_arr' should not contains all vals, but not contains should vals '${not_in_array[*]}' with not have dest"
+            __PRIVATE_TEST_ARRAYS_RES="false"
+            return 0
+        fi
+    else
+        if ! is_array_empty "not_in_array"; then
+            local -a not_should=()
+            for ii in "${not_in_array[@]}"; do
+                if ! is_array_has_val "has_not_arr" "$ii"; then
+                    not_should+=("$ii")
+                fi
+            done
+
+            if is_array_empty "not_should"; then
+                echo_green "OK: '$test_arr' not contains vals '${has_not_arr[*]}' with not have dest"
+                return 0
+            fi
+
+            echo_error "FAIL: '$test_arr' should not contains all vals, but not contains should vals '${not_should[*]}' with not have dest"
+            __PRIVATE_TEST_ARRAYS_RES="false"
+            return 0
+        else
+            echo_error "FAIL: '$test_arr' should not contains all vals, but should contains all with not have dest"
+            __PRIVATE_TEST_ARRAYS_RES="false"
+            return 0
+        fi
+    fi
+}
+
+# shellcheck disable=SC2329
+function _run_arrays_contains_all_via_args_tests() { 
+     # shellcheck disable=SC2034
+    local test_arr="$1"
+    local vals_arr_name="$2"
+    local only_check="$3"
+
+    shift
+    shift
+    shift
+
+    local -a not_in_array=()
+    for vv in "$@"; do
+        not_in_array+=("$vv")
+    done
+
+    local -n arrays_contains_all_via_args_vals="$vals_arr_name"
+    local -a args=()
+    for a_vv in "${arrays_contains_all_via_args_vals[@]}"; do
+        args+=("$a_vv")
+    done
+
+    local -a not_in_array=()
+
+    if [[ "$only_check" == "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" ]]; then
+        if is_array_check_only_contains_all_via_args "$test_arr" "${args[@]}"; then
+            echo_info "Run 'is_array_check_only_contains_all_via_args' on '$test_arr'"
+
+            if is_array_empty "not_in_array"; then
+                echo_green "OK: '$test_arr' contains all vals with only check via args"
+                return 0
+            else
+                echo_error "FAIL: '$test_arr' should contains all vals, but not contains '${not_in_array[*]}' with only check via args"
+                __PRIVATE_TEST_ARRAYS_RES="false"
+                return 0
+            fi
+        else
+            if ! is_array_empty "not_in_array"; then
+                echo_green "OK: '$test_arr' not contains all should vals with only check via args"
+                return 0
+            else
+                echo_error "FAIL: '$test_arr' should not contains all vals, but contains all with only check via args"
+                __PRIVATE_TEST_ARRAYS_RES="false"
+                return 0
+            fi
+        fi
+
+        return 0
+    fi
+
+    # shellcheck disable=SC2034
+    local -a has_not_arr=()
+
+    echo_info "Run 'is_array_contains_all_via_args' on '$test_arr'"
+
+    if is_array_contains_all_via_args "$test_arr" "has_not_arr" "${args[@]}"; then
+        if is_array_empty "not_in_array"; then
+            echo_green "OK: '$test_arr' contains all vals with not have dest check via args"
+            return 0
+        else
+            local -a not_should=()
+            for ii in "${not_in_array[@]}"; do
+                if ! is_array_has_val "has_not_arr" "$ii"; then
+                    not_should+=("$ii")
+                fi
+            done
+
+            if is_array_empty "not_should"; then
+                echo_green "OK: '$test_arr' not contains vals with not have dest check via args"
+                return 0
+            fi
+
+            echo_error "FAIL: '$test_arr' should not contains all vals, but not contains should vals '${not_should[*]}' with not have dest check via args"
+            __PRIVATE_TEST_ARRAYS_RES="false"
+            return 0
+        fi
+    else
+        if ! is_array_empty "not_in_array"; then
+            local -a not_should=()
+            for ii in "${not_in_array[@]}"; do
+                if ! is_array_has_val "has_not_arr" "$ii"; then
+                    not_should+=("$ii")
+                fi
+            done
+
+            if is_array_empty "not_should"; then
+                echo_green "OK: '$test_arr' not contains vals '${has_not_arr[*]}' with not have dest check via args"
+                return 0
+            fi
+
+            echo_error "FAIL: '$test_arr' should not contains all vals, but not contains should vals '${not_should[*]}' with not have dest check via args"
+            __PRIVATE_TEST_ARRAYS_RES="false"
+            return 0
+        else
+            echo_error "FAIL: '$test_arr' should not contains all vals, but should contains all with not have dest check via args"
+            __PRIVATE_TEST_ARRAYS_RES="false"
+            return 0
+        fi
+    fi
+}
+
+function _run_arrays_contains_all_tests() {
+    # shellcheck disable=SC2034
+    local -a empty=()
+    # shellcheck disable=SC2034
+    local -a one_val=("first")
+    # shellcheck disable=SC2034
+    local -a mul_vals=("first" "second" "third val")
+
+    # shellcheck disable=SC2034
+    local -a one_val_should=("first")
+    # shellcheck disable=SC2034
+    local -a mul_val_should_mul=("third val" "first")
+    # shellcheck disable=SC2034
+    local -a mul_val_should_alls=("second" "third val" "first")
+
+    # shellcheck disable=SC2034
+    local -a one_val_not_should=("aaaaa")
+    # shellcheck disable=SC2034
+    local -a not_should_mul=("aaaaa" "bb bbb")
+    # shellcheck disable=SC2034
+    local -a not_should_all=("aaaaa" "bb bbb" "cccc")
+    # shellcheck disable=SC2034
+    local -a not_should_great=("aaaaa" "bb bbb" "cccc" "dddd")
+    # shellcheck disable=SC2034
+    local -a not_should_mixed_with_found=("first" "aaaaa" "third val")
+
+
+    echo_info "Run 'is_array_contains_all' tests"
+
+    _run_arrays_contains_all_with_dest_tests "one_val" "one_val_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST"
+    _run_arrays_contains_all_with_dest_tests "one_val" "one_val_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "one_val_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "one_val_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "mul_val_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "mul_val_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "mul_val_should_alls" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "mul_val_should_alls" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK"
+
+    _run_arrays_contains_all_with_dest_tests "empty" "one_val_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "first" 
+    _run_arrays_contains_all_with_dest_tests "empty" "one_val_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "first"
+
+    _run_arrays_contains_all_with_dest_tests "empty" "mul_val_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "first" "third val"
+    _run_arrays_contains_all_with_dest_tests "empty" "mul_val_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "first" "third val"
+    
+    _run_arrays_contains_all_with_dest_tests "empty" "mul_val_should_alls" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "first" "second" "third val" 
+    _run_arrays_contains_all_with_dest_tests "empty" "mul_val_should_alls" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "first" "second" "third val"
+
+    _run_arrays_contains_all_with_dest_tests "one_val" "mul_val_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "third val"
+    _run_arrays_contains_all_with_dest_tests "one_val" "mul_val_should_alls" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "second" "third val"
+
+    _run_arrays_contains_all_with_dest_tests "one_val" "one_val_not_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "aaaaa"
+    _run_arrays_contains_all_with_dest_tests "one_val" "one_val_not_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "aaaaa"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "one_val_not_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "aaaaa"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "one_val_not_should" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "aaaaa"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "aaaaa" "bb bbb"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_mul" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "aaaaa" "bb bbb"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_all" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "aaaaa" "bb bbb" "cccc"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_all" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "aaaaa" "bb bbb" "cccc"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_great" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "aaaaa" "bb bbb" "cccc" "dddd"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_great" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "aaaaa" "bb bbb" "cccc" "dddd"
+
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_mixed_with_found" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_WITH_DEST" "aaaaa"
+    _run_arrays_contains_all_with_dest_tests "mul_vals" "not_should_mixed_with_found" "$__PRIVATE_ARRAY_TEST_CONTAINS_ALL_ONLY_CHECK" "aaaaa"
+}
+
 _run_arrays_len_tests
+_run_arrays_contains_all_tests
 
 if [[ "$__PRIVATE_TEST_ARRAYS_RES" == "true" ]]; then
-    echo_info "PASSED: dicts tests"
+    echo_info "PASSED: arrays tests"
     exit 0
 fi
 
-echo_error "FAIL: dicts tests"
+echo_error "FAIL: arrays tests"
 exit 1

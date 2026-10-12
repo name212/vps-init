@@ -1151,12 +1151,110 @@ function is_array_has_val() {
     local -n is_array_has_val_arr="$var_name"
     
     for ar_val in "${is_array_has_val_arr[@]}"; do
-        if [[ "$arg" == "$ar_val" ]]; then
+        if [[ "$ar_val" == "$val" ]]; then
             return 0
         fi
     done
 
     return 1
+}
+
+# shellcheck disable=SC2329
+function is_array_contains_all() {
+    # shellcheck disable=SC2034
+    local test_arr_name="$1"
+    local vals_arr_name="$2"
+    local has_not_arr_name="$3"
+
+    if ! is_array_var "$test_arr_name"; then
+        echo_error "Variable '$test_arr_name' is not array"
+        return 255
+    fi
+
+    if ! is_array_var "$vals_arr_name"; then
+        echo_error "Should contains variable '$vals_arr_name' is not array"
+        return 255
+    fi
+
+    if ! is_array_var "$has_not_arr_name"; then
+        echo_error "Has not vars dest variable '$has_not_arr_name' is not array"
+        return 255
+    fi
+
+    if is_array_empty "$vals_arr_name"; then
+        echo_error "Should be vals array '$vals_arr_name' is empty"
+        return 255
+    fi
+
+    local -n is_array_contains_alls_vars_arr="$vals_arr_name"
+    local -n is_array_contains_alls_not_contains_dest="$has_not_arr_name"
+
+    indx="-1"
+    for should_val in "${is_array_contains_alls_vars_arr[@]}"; do
+        if ! is_array_has_val "$test_arr_name" "$should_val"; then
+            ((indx++))
+            # shellcheck disable=SC2034
+            is_array_contains_alls_not_contains_dest["$indx"]="$should_val"
+        fi
+    done
+
+    if [[ "$indx" == "-1" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_array_contains_all_via_args() {
+    # shellcheck disable=SC2034
+    local test_arr_name="$1"
+    local has_not_arr_name="$2"
+
+    shift
+    shift
+
+    local -a is_array_contains_all_via_args_should_vals=()
+    for val in "$@"; do
+        is_array_contains_all_via_args_should_vals+=("$val")
+    done
+
+    is_array_contains_all "$test_arr_name" "is_array_contains_all_via_args_should_vals" "$has_not_arr_name"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function is_array_check_only_contains_all() { 
+    # shellcheck disable=SC2034
+    local test_arr_name="$1"
+    local vals_arr_name="$2"
+
+    # shellcheck disable=SC2034
+    local -a is_array_check_only_contains_all_dest=()
+
+    if is_array_contains_all "$test_arr_name" "$vals_arr_name" "is_array_check_only_contains_all_dest"; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_array_check_only_contains_all_via_args() { 
+    # shellcheck disable=SC2034
+    local test_arr_name="$1"
+    shift
+
+    local -a is_array_check_only_contains_all_via_args_vals=()
+    for val in "$@"; do
+        is_array_check_only_contains_all_via_args_vals+=("$val")
+    done
+
+    # shellcheck disable=SC2034
+    local -a is_array_check_only_contains_all_via_args_dest=()
+
+    is_array_contains_all "$test_arr_name" "is_array_check_only_contains_all_via_args_vals" "is_array_check_only_contains_all_via_args_dest"
+    return $?
 }
 
 # shellcheck disable=SC2329
@@ -1249,6 +1347,71 @@ function dict_get_val() {
         ret_code="$?"
         return "$ret_code"
     fi
+}
+
+# shellcheck disable=SC2329
+function dict_get_diff() {
+    local src_dict_name="$1"
+    local target_dict_name="$2"
+    local diff_dict_name="$3"
+    local diff_deleted_arr_name="$4"
+
+    if ! is_dict_var "src_dict_name"; then
+        echo_error "Source dict name is not dict"
+        return 255
+    fi
+
+    if ! is_dict_var "target_dict_name"; then
+        echo_error "Target dict name is not dict"
+        return 255
+    fi
+
+    if ! is_dict_var "diff_dict_name"; then
+        echo_error "Diff destination dict name is not dict"
+        return 255
+    fi
+
+    if ! is_dict_var "diff_deleted_arr_name"; then
+        echo_error "Diff deleted keys destination dict name is not dict"
+        return 255
+    fi
+
+    local -n get_diff_src_dict="$src_dict_name"
+    local -n get_diff_target_dict="$target_dict_name"
+    local -n get_diff_diff_dict="$diff_dict_name"
+    local -n get_diff_diff_deleted_dict="$diff_deleted_arr_name"
+
+    local has_diff="false"
+
+    for key in "${!get_diff_src_dict[@]}"; do
+        local val="${get_diff_src_dict[$key]}"
+        local target_val=""
+        if ! target_val="$(dict_get_val "$target_dict_name" "$key")"; then
+            get_diff_diff_dict["$key"]="$val"
+            has_diff="true"
+            continue
+        fi
+
+        if [[ "$val" != "$target_val" ]]; then
+            # shellcheck disable=SC2034
+            get_diff_diff_dict["$key"]="$val"
+            has_diff="true"
+        fi
+    done
+
+    for key_t in "${!get_diff_target_dict[@]}"; do
+        if ! is_dict_has_key "$src_dict_name" "$key_t"; then
+            # shellcheck disable=SC2034
+            get_diff_diff_deleted_dict["$key"]="true"
+            has_diff="true"
+        fi
+    done
+
+    if [[ "$has_diff" == "true" ]]; then
+        return 0
+    fi
+
+    return 1
 }
 
 # End vps-init/src/include/02_base_type_05_dict.sh

@@ -186,8 +186,67 @@ function _run_dicts_key_tests() {
     done
 }
 
+function _run_dict_diff_test() {
+    local src_name="$1"
+    local target_name="$2"
+    local should_diff="$3"
+    local diff_arr_name="$4"
+    local deleted_arr_name="$5"
+
+    local should_diff="false"
+
+    if ! is_array_empty "diff_arr_name"; then
+        should_diff="true"
+    fi
+
+    if ! is_array_empty "deleted_arr_name"; then
+        should_diff="true"
+    fi
+
+    local -n run_diff_arr="$diff_arr_name"
+    local -n run_deleted_arr="$deleted_arr_name"
+
+    local -A
+
+}
+
+function _run_dicts_diff_tests() {
+    local -A empty=()
+    
+    local -A one_key=()
+    one_key["key"]="val"
+    
+    local -A multi_keys=()
+    multi_keys["first"]="first val"
+    multi_keys["second"]="second val"
+    multi_keys["third"]="third_val"
+
+    local -A multi_keys_one_change=()
+    multi_keys["first"]="first val"
+    multi_keys["second"]="second_val"
+    multi_keys["third"]="third_val"
+
+    local -A multi_keys_all_change=()
+    multi_keys["first"]="first_val"
+    multi_keys["second"]="second_val"
+    multi_keys["third"]="third_val"
+
+    local -A multi_keys_all_delete_one=()
+    multi_keys["first"]="first val"
+    multi_keys["third"]="third val"
+
+    local -A multi_keys_all_delete_mul=()
+    multi_keys["third"]="third val"
+
+    local -A multi_keys_all_delete_and_change=()
+    multi_keys["third"]="third_val"
+
+    _run_dict_diff_test ""
+}
+
 _run_dicts_len_tests
 _run_dicts_key_tests
+#_run_dicts_diff_tests
 
 if [[ "$__PRIVATE_TEST_DICTS_RES" == "true" ]]; then
     echo_info "PASSED: dicts tests"

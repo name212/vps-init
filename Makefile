@@ -86,12 +86,17 @@ tests/run: build/lib
 		echo_red "'$lb' file not found or empty"; \
 		exit 1; \
 	fi; \
+	inc_dir="src/include"; \
 	echo_green "--- Run tests ---"; \
 	if [ -n "$$RUN_ONLY" ]; then \
 		echo -e "\033[1;33mWill run only '$$RUN_ONLY' test!\033[0m" >&2; \
+		if [ ! -s "$${inc_dir}/$${RUN_ONLY}" ]; then \
+			echo_red "Not found test file for '$$RUN_ONLY'"; \
+			exit 1; \
+		fi; \
 	fi; \
 	failed_tests=(); \
-	for fl in $$(find src/include -name "*.test.sh" -type f | sort -n); do \
+	for fl in $$(find "$$inc_dir" -name "*.test.sh" -type f | sort -n); do \
     	bs=""; \
 		if ! bs="$$(basename "$$fl")"; then \
 			echo_red "Cannot get base name for '$$fl'"; \

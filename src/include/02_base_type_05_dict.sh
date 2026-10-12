@@ -53,3 +53,68 @@ function dict_get_val() {
         return "$ret_code"
     fi
 }
+
+# shellcheck disable=SC2329
+function dict_get_diff() {
+    local src_dict_name="$1"
+    local target_dict_name="$2"
+    local diff_dict_name="$3"
+    local diff_deleted_arr_name="$4"
+
+    if ! is_dict_var "src_dict_name"; then
+        echo_error "Source dict name is not dict"
+        return 255
+    fi
+
+    if ! is_dict_var "target_dict_name"; then
+        echo_error "Target dict name is not dict"
+        return 255
+    fi
+
+    if ! is_dict_var "diff_dict_name"; then
+        echo_error "Diff destination dict name is not dict"
+        return 255
+    fi
+
+    if ! is_dict_var "diff_deleted_arr_name"; then
+        echo_error "Diff deleted keys destination dict name is not dict"
+        return 255
+    fi
+
+    local -n get_diff_src_dict="$src_dict_name"
+    local -n get_diff_target_dict="$target_dict_name"
+    local -n get_diff_diff_dict="$diff_dict_name"
+    local -n get_diff_diff_deleted_dict="$diff_deleted_arr_name"
+
+    local has_diff="false"
+
+    for key in "${!get_diff_src_dict[@]}"; do
+        local val="${get_diff_src_dict[$key]}"
+        local target_val=""
+        if ! target_val="$(dict_get_val "$target_dict_name" "$key")"; then
+            get_diff_diff_dict["$key"]="$val"
+            has_diff="true"
+            continue
+        fi
+
+        if [[ "$val" != "$target_val" ]]; then
+            # shellcheck disable=SC2034
+            get_diff_diff_dict["$key"]="$val"
+            has_diff="true"
+        fi
+    done
+
+    for key_t in "${!get_diff_target_dict[@]}"; do
+        if ! is_dict_has_key "$src_dict_name" "$key_t"; then
+            # shellcheck disable=SC2034
+            get_diff_diff_deleted_dict["$key"]="true"
+            has_diff="true"
+        fi
+    done
+
+    if [[ "$has_diff" == "true" ]]; then
+        return 0
+    fi
+
+    return 1
+}
