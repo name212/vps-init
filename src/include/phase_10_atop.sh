@@ -7,13 +7,13 @@ PHASES_WITH_INDEX["atop"]="10"
 
 # shellcheck disable=SC2329
 function phase_atop_run() {
-    echo_green "Disable atop..."
+    echo_info "Disable atop..."
 
-    if ! systemd_disable_all "atop.service" "atop-rotate.timer" "atopacct.service"; then
+    if ! disable_and_stop_services "atop.service" "atop-rotate.timer" "atopacct.service"; then
         return 1
     fi
 
-    echo_green "Atop disabled!"
+    echo_info "Atop disabled!"
 
     return 0 
 }
