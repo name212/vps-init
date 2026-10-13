@@ -20,7 +20,7 @@ jobs:
           submodules: "recursive"
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Run check
-        envs:
+        env:
           GITIGNORES_WITH_REQUIRED_RULES: "makefile-common/.gitignore"
         run: make common/git/check/gitignore
 
@@ -32,7 +32,7 @@ jobs:
     steps:
       - *checkout_step
       - name: Run rebuild
-        envs:
+        env:
           TARGET_NAME: "build/all"
           FILES_TO_CHECK: "lib.*\\.sh,sync.sh"
           HAS_DIFF_MSG: "Targets scripts was not rebuild. Please run 'make build/all' and commit"
