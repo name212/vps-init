@@ -34,7 +34,7 @@ jobs:
       - name: Run rebuild
         envs:
           TARGET_NAME: "build/all"
-          FILES_TO_CHECK: "lib.*\.sh,sync.sh"
+          FILES_TO_CHECK: "lib.*\\.sh,sync.sh"
           HAS_DIFF_MSG: "Targets scripts was not rebuild. Please run 'make build/all' and commit"
         run: |
           make common/git/check/has-diff
