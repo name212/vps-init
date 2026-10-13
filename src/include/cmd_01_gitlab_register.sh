@@ -52,6 +52,8 @@ function cmd_gitlab_register_runner_run() {
         return 1
     fi
 
+    # test
+
     local executor="shell"
     if [ -n "${GITLAB_RUNNER_EXECUTOR-}" ]; then 
         executor="${GITLAB_RUNNER_EXECUTOR}"
