@@ -1,4 +1,4 @@
-SHELL = /usr/bin/env bash
+include $(CURDIR)/makefile-common/include.mk.inc
 
 run-with-cleanup = $(1) && $(2) || (ret=$$?; $(2) && exit $$ret)
 
