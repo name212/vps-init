@@ -9,15 +9,15 @@ CONST_PRIVATE_SCREEN_PACKAGES["$SYS_PACKAGES_ENGINE_APT"]="screen"
 CONST_PRIVATE_SCREEN_PACKAGES["$SYS_PACKAGES_ENGINE_APK"]="screen"
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_REPLACED_VAL="__in_screen__"
+CONST_SCREEN_REPLACED_VAL="__in_screen__"
 # shellcheck disable=SC2034
-export CONST_SCREEN_SHOULD_REPLACED="__should_run_in_screen__"
+CONST_SCREEN_SHOULD_REPLACED="__should_run_in_screen__"
 # shellcheck disable=SC2034
-export CONST_SCREEN_NOT_RUN_IN_SCREEN="__not_run_in_screen__"
+CONST_SCREEN_NOT_RUN_IN_SCREEN="__not_run_in_screen__"
 # shellcheck disable=SC2034
-export CONST_SCREEN_DEFAULT_SESS_NAME="server-init"
+CONST_SCREEN_DEFAULT_SESS_NAME="server-init"
 # shellcheck disable=SC2034
-export CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
+CONST_FAIL_MAIN_EXIT_CODE_PREFIX="Main returns exit code:"
 
 # shellcheck disable=SC2329
 function screen_install() {
@@ -185,4 +185,24 @@ function screen_replace_run_with_screen() {
     fi
 
     exit "$exit_code"
+}
+
+# shellcheck disable=SC2329
+function screen_get_session() {
+    if [ -z "${SYNC_SCREEN_SESS_NAME:-}" ]; then
+        return 1
+    fi
+
+    echo -n "$SYNC_SCREEN_SESS_NAME"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function screen_get_session_log() {
+    if [ -z "${SYNC_SCREEN_SESS_LOG_FILE:-}" ]; then
+        return 1
+    fi
+
+    echo -n "$SYNC_SCREEN_SESS_LOG_FILE"
+    return 0
 }

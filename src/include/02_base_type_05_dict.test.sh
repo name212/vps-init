@@ -187,28 +187,6 @@ function _run_dicts_key_tests() {
 }
 
 # shellcheck disable=SC2329
-function _run_dict_diff_print_diff() {
-    local echo_fun="$1"
-    local diff_name="$2"
-    local deleted_name="$3"
-
-
-    if ! is_array_empty "diff_dict_dest"; then
-        echo_error "  changed:"
-        for kk in "${!diff_dict_dest[@]}"; do
-            echo_error "    '$kk' -> '${diff_dict_dest[$kk]}'"
-        done
-    fi
-
-    if ! is_array_empty "deleted_diff_arr_dest"; then
-        echo_error "  deleted:"
-        for dk in "${deleted_diff_arr_dest[@]}"; do
-            echo_error "    '$dk'"
-        done
-    fi
-}
-
-# shellcheck disable=SC2329
 function __echo_error_with_shift() {
     echo_error "  $1"
 }
@@ -240,7 +218,9 @@ function _run_dict_diff_test() {
     # shellcheck disable=SC2034
     local -n run_deleted_arr="$deleted_arr_name"
 
+    # shellcheck disable=SC2034
     local -A diff_dict_dest=()
+    # shellcheck disable=SC2034
     local -a deleted_diff_arr_dest=()
 
     if dict_get_diff "$target_name" "$new_dict_name" "diff_dict_dest" "deleted_diff_arr_dest"; then
