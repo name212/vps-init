@@ -31,6 +31,10 @@ jobs:
 
     steps:
       - *checkout_step
+      - name: Diff only
+        run: |
+          echo "Git diff:"
+          git diff || true
       - name: Test rebuild
         run: |
           make build/all
