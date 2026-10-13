@@ -27,7 +27,27 @@ function get_sys_service_engine() {
 }
 
 # shellcheck disable=SC2329
-function systemd_disable_all() {
+function _get_sys_service_engine_fun() {
+    local fun="$1"
+
+    if ! service_engine="$(get_sys_service_engine)"; then
+        echo_error "Cannot resolve system service engine"
+        return 1
+    fi
+
+    local full_fun="${service_engine}_$fun"
+
+    if ! is_function_declared "$full_fun"; then
+        echo_error "Internal error: '$full_fun' func not declared!"
+        return 1
+    fi 
+
+    echo -n "$full_fun"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function systemctl_disable_all() {
     local srv="$1"
 
     if [ -z "$srv" ]; then
@@ -55,6 +75,38 @@ function systemd_disable_all() {
 }
 
 # shellcheck disable=SC2329
+function systemctl_enable_service() {
+    local srv="${1:-}"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service for enable not passed"
+        return 1
+    fi
+
+
+    if ! systemctl enable --now "$srv"; then
+        echo_error "Service '$srv' cannot enable"
+        return 1
+    fi
+}
+
+# shellcheck disable=SC2329
+function systemctl_restart_service() {
+    local srv="${1:-}"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service for enable not passed"
+        return 255
+    fi
+
+
+    if ! systemctl restart "$srv"; then
+        echo_error "Service '$srv' cannot restarted"
+        return 1
+    fi
+}
+
+# shellcheck disable=SC2329
 function service_disable_all() {
     local srv="$1"
 
@@ -76,17 +128,51 @@ function service_disable_all() {
 }
 
 # shellcheck disable=SC2329
-function disable_and_stop_services() {
-    if ! service_engine="$(get_sys_service_engine)"; then
-        echo_error "Cannot resolve system service engine"
+function service_enable_service() {
+    local srv="${1:-}"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service for enable not passed"
         return 1
     fi
 
-    disable_fun="${service_engine}_disable_all"
 
-    if ! declare -F "$disable_fun" > /dev/null; then
-        echo_error "Internal error: '$disable_fun' func not declared!"
+    if ! service "$srv" enable; then
+        echo_error "Service '$srv' cannot enable"
         return 1
+    fi
+
+    if ! service "$srv" restart; then
+        echo_error "Service '$srv' cannot restarted"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function service_restart_service() {
+    local srv="${1:-}"
+
+    if [ -z "$srv" ]; then
+        echo_error "Service for enable not passed"
+        return 255
+    fi
+
+
+    if ! service "$srv" restart; then
+        echo_error "Service '$srv' cannot restarted"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function disable_and_stop_services() {
+    local disable_fun=""
+    if ! disable_fun="$(_get_sys_service_engine_fun "disable_all")"; then
+        echo_error "Cannot get run function for disable and sto services"
     fi
 
     local -a not_disabled=()
@@ -105,40 +191,46 @@ function disable_and_stop_services() {
     return 1
 }
 
-# shellcheck disable=SC2329
-function systemd_enable_service() {
-    local srv="${1:-}"
-
-    if [ -z "$srv" ]; then
-        echo_error "Service for enable not passed"
-        return 1
-    fi
-
-
-    if ! systemctl enable --now "$srv"; then
-        echo_error "Service '$srv' cannot enable"
-        return 1
-    fi
-}
-
 
 # shellcheck disable=SC2329
-function service_enable_service() {
-    local srv="${1:-}"
+function restart_service_with_revert() {
+    local service_name="${1}"
+    local revert_func="${2:-}"
 
-    if [ -z "$srv" ]; then
-        echo_error "Service for enable not passed"
-        return 1
+    if [ -n "$revert_func" ]; then
+        shift
+        if is_function_declared "$revert_func"; then
+            echo_error "Function to revert restart service. Skip"
+            return 255
+        fi
     fi
 
-
-    if ! service "$srv" enable; then
-        echo_error "Service '$srv' cannot enable"
-        return 1
+    local restart_fun=""
+    if ! restart_fun="$(_get_sys_service_engine_fun "restart_service")"; then
+        echo_error "Cannot get run function for restart service '$service_name'"
+        return 255
     fi
 
-    if ! service "$srv" restart; then
-        echo_error "Service '$srv' cannot restarted"
+    local -a revert_func_args=()
+    for r_arg in "$@"; do
+        revert_func_args+=("$r_arg")
+    done
+
+    echo_warn "Service '$service_name' will restart"
+    if ! "$restart_fun" "$service_name"; then
+        echo_error "Service '$service_name' restart failed"
+        if [ -n "$revert_func" ]; then
+            echo_warn "Run revert service function '$revert_func ${revert_func_args[*]}'"
+            if "$revert_func" "${revert_func_args[@]}"; then
+                echo_warn "Restart service '$service_name' after successful revert"
+                if ! "$restart_fun" "$service_name"; then
+                    echo_error "Service '$service_name' restart failed after revert"
+                fi
+            else
+                echo_error "Revert service '$service_name' function failed"
+            fi
+        fi
+
         return 1
     fi
 
