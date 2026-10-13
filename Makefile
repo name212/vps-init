@@ -163,4 +163,8 @@ tests/run: build/lib
 tests/keep-files/run: export KEEP_TEST_SCRIPTS = true
 tests/keep-files/run: tests/run
 
-.PHONY: build build/lib build/all check/host-passed deploy/copy-init-to-tmp deploy/copy-conf-to-tmp deploy/cleanup-tmp tests/run deploy/cleanup/with-sudo-password _deploy/with-sudo-password _deploy/no-sudo-password deploy/with-sudo-password deploy/no-sudo-password deploy/debug deploy/debug-sudo-pass
+repo/upgrade/common: export SUBMODULE_DIR = makefile-common
+repo/upgrade/common: common/git/submodule/upgrade
+
+
+.PHONY: build build/lib build/all check/host-passed deploy/copy-init-to-tmp deploy/copy-conf-to-tmp deploy/cleanup-tmp tests/keep-files/run tests/run deploy/cleanup/with-sudo-password _deploy/with-sudo-password _deploy/no-sudo-password deploy/with-sudo-password deploy/no-sudo-password deploy/debug deploy/debug-sudo-pass repo/upgrade/common
