@@ -4,3 +4,7 @@ configs/
 virtualbox/
 
 *.sync.sh
+
+.bin/
+.build/
+.release/

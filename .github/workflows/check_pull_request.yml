@@ -1,0 +1,50 @@
+name: Check pull request
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+jobs:
+  gitignore:
+    name: "Check gitignore updated from makefile-common"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - &checkout_step
+        name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: "recursive"
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Run check
+        envs:
+          GITIGNORES_WITH_REQUIRED_RULES: "makefile-common/.gitignore"
+        run: make common/git/check/gitignore
+
+  rebuild:
+    name: "Check that target scripts rebuild"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - *checkout_step
+      - name: Run rebuild
+        envs:
+          TARGET_NAME: "build/all"
+          FILES_TO_CHECK: "lib.*\.sh,sync.sh"
+          HAS_DIFF_MSG: "Targets scripts was not rebuild. Please run 'make build/all' and commit"
+        run: |
+          make common/git/check/has-diff
+
+  tests:
+    name: "Run tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - *checkout_step
+      - name: Run tests
+        run: make tests/run
