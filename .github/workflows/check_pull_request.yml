@@ -36,15 +36,7 @@ jobs:
           TARGET_NAME: "build/all"
           FILES_TO_CHECK: "lib.*\\.sh,sync.sh"
           HAS_DIFF_MSG: "Targets scripts was not rebuild. Please run 'make build/all' and commit"
-        run: |
-          echo "Git status:"
-          git status
-          echo "Git log:"
-          git log | head -n 30
-          if ! make common/git/check/has-diff; then
-            echo "Git diff:"
-            git diff
-          fi
+        run: make common/git/check/has-diff
 
   tests:
     name: "Run tests"
