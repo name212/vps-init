@@ -6,8 +6,6 @@
 # shellcheck disable=SC2034
 export CONST_SCRIPT_RAN_WITH_NEW_SHEBANG_VAL="__re_ren_with_new_shebang__"
 
-# tsts
-
 # shellcheck disable=SC2329
 get_shebang_header() {
     # bash not correct handle shebang and set 
