@@ -81,6 +81,9 @@ tests/run: build/lib
 	function echo_green () { \
     	echo -e "\033[1;32m$$1\033[0m" >&2; \
 	}; \
+	function echo_yellow () { \
+    	echo -e "\033[1;33m$$1\033[0m" >&2; \
+	}; \
 	lb="$(LIB_FILE)"; \
 	if [ ! -s "$$lb" ]; then \
 		echo_red "'$lb' file not found or empty"; \
@@ -89,13 +92,14 @@ tests/run: build/lib
 	inc_dir="src/include"; \
 	echo_green "--- Run tests ---"; \
 	if [ -n "$$RUN_ONLY" ]; then \
-		echo -e "\033[1;33mWill run only '$$RUN_ONLY' test!\033[0m" >&2; \
+		echo_yellow "Will run only '$$RUN_ONLY' test!"; \
 		if [ ! -s "$${inc_dir}/$${RUN_ONLY}" ]; then \
 			echo_red "Not found test file for '$$RUN_ONLY'"; \
 			exit 1; \
 		fi; \
 	fi; \
 	failed_tests=(); \
+	declare -A files_to_remove=(); \
 	for fl in $$(find "$$inc_dir" -name "*.test.sh" -type f | sort -n); do \
     	bs=""; \
 		if ! bs="$$(basename "$$fl")"; then \
@@ -107,10 +111,11 @@ tests/run: build/lib
 		fi; \
 		echo_green "Run test '$$fl'"; \
 		tmp_run_fl=""; \
-		if ! tmp_run_fl="$$(mktemp)"; then \
+		if ! tmp_run_fl="$$(mktemp -t "lib-bash-test.XXXXXXXX")"; then \
 			echo_red "Cannot create tempt file for run '$$fl'"; \
 			exit 1; \
 		fi; \
+		files_to_remove["$$fl"]="$$tmp_run_fl"; \
 		if ! chmod 700 "$$tmp_run_fl"; then \
 			echo_red "Cannot chmod 700 '$$tmp_run_fl'"; \
 			exit 1; \
@@ -132,6 +137,19 @@ tests/run: build/lib
     	fi; \
 		rm -f "$tmp_run_fl" || true; \
 	done; \
+	if [ -z "$$KEEP_TEST_SCRIPTS" ]; then \
+		echo_green "Remove temp test script files:"; \
+		for d_tmp_name in "$${!files_to_remove[@]}"; do \
+			d_tmp="$${files_to_remove[$$d_tmp_name]}"; \
+			rm -fv "$$d_tmp"; \
+		done; \
+	else \
+		echo_yellow "Temp test script files was skipped(KEEP_TEST_SCRIPTS passed):"; \
+		for d_tmp_name in "$${!files_to_remove[@]}"; do \
+			d_tmp="$${files_to_remove[$$d_tmp_name]}"; \
+			echo_yellow "  $$d_tmp_name -> $$d_tmp"; \
+		done; \
+	fi; \
 	if [[ "$${#failed_tests[@]}" == "0" ]]; then \
 		echo_green "All tests passed!"; \
 		exit 0; \
@@ -141,5 +159,8 @@ tests/run: build/lib
 		echo_red "  $$ftst"; \
 	done; \
 	exit 1
+
+tests/keep-files/run: export KEEP_TEST_SCRIPTS = true
+tests/keep-files/run: tests/run
 
 .PHONY: build build/lib build/all check/host-passed deploy/copy-init-to-tmp deploy/copy-conf-to-tmp deploy/cleanup-tmp tests/run deploy/cleanup/with-sudo-password _deploy/with-sudo-password _deploy/no-sudo-password deploy/with-sudo-password deploy/no-sudo-password deploy/debug deploy/debug-sudo-pass

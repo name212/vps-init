@@ -28,7 +28,7 @@ function split_by() {
 	if [ -n "$_transform" ]; then
 		local -n target_array="$_dest"
 		for _indx in "${!target_array[@]}"; do
-    		target_array[_indx]="$("$_transform" "${target_array[_indx]}")"
+    		target_array[_indx]="$("$_transform" "${target_array[$_indx]}")"
 		done
 	fi
 
