@@ -192,7 +192,7 @@ function virtualbox_extract_host_iface() {
                     indexes+=("$cur_index")
                     index_to_name["$cur_index"]="$iface_name"
                     echo_info "[$cur_index] Found interface $iface_name with address ${ifaces[$iface_name]}" >&2
-                    ((cur_index++))
+                    ((cur_index++)) || true
                 done
 
                 local choiced_index="-1"
@@ -265,7 +265,7 @@ function virtualbox_get_vm_info_json() {
 
     while true; do
         local cur_nic_index="$nics_index"
-        ((nics_index++))
+        ((nics_index++)) || true
 
         local nic_type_raw=""
         if ! nic_type_raw="$(grep --color=never "nic${cur_nic_index}=" <<<"$raw_out")"; then
@@ -336,7 +336,7 @@ function virtualbox_get_vm_info_json() {
     local -a opticals=()
     while true; do
         local cur_ide_index="$ides_index"
-        ((ides_index++))
+        ((ides_index++)) || true
 
         local minor=0
 
@@ -355,7 +355,7 @@ function virtualbox_get_vm_info_json() {
         fi
 
         while true; do
-            ((minor++))
+            ((minor++)) || true
             local ide_major=""
             if ! ide_major="$(virtualbox_extract_value_for_key "$raw_out" "\"IDE-${cur_ide_index}-${minor}\"" "true")"; then
                 echo_error "Cannot extract IDE-${cur_ide_index}-${minor}: $ide_major"
@@ -710,8 +710,8 @@ function virtualbox_mount_opticals() {
             return 1
         fi
 
-        ((port++))
-        ((device++))
+        ((port++)) || true
+        ((device++)) || true
 
         if ((device > 1)); then
             device=0

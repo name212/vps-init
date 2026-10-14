@@ -62,7 +62,7 @@ function get_envs_dict() {
 
     local indx="-1"
     for one_env_str in "${envs_strings[@]}"; do
-        ((indx++))
+        ((indx++)) || true
 
         if [ -z "$one_env_str" ]; then
             continue
@@ -84,7 +84,7 @@ function get_envs_dict() {
 
         local kv_indx="-1"
         for vv in "${key_val[@]}"; do
-            ((kv_indx++))
+            ((kv_indx++)) || true
             if num_eq "$kv_indx" "0"; then
                 continue
             fi

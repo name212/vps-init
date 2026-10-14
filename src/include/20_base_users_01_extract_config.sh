@@ -97,7 +97,7 @@ function users_extract_configuration() {
         users_sudo_no_pass_arr["$username"]="$sudo_no_pass"
         users_keys_arr["$username"]="$ssh_key"
 
-        ((cur_index++))
+        ((cur_index++)) || true
     done
 
     echo_debug "Try to extract users from args..."
@@ -204,7 +204,7 @@ function users_extract_configuration() {
         # shellcheck disable=SC2034
         users_keys_arr["$arg_username"]="$arg_ssh_key"
 
-        ((cur_user_add_arg++))
+        ((cur_user_add_arg++)) || true
     done
 
     return 0

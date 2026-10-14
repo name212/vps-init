@@ -90,7 +90,7 @@ function is_array_contains_all() {
     indx="-1"
     for should_val in "${is_array_contains_alls_vars_arr[@]}"; do
         if ! is_array_has_val "$test_arr_name" "$should_val"; then
-            ((indx++))
+            ((indx++)) || true
             # shellcheck disable=SC2034
             is_array_contains_alls_not_contains_dest["$indx"]="$should_val"
         fi
