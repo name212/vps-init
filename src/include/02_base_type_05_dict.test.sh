@@ -453,9 +453,90 @@ function _run_dicts_diff_tests() {
     _run_dict_diff_test "multi_keys" "multi_keys_delete_and_change_add" "multi_key_delete_change_and_add_changed" "multi_key_delete_change_and_add_deleted"
 }
 
+function _run_dicts_filter_tests() {
+    export __filtered_key_for_dif_out="first key"
+
+    __filtered_key_for_diff_out_added_count="0"
+    __filtered_key_for_diff_out_changed_count="0"
+
+    # shellcheck disable=SC2329
+    function __echo_filtered_diff() {
+        local msg="$1"
+        local res_msg=""
+
+        local ret_code="0"
+        if res_msg="$(dict_print_diff_change_keys_filter "$msg" "$__filtered_key_for_dif_out")"; then
+            true
+        else
+            ret_code="$?"
+            if num_eq "$ret_code" "1"; then
+                ((__filtered_key_for_diff_out_changed_count++)) || true
+            elif num_eq "$ret_code" "2"; then
+                ((__filtered_key_for_diff_out_added_count++)) || true
+            fi
+        fi
+        
+        echo_info "$res_msg"
+
+        return 0
+    }
+
+    local -A multi_keys=()
+    multi_keys["$__filtered_key_for_dif_out"]="first val"
+    multi_keys["second"]="second val"
+    # shellcheck disable=SC2034
+    multi_keys["third"]="third_val"
+
+    local -A multi_keys_changed=()
+    multi_keys_changed["$__filtered_key_for_dif_out"]="changed first"
+    multi_keys_changed["second"]="second val"
+    # shellcheck disable=SC2034
+    multi_keys_changed["third"]="third_val"
+
+    local -A multi_keys_add_delete=()
+    multi_keys_add_delete["second"]="second val"
+    # shellcheck disable=SC2034
+    multi_keys_add_delete["third"]="third_val"
+
+    echo_info "Run dict filter message tests"
+    # shellcheck disable=SC2034
+    local -A add_diff_dict=()
+    # shellcheck disable=SC2034
+    local -a add_diff_deleted_arr=()
+    dict_get_diff "multi_keys_add_delete" "multi_keys" "add_diff_dict" "add_diff_deleted_arr" || true
+    dict_print_diff  "add_diff_dict" "add_diff_deleted_arr" "__echo_filtered_diff" "multi_keys_add_delete"
+
+    # shellcheck disable=SC2034
+    local -A delete_diff_dict=()
+    # shellcheck disable=SC2034
+    local -a delete_diff_deleted_arr=()
+    dict_get_diff "multi_keys" "multi_keys_add_delete" "delete_diff_dict" "delete_diff_deleted_arr" || true
+    dict_print_diff "delete_diff_dict" "delete_diff_deleted_arr" "__echo_filtered_diff" "multi_keys"
+
+    # shellcheck disable=SC2034
+    local -A change_diff_dict=()
+    # shellcheck disable=SC2034
+    local -a change_diff_deleted_arr=()
+    dict_get_diff "multi_keys" "multi_keys_changed" "change_diff_dict" "change_diff_deleted_arr" || true
+    dict_print_diff "change_diff_dict" "change_diff_deleted_arr" "__echo_filtered_diff" "multi_keys"
+
+    local should_added_filtered="1"
+    if ! num_eq "$__filtered_key_for_diff_out_added_count" "$should_added_filtered"; then
+        echo_error "Incorrect filtered add, should ${should_added_filtered}, got $__filtered_key_for_diff_out_added_count"
+        __PRIVATE_TEST_DICTS_RES="false"
+    fi
+
+    local should_changed_filtered="1"
+    if ! num_eq "$__filtered_key_for_diff_out_changed_count" "$should_changed_filtered"; then
+        echo_error "Incorrect filtered add, should ${should_changed_filtered}, got $__filtered_key_for_diff_out_changed_count"
+        __PRIVATE_TEST_DICTS_RES="false"
+    fi
+}
+
 _run_dicts_len_tests
 _run_dicts_key_tests
 _run_dicts_diff_tests
+_run_dicts_filter_tests
 
 if [[ "$__PRIVATE_TEST_DICTS_RES" == "true" ]]; then
     echo_info "PASSED: dicts tests"

@@ -2,6 +2,13 @@
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034
+CONST_DICT_DIFF_OUT_ADD_PREFIX="  + "
+# shellcheck disable=SC2034
+CONST_DICT_DIFF_OUT_CHANGE_PREFIX="  ~ "
+# shellcheck disable=SC2034
+CONST_DICT_DIFF_OUT_DELETE_PREFIX="  - "
+
 # shellcheck disable=SC2329
 function is_dict_has_len() {
     local var_name="$1"
@@ -107,7 +114,7 @@ function dict_get_diff() {
     local del_indx="-1"
     for key_t in "${!get_diff_target_dict[@]}"; do
         if ! is_dict_has_key "$new_dict_name" "$key_t"; then
-            ((del_indx++))
+            ((del_indx++)) || true
             # shellcheck disable=SC2034
             get_diff_diff_deleted_arr["$del_indx"]="$key_t"
             has_diff="true"
@@ -143,34 +150,58 @@ function dict_print_diff() {
             if origin_val="$(dict_get_val "$orig_dict_name" "$c_key")"; then
                 msg_ch="'$c_key': '$origin_val' -> '$c_val'"
             else
-                added+=("'$c_key': '$c_val'")
+                added+=("${CONST_DICT_DIFF_OUT_ADD_PREFIX}'$c_key': '$c_val'")
                 msg_ch=""
             fi
         fi
 
         if [ -n "$msg_ch" ]; then
-            changed+=("$msg_ch")
+            changed+=("${CONST_DICT_DIFF_OUT_CHANGE_PREFIX}$msg_ch")
         fi
     done
 
     if ! is_array_empty "added"; then
         "$echo_fun" "Added:"
         for ad_k in "${added[@]}"; do
-            "$echo_fun" "  $ad_k"
+            "$echo_fun" "$ad_k"
         done
     fi
 
     if ! is_array_empty "changed"; then
         "$echo_fun" "Changed:"
         for ch_v in "${changed[@]}"; do
-            "$echo_fun" "  $ch_v"
+            "$echo_fun" "$ch_v"
         done
     fi
 
     if ! is_array_empty "$deleted_arr_name"; then
         "$echo_fun" "Deleted:"
         for dk in "${dict_print_diff_deleted_array[@]}"; do
-            "$echo_fun" "  '$dk'"
+            "$echo_fun" "${CONST_DICT_DIFF_OUT_DELETE_PREFIX}'$dk'"
         done
     fi
 }
+
+# shellcheck disable=SC2329
+function dict_print_diff_change_keys_filter() {
+    local echo_str="$1"
+    shift
+
+    local -A __filtered_prefixes=()
+
+    for key in "$@"; do
+        __filtered_prefixes["${CONST_DICT_DIFF_OUT_CHANGE_PREFIX}'$key':"]="1"
+        __filtered_prefixes["${CONST_DICT_DIFF_OUT_ADD_PREFIX}'$key':"]="2"
+    done
+
+    for ff in "${!__filtered_prefixes[@]}"; do
+        if [[ "$echo_str" == "$ff"* ]]; then
+            local ret_code="${__filtered_prefixes[$ff]}"
+            echo -n "${ff} '**FILTERED**'"
+            return "$ret_code"
+        fi
+    done
+    
+    echo -n "$echo_str"
+    return 0
+ }
