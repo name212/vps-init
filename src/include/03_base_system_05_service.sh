@@ -15,6 +15,9 @@ if [ -z "${SYS_SERVICE_ENGINE:-}" ]; then
     export SYS_SERVICE_ENGINE="$CONST_SYS_SERVICE_ENGINE_SYSTEMD"
 fi
 
+# shellcheck disable=SC2034
+CONST_SERVICE_SKIP_RESTART_AFTER_REVERT_RET_CODE="250"
+
 # shellcheck disable=SC2329
 function get_sys_service_engine() {
     if [[ -v _SYS_SERVICE_ENGINES_MAP["$SYS_SERVICE_ENGINE"] ]]; then
@@ -239,12 +242,20 @@ function restart_service_with_revert() {
     fi
 
     echo_warn "Run revert service '$service_name' function '$revert_func ${revert_func_args[*]}'"
+
+    local ret_code_revert="0"
     if "$revert_func" "${revert_func_args[@]}"; then
         echo_warn "Restart service '$service_name' after successful revert"
         if ! "$restart_fun" "$service_name"; then
             echo_error "Service '$service_name' restart failed after revert"
         fi
     else
+        ret_code_revert="$?"
+        if num_eq "$ret_code_revert" "$CONST_SERVICE_SKIP_RESTART_AFTER_REVERT_RET_CODE"; then
+            echo_info "Revert service '$service_name' successful but service should not restart"
+            return 1
+        fi
+
         echo_error "Revert service '$service_name' function failed"
     fi
 
