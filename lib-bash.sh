@@ -2501,14 +2501,29 @@ function disable_and_stop_services() {
 # shellcheck disable=SC2329
 function restart_service_with_revert() {
     local service_name="${1}"
-    local revert_func="${2:-}"
+
+    if [ -z "$service_name" ]; then
+        echo_error "Service name for restart with revert is not passed"
+        return 255
+    fi
+
+    shift
+
+    local revert_func="${1:-}"
+    local -a revert_func_args=()
+
 
     if [ -n "$revert_func" ]; then
-        shift
         if is_function_declared "$revert_func"; then
-            echo_error "Function to revert restart service. Skip"
+            echo_error "Function to revert restart service '$revert_func' is not declared."
             return 255
         fi
+
+        shift
+
+        for r_arg in "$@"; do
+            revert_func_args+=("$r_arg")
+        done
     fi
 
     local restart_fun=""
@@ -2516,31 +2531,30 @@ function restart_service_with_revert() {
         echo_error "Cannot get run function for restart service '$service_name'"
         return 255
     fi
-
-    local -a revert_func_args=()
-    for r_arg in "$@"; do
-        revert_func_args+=("$r_arg")
-    done
+    
 
     echo_warn "Service '$service_name' will restart"
-    if ! "$restart_fun" "$service_name"; then
-        echo_error "Service '$service_name' restart failed"
-        if [ -n "$revert_func" ]; then
-            echo_warn "Run revert service function '$revert_func ${revert_func_args[*]}'"
-            if "$revert_func" "${revert_func_args[@]}"; then
-                echo_warn "Restart service '$service_name' after successful revert"
-                if ! "$restart_fun" "$service_name"; then
-                    echo_error "Service '$service_name' restart failed after revert"
-                fi
-            else
-                echo_error "Revert service '$service_name' function failed"
-            fi
-        fi
+    if "$restart_fun" "$service_name"; then
+       echo_green "Service '$service_name' was restarted"
+       return 0
+    fi
 
+    echo_error "Service '$service_name' restart failed"
+    if [ -z "$revert_func" ]; then
         return 1
     fi
 
-    return 0
+    echo_warn "Run revert service '$service_name' function '$revert_func ${revert_func_args[*]}'"
+    if "$revert_func" "${revert_func_args[@]}"; then
+        echo_warn "Restart service '$service_name' after successful revert"
+        if ! "$restart_fun" "$service_name"; then
+            echo_error "Service '$service_name' restart failed after revert"
+        fi
+    else
+        echo_error "Revert service '$service_name' function failed"
+    fi
+
+    return 1
 }
 
 # End vps-init/src/include/03_base_system_05_service.sh
