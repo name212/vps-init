@@ -3,17 +3,17 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
+CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
 # shellcheck disable=SC2034
-export CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
+CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
 # shellcheck disable=SC2034
-export CONST_LOG_ARG_FILE="--log-file"
+CONST_LOG_ARG_FILE="--log-file"
 # shellcheck disable=SC2034
-export CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
+CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
 # shellcheck disable=SC2034
-export CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
+CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
 # shellcheck disable=SC2034
-export CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
+CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
 
 # shellcheck disable=SC2329
 function parse_and_apply_log_settings() {
@@ -49,12 +49,12 @@ function parse_and_apply_log_settings() {
 # shellcheck disable=SC2329
 function log_settings_help() {
     echo -e "
-    ${CONST_COLOR_GREEN}Log settings:${CONST_COLOR_NO}
+    ${CONST_COLOR_GREEN}Log options:${CONST_COLOR_NO}
     $CONST_LOG_ARG_ENABLE_DEBUG
       If passed will output debug log information to terminal.
       Env ${CONST_LOG_ENV_ENABLE_DEBUG}=true for set.
 
-    $CONST_LOG_ARG_FILE 'PATH'
+    $CONST_LOG_ARG_FILE PATH
       If set, all log include debug will write to file in format:
       [\$date] || [\$level]: \$msg
       Env $CONST_LOG_ENV_FILE

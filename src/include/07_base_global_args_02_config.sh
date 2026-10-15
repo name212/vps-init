@@ -3,9 +3,14 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_CONFIG_FILE_ARG="--config"
+CONST_CONFIG_FILE_ARG="--config"
 # shellcheck disable=SC2034
-export CONST_CONFIG_FILE_ENV="CONFIG_PATH"
+CONST_CONFIG_FILE_ENV="CONFIG_PATH"
+
+# shellcheck disable=SC2034
+CONST_SKIP_REMOVE_CONFIG_FILE_ARG="--skip-remove-config-on-phase"
+# shellcheck disable=SC2034
+CONST_SKIP_REMOVE_CONFIG_FILE_ENV="SKIP_REMOVE_CONFIG_ON_PHASE"
 
 # shellcheck disable=SC2034
 export PROTECTED_PASSED_CONFIG_FILE=""
@@ -64,6 +69,15 @@ function parse_and_apply_config_file() {
 }
 
 # shellcheck disable=SC2329
+function is_disable_remove_config_file() {
+    if arg_flag_is_set "$CONST_SKIP_REMOVE_CONFIG_FILE_ARG" "$CONST_SKIP_REMOVE_CONFIG_FILE_ENV" "$@"; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function check_config_file_set_and_get() {
     if [ -z "${PROTECTED_PASSED_CONFIG_FILE:-}" ]; then
         return 1
@@ -75,9 +89,14 @@ function check_config_file_set_and_get() {
 
 # shellcheck disable=SC2329
 function config_file_help() {
-    echo -n "
-    ${CONST_CONFIG_FILE_ARG}
+    echo -e "
+    ${CONST_COLOR_GREEN}Config file options:${CONST_COLOR_NO}
+    ${CONST_CONFIG_FILE_ARG} PATH
       Path to config with envs to settings.
       Should be .env format
-      Env $CONST_CONFIG_FILE_ENV" sor set.
+      Env $CONST_CONFIG_FILE_ENV sor set.
+    ${CONST_SKIP_REMOVE_CONFIG_FILE_ARG}
+      Disable 'remove_passed_config' phase
+      if run only one phase
+      Env ${CONST_SKIP_REMOVE_CONFIG_FILE_ENV}=true for set."
 }

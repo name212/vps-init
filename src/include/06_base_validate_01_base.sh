@@ -2,8 +2,9 @@
 
 set -Eeuo pipefail
 
-export CONST_VALIDATE_SHOULD_OPTIONAL="optional"
-export CONST_VALIDATE_SHOULD_PASSED="passed"
+CONST_VALIDATE_SHOULD_OPTIONAL="__optional__"
+# shellcheck disable=SC2034
+CONST_VALIDATE_SHOULD_PASSED="__should_passed__"
 
 # shellcheck disable=SC2329
 function call_validate_fun() {

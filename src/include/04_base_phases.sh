@@ -8,7 +8,7 @@ declare -A PHASES_WITH_INDEX=()
 declare -a COMMANDS_LIST=()
 
 # shellcheck disable=SC2034
-export CONST_PHASES_REORDER_FUN_NAME="global_reorder_phase"
+CONST_PHASES_REORDER_FUN_NAME="global_reorder_phase"
 
 # shellcheck disable=SC2329
 function phase_get_disable_env() {
@@ -19,9 +19,13 @@ function phase_get_disable_env() {
     local env_fun="phase_${phase}_disable_env"
     if is_function_declared "$env_fun"; then
         env_name="$("$env_fun")"
+    else
+        return 1
     fi
 
     echo -n "$env_name"
+
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -71,7 +75,10 @@ function phase_print_disable_help() {
     local phase="$1"
 
     # shellcheck disable=SC2155
-    local env_name="$(phase_get_disable_env "$phase")"
+    local env_name=""
+    if ! env_name="$(phase_get_disable_env "$phase")"; then
+        return 1
+    fi
 
     if [ -n "$env_name" ]; then
         echo "Can be disabled with set env ${env_name}=true"

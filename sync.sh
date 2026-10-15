@@ -70,7 +70,7 @@ function __is_debug_file_present(){
 }
 
 # shellcheck disable=SC2034
-export CONST_FORCE_DEBUG="__force_debug__"
+CONST_FORCE_DEBUG="__force_debug__"
 
 # shellcheck disable=SC2034
 export PRIVATE_SCRIPT_DEBUG_ENABLED=""
@@ -80,24 +80,24 @@ if ! __is_debug_file_present; then
 fi
 
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_DEBUG="debug"
+CONST_LOG_LEVEL_DEBUG="debug"
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_INFO="info"
+CONST_LOG_LEVEL_INFO="info"
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_WARN="warn"
+CONST_LOG_LEVEL_WARN="warn"
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_ERROR="error"
+CONST_LOG_LEVEL_ERROR="error"
 
 # shellcheck disable=SC2034
-export CONST_COLOR_GREEN=$'\033[1;32m'
+CONST_COLOR_GREEN=$'\033[1;32m'
 # shellcheck disable=SC2034
-export CONST_COLOR_YELLOW=$'\033[1;33m'
+CONST_COLOR_YELLOW=$'\033[1;33m'
 # shellcheck disable=SC2034
-export CONST_COLOR_RED=$'\033[1;31m'
+CONST_COLOR_RED=$'\033[1;31m'
 # shellcheck disable=SC2034
-export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
+CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
-export CONST_COLOR_NO=$'\033[0m'
+CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
 function echo_green (){
@@ -501,9 +501,9 @@ function is_number_positive_or_zero() {
 # Start vps-init/src/include/02_base_type_02_str_04_trim.sh
 
 # shellcheck disable=SC2034
-export CONST_STR_TRIM_LEFT="__left__"
+CONST_STR_TRIM_LEFT="__left__"
 # shellcheck disable=SC2034
-export CONST_STR_TRIM_RIGHT="__right__"
+CONST_STR_TRIM_RIGHT="__right__"
 
 # shellcheck disable=SC2329
 function trim_spaces_left() {
@@ -807,8 +807,8 @@ function join_args_with_separator() {
 
 # Start vps-init/src/include/02_base_type_02_str_07_diff.sh
 
-export CONST_OUT_DIFF_OR_HAS_DIFF="true"
-export CONST_DIFF_ADD_ARGS=("--color=always")
+CONST_OUT_DIFF_OR_HAS_DIFF="true"
+CONST_DIFF_ADD_ARGS=("--color=always")
 
 # shellcheck disable=SC2329
 function out_diff() {
@@ -945,9 +945,9 @@ function files_has_not_diff() {
 CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL="__should_contains_spec_symbols__"
 
 # shellcheck disable=SC2034
-export PASSWORD_STR_MIN_LEN="12"
+PASSWORD_STR_MIN_LEN="12"
 # shellcheck disable=SC2034
-export PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS="$CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL"
+PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS="$CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL"
 
 # shellcheck disable=SC2329
 function check_valid_password_enable_specials() { 
@@ -1757,14 +1757,14 @@ rerun_script_with_new_shebang() {
 # Start vps-init/src/include/03_base_system_02_input.sh
 
 # shellcheck disable=SC2034
-export CONST_NOT_ASK_VAL="__not_ask__"
+CONST_NOT_ASK_VAL="__not_ask__"
 # shellcheck disable=SC2034
-export CONST_ASK_VAL="__should_ask__"
+CONST_ASK_VAL="__should_ask__"
 
 # shellcheck disable=SC2034
-export CONST_READ_ERROR_RET_CODE="254"
+CONST_READ_ERROR_RET_CODE="254"
 # shellcheck disable=SC2034
-export CONST_READ_ERROR_WITH_TIMEOUT_RET_CODE="255"
+CONST_READ_ERROR_WITH_TIMEOUT_RET_CODE="255"
 
 function __prepare_prompt_str() {
     local prompt="${1:-No prompt}"
@@ -2267,7 +2267,7 @@ function upgrade_all_packages() {
 
 # shellcheck disable=SC2329
 function install_packages() {
-    echo_info "Install packages $* ..."
+    echo_info "Install packages '$*'..."
 
     local update_fun=""
     if ! update_fun="$(get_package_cmd update)"; then
@@ -2358,9 +2358,9 @@ function remove_packages() {
 # Start vps-init/src/include/03_base_system_05_service.sh
 
 # shellcheck disable=SC2034
-export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
 # shellcheck disable=SC2034
-export CONST_SYS_SERVICE_ENGINE_INITD="service"
+CONST_SYS_SERVICE_ENGINE_INITD="service"
 
 declare -A _SYS_SERVICE_ENGINES_MAP=()
 _SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
@@ -2675,7 +2675,7 @@ declare -A PHASES_WITH_INDEX=()
 declare -a COMMANDS_LIST=()
 
 # shellcheck disable=SC2034
-export CONST_PHASES_REORDER_FUN_NAME="global_reorder_phase"
+CONST_PHASES_REORDER_FUN_NAME="global_reorder_phase"
 
 # shellcheck disable=SC2329
 function phase_get_disable_env() {
@@ -2686,9 +2686,13 @@ function phase_get_disable_env() {
     local env_fun="phase_${phase}_disable_env"
     if is_function_declared "$env_fun"; then
         env_name="$("$env_fun")"
+    else
+        return 1
     fi
 
     echo -n "$env_name"
+
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -2738,7 +2742,10 @@ function phase_print_disable_help() {
     local phase="$1"
 
     # shellcheck disable=SC2155
-    local env_name="$(phase_get_disable_env "$phase")"
+    local env_name=""
+    if ! env_name="$(phase_get_disable_env "$phase")"; then
+        return 1
+    fi
 
     if [ -n "$env_name" ]; then
         echo "Can be disabled with set env ${env_name}=true"
@@ -2807,19 +2814,19 @@ function run_passed_command() {
 # Start vps-init/src/include/05_base_args.sh
 
 # shellcheck disable=SC2034
-export CONST_FLAG_SET="true"
+CONST_FLAG_SET="true"
 # shellcheck disable=SC2034
-export CONST_IS_FLAG="__is_flag__"
+CONST_IS_FLAG="__is_flag__"
 # shellcheck disable=SC2034
-export CONST_NOT_FLAG="__not_is_flag__"
+CONST_NOT_FLAG="__not_is_flag__"
 
 # shellcheck disable=SC2034
-export CONST_NO_VALIDATE="__no_validate"
+CONST_NO_VALIDATE="__no_validate"
 
 # shellcheck disable=SC2034
-export CONST_ARG_NOT_PASSED="__not_passed_arg__"
+CONST_ARG_NOT_PASSED="__not_passed_arg__"
 # shellcheck disable=SC2034
-export CONST_ARG_PASSED="__arg_passed__"
+CONST_ARG_PASSED="__arg_passed__"
 
 # shellcheck disable=SC2329
 function __no_validate() {
@@ -3011,8 +3018,9 @@ function arg_flag_is_set() {
 
 # Start vps-init/src/include/06_base_validate_01_base.sh
 
-export CONST_VALIDATE_SHOULD_OPTIONAL="optional"
-export CONST_VALIDATE_SHOULD_PASSED="passed"
+CONST_VALIDATE_SHOULD_OPTIONAL="__optional__"
+# shellcheck disable=SC2034
+CONST_VALIDATE_SHOULD_PASSED="__should_passed__"
 
 # shellcheck disable=SC2329
 function call_validate_fun() {
@@ -3244,9 +3252,14 @@ function echo_help_args_help() {
 # Start vps-init/src/include/07_base_global_args_02_config.sh
 
 # shellcheck disable=SC2034
-export CONST_CONFIG_FILE_ARG="--config"
+CONST_CONFIG_FILE_ARG="--config"
 # shellcheck disable=SC2034
-export CONST_CONFIG_FILE_ENV="CONFIG_PATH"
+CONST_CONFIG_FILE_ENV="CONFIG_PATH"
+
+# shellcheck disable=SC2034
+CONST_SKIP_REMOVE_CONFIG_FILE_ARG="--skip-remove-config-on-phase"
+# shellcheck disable=SC2034
+CONST_SKIP_REMOVE_CONFIG_FILE_ENV="SKIP_REMOVE_CONFIG_ON_PHASE"
 
 # shellcheck disable=SC2034
 export PROTECTED_PASSED_CONFIG_FILE=""
@@ -3305,6 +3318,15 @@ function parse_and_apply_config_file() {
 }
 
 # shellcheck disable=SC2329
+function is_disable_remove_config_file() {
+    if arg_flag_is_set "$CONST_SKIP_REMOVE_CONFIG_FILE_ARG" "$CONST_SKIP_REMOVE_CONFIG_FILE_ENV" "$@"; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function check_config_file_set_and_get() {
     if [ -z "${PROTECTED_PASSED_CONFIG_FILE:-}" ]; then
         return 1
@@ -3316,11 +3338,16 @@ function check_config_file_set_and_get() {
 
 # shellcheck disable=SC2329
 function config_file_help() {
-    echo -n "
-    ${CONST_CONFIG_FILE_ARG}
+    echo -e "
+    ${CONST_COLOR_GREEN}Config file options:${CONST_COLOR_NO}
+    ${CONST_CONFIG_FILE_ARG} PATH
       Path to config with envs to settings.
       Should be .env format
-      Env $CONST_CONFIG_FILE_ENV" sor set.
+      Env $CONST_CONFIG_FILE_ENV sor set.
+    ${CONST_SKIP_REMOVE_CONFIG_FILE_ARG}
+      Disable 'remove_passed_config' phase
+      if run only one phase
+      Env ${CONST_SKIP_REMOVE_CONFIG_FILE_ENV}=true for set."
 }
 
 # End vps-init/src/include/07_base_global_args_02_config.sh
@@ -3328,9 +3355,9 @@ function config_file_help() {
 # Start vps-init/src/include/07_base_global_args_04_not_ask.sh
 
 # shellcheck disable=SC2034
-export CONST_NOT_ASK_ARG="--not-ask"
+CONST_NOT_ASK_ARG="--not-ask"
 # shellcheck disable=SC2034
-export CONST_NOT_ASK_ENV="NOT_ASK"
+CONST_NOT_ASK_ENV="NOT_ASK"
 
 # shellcheck disable=SC2329
 function parse_not_ask() {
@@ -3345,7 +3372,8 @@ function parse_not_ask() {
 
 # shellcheck disable=SC2329
 function not_ask_help() {
-    echo -n "
+    echo -e "
+    ${CONST_COLOR_GREEN}Ask user options:${CONST_COLOR_NO}
     ${CONST_NOT_ASK_ARG}
       If passed will not ask user about actions.
       Env ${CONST_NOT_ASK_ENV}=true for set."
@@ -3356,17 +3384,17 @@ function not_ask_help() {
 # Start vps-init/src/include/07_base_global_args_05_log.sh
 
 # shellcheck disable=SC2034
-export CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
+CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
 # shellcheck disable=SC2034
-export CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
+CONST_LOG_ENV_ENABLE_DEBUG="LOG_ENABLE_DEBUG"
 # shellcheck disable=SC2034
-export CONST_LOG_ARG_FILE="--log-file"
+CONST_LOG_ARG_FILE="--log-file"
 # shellcheck disable=SC2034
-export CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
+CONST_LOG_ENV_FILE="LOG_SCRIPT_FILE"
 # shellcheck disable=SC2034
-export CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
+CONST_LOG_ARG_UNIX_SECONDS="--log-add-unix-seconds-to-file-path"
 # shellcheck disable=SC2034
-export CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
+CONST_LOG_ENV_UNIX_SECONDS="LOG_UNIX_SECONDS_TO_PATH"
 
 # shellcheck disable=SC2329
 function parse_and_apply_log_settings() {
@@ -3402,12 +3430,12 @@ function parse_and_apply_log_settings() {
 # shellcheck disable=SC2329
 function log_settings_help() {
     echo -e "
-    ${CONST_COLOR_GREEN}Log settings:${CONST_COLOR_NO}
+    ${CONST_COLOR_GREEN}Log options:${CONST_COLOR_NO}
     $CONST_LOG_ARG_ENABLE_DEBUG
       If passed will output debug log information to terminal.
       Env ${CONST_LOG_ENV_ENABLE_DEBUG}=true for set.
 
-    $CONST_LOG_ARG_FILE 'PATH'
+    $CONST_LOG_ARG_FILE PATH
       If set, all log include debug will write to file in format:
       [\$date] || [\$level]: \$msg
       Env $CONST_LOG_ENV_FILE
@@ -3929,7 +3957,7 @@ function do_action_with_with_wait_to_continue() {
 
 # End vps-init/src/include/09_base_run_ask_or_revert.sh
 
-# Start vps-init/src/include/11-base_download.sh
+# Start vps-init/src/include/11_base_download.sh
 
 # shellcheck disable=SC2329
 function download_url(){
@@ -3995,7 +4023,7 @@ function download_script_and_run() {
     return 0
 }
 
-# End vps-init/src/include/11-base_download.sh
+# End vps-init/src/include/11_base_download.sh
 
 # Start vps-init/src/include/11_base_jq.sh
 
@@ -4036,11 +4064,11 @@ function jq_get_key_or_empty() {
 # Start vps-init/src/include/20_base_user_00_fn.sh
 
 # shellcheck disable=SC2034
-export CONST_REMOVE_PASSWORD="true"
+CONST_REMOVE_PASSWORD="true"
 # shellcheck disable=SC2034
-export CONST_SUDO_NO_PASS="true"
+CONST_SUDO_NO_PASS="true"
 # shellcheck disable=SC2034
-export CONST_SHOULD_SUDO="true"
+CONST_SHOULD_SUDO="true"
 
 # shellcheck disable=SC2329
 function update_passwd_for_user() {
@@ -4645,7 +4673,7 @@ function users_configuration_help() {
 
 COMMANDS_LIST+=("gitlab_register_runner")
 
-export CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
+CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
 
 # shellcheck disable=SC2329
 function cmd_gitlab_register_runner_run() {
@@ -6258,14 +6286,9 @@ function phase_remove_upgrade_run() {
     local -a timers=("apt-daily.timer" "apt-daily-upgrade.timer")
 
     echo_info "Stop and disable timers ${timers[*]} ..."
-    
-    if ! systemctl disable "${timers[@]}"; then 
-        echo_error "Cannot disable timers"
-        return 1
-    fi
 
-    if ! systemctl stop "${timers[@]}"; then 
-        echo_error "Cannot stop timers"
+    if ! disable_and_stop_services "${timers[@]}"; then
+        echo_error "Cannot stop and disable timers '${timers[*]}'"
         return 1
     fi
 
@@ -6479,8 +6502,7 @@ function phase_hostname_help() {
     Options:
       --new-hostname hostanme
         Set new hostname.
-        Can be provided with env NEW_HOSTNAME
-"
+        Can be provided with env NEW_HOSTNAME"
 }
 
 # shellcheck disable=SC2329
@@ -6930,6 +6952,11 @@ function phase_sshd_disable_env() {
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["docker"]="07"
 
+# shellcheck disable=SC2034
+CONST_DOCKER_ADDITIONAL_PACKAGES_ARG="--docker-install-additional-packages"
+# shellcheck disable=SC2034
+CONST_DOCKER_ADDITIONAL_PACKAGES_ENV="DOCKER_ADDITIONAL_PACKAGES"
+
 # shellcheck disable=SC2329
 function install_docker_via_apt() {
     local packages=(
@@ -7014,7 +7041,7 @@ function install_docker_via_apk() {
     fi
 
     if ! service_enable_service "dockerd"; then
-        echo_error "Cannot enable openssh"
+        echo_error "Cannot enable dockerd"
         return 1
     fi
 
@@ -7026,14 +7053,18 @@ function phase_docker_run() {
     echo_info "Install docker..."
 
     local additional_packages_str=""
-    if ! additional_packages_str="$(extract_argument "--docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! additional_packages_str="$(extract_value_argument_no_validate "$CONST_DOCKER_ADDITIONAL_PACKAGES_ARG" "$CONST_DOCKER_ADDITIONAL_PACKAGES_ENV" "$@")"; then
         echo_error "Cannot parse additional packages"
         return 1
     fi
 
-    local -a additional_pkgs=()
-    if [ -n "$additional_packages_str" ]; then
-        readarray -d ',' -t additional_pkgs <<<"$additional_packages_str"
+    local -a docker_additional_pkgs=()
+
+    if ! str_empty "$additional_packages_str"; then
+        if ! split_by_comma "docker_additional_pkgs" "$additional_packages_str" "trim_spaces"; then
+            echo_error "Cannot split docker additional packages str '$additional_packages_str' by comma"
+            return 1
+        fi
     fi
 
     # shellcheck disable=SC2155
@@ -7051,7 +7082,7 @@ function phase_docker_run() {
         return 1
     fi
 
-    if ! "$install_fun" "${additional_pkgs[@]}"; then
+    if ! "$install_fun" "${docker_additional_pkgs[@]}"; then
         echo_error "Docker is not installed via '$pkg_manager'!"
         return 1
     fi 
@@ -7064,10 +7095,11 @@ function phase_docker_help() {
     echo -n "
     Install docker
     Options
-    --docker-install-additional-packages comma-separated-packages
-        Install additional packages for docker (for example luci-app-dockerman for OpenWRT)
-        Optional.
-        Can be provided with env DOCKER_ADDITIONAL_PACKAGES
+    $CONST_DOCKER_ADDITIONAL_PACKAGES_ARG PACKAGES_LIST_STR
+      Comma-separated list packages string to
+      install additional packages for docker (for example luci-app-dockerman for OpenWRT)
+      Optional.
+      Can be provided with env $CONST_DOCKER_ADDITIONAL_PACKAGES_ENV
 "
  }
 
@@ -7077,6 +7109,67 @@ function phase_docker_disable_env() {
 }
 
 # End vps-init/src/include/phase_07_docker.sh
+
+# Start vps-init/src/include/phase_08_install_additional_pkgs.sh
+
+# shellcheck disable=SC2034
+PHASES_WITH_INDEX["install_additional_pkgs"]="08"
+
+# shellcheck disable=SC2034
+CONST_ADDITIONAL_PACKAGES_ARG="--install-additional-packages"
+# shellcheck disable=SC2034
+CONST_ADDITIONAL_PACKAGES_ENV="INSTALL_ADDITIONAL_PACKAGES"
+
+# shellcheck disable=SC2329
+function phase_install_additional_pkgs_run() {
+    echo_info "Install additional packages..."
+
+    local additional_packages_str=""
+    if ! additional_packages_str="$(extract_value_argument_no_validate "$CONST_ADDITIONAL_PACKAGES_ARG" "$CONST_ADDITIONAL_PACKAGES_ENV" "$@")"; then
+        echo_error "Cannot parse additional packages"
+        return 1
+    fi
+
+    local -a __install_additional_pkgs=()
+
+    if ! str_empty "$additional_packages_str"; then
+        if ! split_by_comma "__install_additional_pkgs" "$additional_packages_str" "trim_spaces"; then
+            echo_error "Cannot split additional packages str '$additional_packages_str' by comma"
+            return 1
+        fi
+    fi
+
+    if is_array_empty "__install_additional_pkgs"; then
+        echo_info "Passed empty additional packages. Skip."
+        return 0
+    fi
+
+    if ! install_packages "${__install_additional_pkgs[@]}"; then
+        echo_error "Cannot install additional packages"
+        return 1
+    fi
+
+    echo_info "Additional packages installed!"
+}
+
+# shellcheck disable=SC2329
+function phase_install_additional_pkgs_help() {
+    echo -n "
+    Install additional packages
+    Options:
+    ${CONST_ADDITIONAL_PACKAGES_ARG} PACKAGES_LIST_STR
+      Comma-separated list of packages to install.
+      If not any passed packages will skip.
+      Can be provided with env $CONST_ADDITIONAL_PACKAGES_ENV
+"
+}
+
+# shellcheck disable=SC2329
+function phase_install_additional_pkgs_disable_env() {
+    echo -n "DISABLE_INSTALL_ADDITIONAL_PACKAGES"
+}
+
+# End vps-init/src/include/phase_08_install_additional_pkgs.sh
 
 # Start vps-init/src/include/phase_10_atop.sh
 
@@ -7517,15 +7610,23 @@ function usage() {
 
     for p in "$@"; do
         local help_fun="phase_${p}_help"
-        if ! declare -F "$help_fun" > /dev/null; then
+        local disable_help_str=""
+        if ! disable_help_str="$(phase_print_disable_help "$p")"; then
+            echo_error "Cannot get disable help string for phase $p"
+            exit 1
+        fi
+
+        if ! is_function_declared "$help_fun"; then
             echo_error "Help function not found for phase $p"
             exit 1
         fi
+
         echo ""
         echo -n "  Phase " 
         echo_yellow "$p"
         "$help_fun"
-        echo "    $(phase_print_disable_help "$p")"
+        echo ""
+        echo "    $disable_help_str"
     done
 
     echo ""
@@ -7617,6 +7718,11 @@ function main() {
     local not_ask=""
     not_ask="$(parse_not_ask "$@")" || true
 
+    local disable_remove_conf_on_phase="false"
+    if is_disable_remove_config_file "$@"; then
+        disable_remove_conf_on_phase="true"
+    fi
+
     local got_run_one_phase=""
     local got_run_cmd=""
 
@@ -7634,7 +7740,7 @@ function main() {
                 return 1
             fi
 
-            if ! [[ -v PHASES_WITH_INDEX["$got_run_one_phase"] ]]; then
+            if ! is_dict_has_key "PHASES_WITH_INDEX" "$got_run_one_phase"; then
                 usage "${phases[@]}"
                 echo_error "Not found phase $got_run_one_phase"
                 return 1
@@ -7686,6 +7792,12 @@ function main() {
         done
     else
         phases_to_run=("$got_run_one_phase")
+        if str_eq "$disable_remove_conf_on_phase" "false"; then
+            local remove_phase="remove_passed_config"
+            if is_dict_has_key "PHASES_WITH_INDEX" "$remove_phase"; then
+                phases_to_run+=("$remove_phase")
+            fi
+        fi
     fi
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then

@@ -5,6 +5,11 @@ set -Eeuo pipefail
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["docker"]="07"
 
+# shellcheck disable=SC2034
+CONST_DOCKER_ADDITIONAL_PACKAGES_ARG="--docker-install-additional-packages"
+# shellcheck disable=SC2034
+CONST_DOCKER_ADDITIONAL_PACKAGES_ENV="DOCKER_ADDITIONAL_PACKAGES"
+
 # shellcheck disable=SC2329
 function install_docker_via_apt() {
     local packages=(
@@ -89,7 +94,7 @@ function install_docker_via_apk() {
     fi
 
     if ! service_enable_service "dockerd"; then
-        echo_error "Cannot enable openssh"
+        echo_error "Cannot enable dockerd"
         return 1
     fi
 
@@ -101,14 +106,18 @@ function phase_docker_run() {
     echo_info "Install docker..."
 
     local additional_packages_str=""
-    if ! additional_packages_str="$(extract_argument "--docker-install-additional-packages" "DOCKER_ADDITIONAL_PACKAGES" "$CONST_NOT_FLAG" "$CONST_NO_VALIDATE" "$@")"; then
+    if ! additional_packages_str="$(extract_value_argument_no_validate "$CONST_DOCKER_ADDITIONAL_PACKAGES_ARG" "$CONST_DOCKER_ADDITIONAL_PACKAGES_ENV" "$@")"; then
         echo_error "Cannot parse additional packages"
         return 1
     fi
 
-    local -a additional_pkgs=()
-    if [ -n "$additional_packages_str" ]; then
-        readarray -d ',' -t additional_pkgs <<<"$additional_packages_str"
+    local -a docker_additional_pkgs=()
+
+    if ! str_empty "$additional_packages_str"; then
+        if ! split_by_comma "docker_additional_pkgs" "$additional_packages_str" "trim_spaces"; then
+            echo_error "Cannot split docker additional packages str '$additional_packages_str' by comma"
+            return 1
+        fi
     fi
 
     # shellcheck disable=SC2155
@@ -126,7 +135,7 @@ function phase_docker_run() {
         return 1
     fi
 
-    if ! "$install_fun" "${additional_pkgs[@]}"; then
+    if ! "$install_fun" "${docker_additional_pkgs[@]}"; then
         echo_error "Docker is not installed via '$pkg_manager'!"
         return 1
     fi 
@@ -139,10 +148,11 @@ function phase_docker_help() {
     echo -n "
     Install docker
     Options
-    --docker-install-additional-packages comma-separated-packages
-        Install additional packages for docker (for example luci-app-dockerman for OpenWRT)
-        Optional.
-        Can be provided with env DOCKER_ADDITIONAL_PACKAGES
+    $CONST_DOCKER_ADDITIONAL_PACKAGES_ARG PACKAGES_LIST_STR
+      Comma-separated list packages string to
+      install additional packages for docker (for example luci-app-dockerman for OpenWRT)
+      Optional.
+      Can be provided with env $CONST_DOCKER_ADDITIONAL_PACKAGES_ENV
 "
  }
 

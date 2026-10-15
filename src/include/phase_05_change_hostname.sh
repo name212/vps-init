@@ -64,8 +64,7 @@ function phase_hostname_help() {
     Options:
       --new-hostname hostanme
         Set new hostname.
-        Can be provided with env NEW_HOSTNAME
-"
+        Can be provided with env NEW_HOSTNAME"
 }
 
 # shellcheck disable=SC2329
