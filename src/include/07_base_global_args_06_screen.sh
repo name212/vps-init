@@ -3,19 +3,19 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
+CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
 # shellcheck disable=SC2034
-export CONST_SCREEN_ENV_ENABLE="SCREEN_ENABLE_RUN_VIA_SCREEN"
+CONST_SCREEN_ENV_ENABLE="SCREEN_ENABLE_RUN_VIA_SCREEN"
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_ARG_RECORD_DIR="--screen-records-dir"
+CONST_SCREEN_ARG_RECORD_DIR="--screen-records-dir"
 # shellcheck disable=SC2034
-export CONST_SCREEN_ENV_RECORD_DIR="SCREEN_RECORDS_DIR"
+CONST_SCREEN_ENV_RECORD_DIR="SCREEN_RECORDS_DIR"
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_ARG_SESS_NAME="--screen-session-name-prefix"
+CONST_SCREEN_ARG_SESS_NAME="--screen-session-name-prefix"
 # shellcheck disable=SC2034
-export CONST_SCREEN_ENV_SESS_NAME="SCREEN_SESSION_NAME_PREFIX"
+CONST_SCREEN_ENV_SESS_NAME="SCREEN_SESSION_NAME_PREFIX"
 
 # shellcheck disable=SC2329
 function __screen_sess_prefix_default() {

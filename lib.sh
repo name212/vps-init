@@ -349,7 +349,7 @@ function is_array_or_dict_var() {
 
 # End vps-init/src/include/02_base_type_01_bash.sh
 
-# Start vps-init/src/include/02_base_type_02_str_01_generate.sh
+# Start vps-init/src/include/02_base_type_02_str_01_base.sh
 
 # shellcheck disable=SC2329
 function rand_str_n() {
@@ -360,7 +360,25 @@ function rand_str_n() {
 	fi
 }
 
-# End vps-init/src/include/02_base_type_02_str_01_generate.sh
+# shellcheck disable=SC2329
+function str_eq() {
+	if [[ "$1" == ""$2 ]]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# shellcheck disable=SC2329
+function str_empty() {
+	if [ -z "$1" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# End vps-init/src/include/02_base_type_02_str_01_base.sh
 
 # Start vps-init/src/include/02_base_type_02_str_02_escape.sh
 
@@ -3362,19 +3380,19 @@ function log_settings_help() {
 # Start vps-init/src/include/07_base_global_args_06_screen.sh
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
+CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
 # shellcheck disable=SC2034
-export CONST_SCREEN_ENV_ENABLE="SCREEN_ENABLE_RUN_VIA_SCREEN"
+CONST_SCREEN_ENV_ENABLE="SCREEN_ENABLE_RUN_VIA_SCREEN"
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_ARG_RECORD_DIR="--screen-records-dir"
+CONST_SCREEN_ARG_RECORD_DIR="--screen-records-dir"
 # shellcheck disable=SC2034
-export CONST_SCREEN_ENV_RECORD_DIR="SCREEN_RECORDS_DIR"
+CONST_SCREEN_ENV_RECORD_DIR="SCREEN_RECORDS_DIR"
 
 # shellcheck disable=SC2034
-export CONST_SCREEN_ARG_SESS_NAME="--screen-session-name-prefix"
+CONST_SCREEN_ARG_SESS_NAME="--screen-session-name-prefix"
 # shellcheck disable=SC2034
-export CONST_SCREEN_ENV_SESS_NAME="SCREEN_SESSION_NAME_PREFIX"
+CONST_SCREEN_ENV_SESS_NAME="SCREEN_SESSION_NAME_PREFIX"
 
 # shellcheck disable=SC2329
 function __screen_sess_prefix_default() {
