@@ -2909,6 +2909,50 @@ function extract_argument() {
 }
 
 # shellcheck disable=SC2329
+function filter_arguments() { 
+    local args_to_filter_arr_name="$1"
+    local dest_filtered_arr_name="$2"
+
+    if ! is_array_var "$args_to_filter_arr_name"; then
+        echo_error "Args to filter array var name '$args_to_filter_arr_name' is not array"
+        return 1
+    fi
+
+    if ! is_array_var "$dest_filtered_arr_name"; then
+        echo_error "Destination array var name '$dest_filtered_arr_name' is not array"
+        return 1
+    fi
+
+    shift
+    shift
+
+    local -n __dest_filtered="$dest_filtered_arr_name"
+
+    local indx="-1"
+
+    while num_great_than "$#" "0"; do
+        local cur_arg="$1"
+        if is_array_has_val "$args_to_filter_arr_name" "$cur_arg"; then
+            shift
+            if ! num_eq "$#" "0"; then
+                local cur_val="$1"
+                if ! is_argument_val "$cur_val"; then
+                    shift
+                fi
+            fi
+
+            continue
+        fi
+
+        ((indx++)) || true
+        __dest_filtered["$indx"]="$cur_arg"
+        shift
+    done
+
+    return 0
+}
+
+# shellcheck disable=SC2329
 function extract_value_argument() { 
     local arg_name="$1"
     local env_name="$2"
