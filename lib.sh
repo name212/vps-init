@@ -369,6 +369,15 @@ function str_eq() {
 	return 1
 }
 
+# shellcheck disable=SC2329
+function str_empty() {
+	if [ -z "$1" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
 # End vps-init/src/include/02_base_type_02_str_01_base.sh
 
 # Start vps-init/src/include/02_base_type_02_str_02_escape.sh
