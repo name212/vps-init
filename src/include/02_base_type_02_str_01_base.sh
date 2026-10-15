@@ -10,3 +10,12 @@ function rand_str_n() {
 		return "$?"
 	fi
 }
+
+# shellcheck disable=SC2329
+function str_eq() {
+	if [[ "$1" == ""$2 ]]; then
+		return 0
+	fi
+
+	return 1
+}

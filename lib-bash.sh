@@ -349,7 +349,7 @@ function is_array_or_dict_var() {
 
 # End vps-init/src/include/02_base_type_01_bash.sh
 
-# Start vps-init/src/include/02_base_type_02_str_01_generate.sh
+# Start vps-init/src/include/02_base_type_02_str_01_base.sh
 
 # shellcheck disable=SC2329
 function rand_str_n() {
@@ -360,7 +360,16 @@ function rand_str_n() {
 	fi
 }
 
-# End vps-init/src/include/02_base_type_02_str_01_generate.sh
+# shellcheck disable=SC2329
+function str_eq() {
+	if [[ "$1" == ""$2 ]]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# End vps-init/src/include/02_base_type_02_str_01_base.sh
 
 # Start vps-init/src/include/02_base_type_02_str_02_escape.sh
 
