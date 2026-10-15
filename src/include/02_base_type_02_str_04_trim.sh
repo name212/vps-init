@@ -3,9 +3,9 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_STR_TRIM_LEFT="__left__"
+CONST_STR_TRIM_LEFT="__left__"
 # shellcheck disable=SC2034
-export CONST_STR_TRIM_RIGHT="__right__"
+CONST_STR_TRIM_RIGHT="__right__"
 
 # shellcheck disable=SC2329
 function trim_spaces_left() {

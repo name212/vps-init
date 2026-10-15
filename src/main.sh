@@ -70,15 +70,23 @@ function usage() {
 
     for p in "$@"; do
         local help_fun="phase_${p}_help"
-        if ! declare -F "$help_fun" > /dev/null; then
+        local disable_help_str=""
+        if ! disable_help_str="$(phase_print_disable_help "$p")"; then
+            echo_error "Cannot get disable help string for phase $p"
+            exit 1
+        fi
+
+        if ! is_function_declared "$help_fun"; then
             echo_error "Help function not found for phase $p"
             exit 1
         fi
+
         echo ""
         echo -n "  Phase " 
         echo_yellow "$p"
         "$help_fun"
-        echo "    $(phase_print_disable_help "$p")"
+        echo ""
+        echo "    $disable_help_str"
     done
 
     echo ""
@@ -170,6 +178,11 @@ function main() {
     local not_ask=""
     not_ask="$(parse_not_ask "$@")" || true
 
+    local disable_remove_conf_on_phase="false"
+    if is_disable_remove_config_file "$@"; then
+        disable_remove_conf_on_phase="true"
+    fi
+
     local got_run_one_phase=""
     local got_run_cmd=""
 
@@ -187,7 +200,7 @@ function main() {
                 return 1
             fi
 
-            if ! [[ -v PHASES_WITH_INDEX["$got_run_one_phase"] ]]; then
+            if ! is_dict_has_key "PHASES_WITH_INDEX" "$got_run_one_phase"; then
                 usage "${phases[@]}"
                 echo_error "Not found phase $got_run_one_phase"
                 return 1
@@ -239,6 +252,12 @@ function main() {
         done
     else
         phases_to_run=("$got_run_one_phase")
+        if str_eq "$disable_remove_conf_on_phase" "false"; then
+            local remove_phase="remove_passed_config"
+            if is_dict_has_key "PHASES_WITH_INDEX" "$remove_phase"; then
+                phases_to_run+=("$remove_phase")
+            fi
+        fi
     fi
 
     if [[ "${#phases_to_run[@]}" == "0" ]]; then

@@ -2,9 +2,9 @@
 
 set -Eeuo pipefail
 
-export __PRIVATE_TEST_PASSWORDS_RES="true"
-export __CONST_PASSWORD_SHOULD_OK="__should_ok__"
-export __CONST_PASSWORD_SHOULD_NOT_OK="__not_should_ok__"
+__PRIVATE_TEST_PASSWORDS_RES="true"
+__CONST_PASSWORD_SHOULD_OK="__should_ok__"
+__CONST_PASSWORD_SHOULD_NOT_OK="__not_should_ok__"
 
 function __test_run_one_password_fail() {
     local pass="$1"

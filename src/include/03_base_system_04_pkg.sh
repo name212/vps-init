@@ -164,7 +164,7 @@ function upgrade_all_packages() {
 
 # shellcheck disable=SC2329
 function install_packages() {
-    echo_info "Install packages $* ..."
+    echo_info "Install packages '$*'..."
 
     local update_fun=""
     if ! update_fun="$(get_package_cmd update)"; then

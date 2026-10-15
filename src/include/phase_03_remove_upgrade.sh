@@ -16,14 +16,9 @@ function phase_remove_upgrade_run() {
     local -a timers=("apt-daily.timer" "apt-daily-upgrade.timer")
 
     echo_info "Stop and disable timers ${timers[*]} ..."
-    
-    if ! systemctl disable "${timers[@]}"; then 
-        echo_error "Cannot disable timers"
-        return 1
-    fi
 
-    if ! systemctl stop "${timers[@]}"; then 
-        echo_error "Cannot stop timers"
+    if ! disable_and_stop_services "${timers[@]}"; then
+        echo_error "Cannot stop and disable timers '${timers[*]}'"
         return 1
     fi
 

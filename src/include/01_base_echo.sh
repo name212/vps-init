@@ -12,7 +12,7 @@ function __is_debug_file_present(){
 }
 
 # shellcheck disable=SC2034
-export CONST_FORCE_DEBUG="__force_debug__"
+CONST_FORCE_DEBUG="__force_debug__"
 
 # shellcheck disable=SC2034
 export PRIVATE_SCRIPT_DEBUG_ENABLED=""
@@ -22,24 +22,24 @@ if ! __is_debug_file_present; then
 fi
 
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_DEBUG="debug"
+CONST_LOG_LEVEL_DEBUG="debug"
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_INFO="info"
+CONST_LOG_LEVEL_INFO="info"
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_WARN="warn"
+CONST_LOG_LEVEL_WARN="warn"
 # shellcheck disable=SC2034
-export CONST_LOG_LEVEL_ERROR="error"
+CONST_LOG_LEVEL_ERROR="error"
 
 # shellcheck disable=SC2034
-export CONST_COLOR_GREEN=$'\033[1;32m'
+CONST_COLOR_GREEN=$'\033[1;32m'
 # shellcheck disable=SC2034
-export CONST_COLOR_YELLOW=$'\033[1;33m'
+CONST_COLOR_YELLOW=$'\033[1;33m'
 # shellcheck disable=SC2034
-export CONST_COLOR_RED=$'\033[1;31m'
+CONST_COLOR_RED=$'\033[1;31m'
 # shellcheck disable=SC2034
-export CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
+CONST_COLOR_GRAY_LIGHT=$'\033[3;37m'
 # shellcheck disable=SC2034
-export CONST_COLOR_NO=$'\033[0m'
+CONST_COLOR_NO=$'\033[0m'
 
 # shellcheck disable=SC2329
 function echo_green (){

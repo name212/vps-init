@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 COMMANDS_LIST+=("gitlab_register_runner")
 
-export CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
+CONST_GITLAB_SERVICE_NAME="gitlab-runner.service"
 
 # shellcheck disable=SC2329
 function cmd_gitlab_register_runner_run() {

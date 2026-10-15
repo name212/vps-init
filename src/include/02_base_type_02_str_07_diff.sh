@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 
 
-export CONST_OUT_DIFF_OR_HAS_DIFF="true"
-export CONST_DIFF_ADD_ARGS=("--color=always")
+CONST_OUT_DIFF_OR_HAS_DIFF="true"
+CONST_DIFF_ADD_ARGS=("--color=always")
 
 # shellcheck disable=SC2329
 function out_diff() {

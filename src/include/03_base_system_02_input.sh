@@ -3,14 +3,14 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_NOT_ASK_VAL="__not_ask__"
+CONST_NOT_ASK_VAL="__not_ask__"
 # shellcheck disable=SC2034
-export CONST_ASK_VAL="__should_ask__"
+CONST_ASK_VAL="__should_ask__"
 
 # shellcheck disable=SC2034
-export CONST_READ_ERROR_RET_CODE="254"
+CONST_READ_ERROR_RET_CODE="254"
 # shellcheck disable=SC2034
-export CONST_READ_ERROR_WITH_TIMEOUT_RET_CODE="255"
+CONST_READ_ERROR_WITH_TIMEOUT_RET_CODE="255"
 
 function __prepare_prompt_str() {
     local prompt="${1:-No prompt}"

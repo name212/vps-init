@@ -3,9 +3,9 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_NOT_ASK_ARG="--not-ask"
+CONST_NOT_ASK_ARG="--not-ask"
 # shellcheck disable=SC2034
-export CONST_NOT_ASK_ENV="NOT_ASK"
+CONST_NOT_ASK_ENV="NOT_ASK"
 
 # shellcheck disable=SC2329
 function parse_not_ask() {
@@ -20,7 +20,8 @@ function parse_not_ask() {
 
 # shellcheck disable=SC2329
 function not_ask_help() {
-    echo -n "
+    echo -e "
+    ${CONST_COLOR_GREEN}Ask user options:${CONST_COLOR_NO}
     ${CONST_NOT_ASK_ARG}
       If passed will not ask user about actions.
       Env ${CONST_NOT_ASK_ENV}=true for set."

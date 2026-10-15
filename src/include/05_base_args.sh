@@ -3,19 +3,19 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_FLAG_SET="true"
+CONST_FLAG_SET="true"
 # shellcheck disable=SC2034
-export CONST_IS_FLAG="__is_flag__"
+CONST_IS_FLAG="__is_flag__"
 # shellcheck disable=SC2034
-export CONST_NOT_FLAG="__not_is_flag__"
+CONST_NOT_FLAG="__not_is_flag__"
 
 # shellcheck disable=SC2034
-export CONST_NO_VALIDATE="__no_validate"
+CONST_NO_VALIDATE="__no_validate"
 
 # shellcheck disable=SC2034
-export CONST_ARG_NOT_PASSED="__not_passed_arg__"
+CONST_ARG_NOT_PASSED="__not_passed_arg__"
 # shellcheck disable=SC2034
-export CONST_ARG_PASSED="__arg_passed__"
+CONST_ARG_PASSED="__arg_passed__"
 
 # shellcheck disable=SC2329
 function __no_validate() {

@@ -3,9 +3,9 @@
 set -Eeuo pipefail
 
 # shellcheck disable=SC2034
-export CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
+CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
 # shellcheck disable=SC2034
-export CONST_SYS_SERVICE_ENGINE_INITD="service"
+CONST_SYS_SERVICE_ENGINE_INITD="service"
 
 declare -A _SYS_SERVICE_ENGINES_MAP=()
 _SYS_SERVICE_ENGINES_MAP["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="true"
