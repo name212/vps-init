@@ -2900,7 +2900,9 @@ function extract_argument() {
         fi
     done
 
+    local validation_env_msg=""
     if [ -n "$env_name" ]; then
+        validation_env_msg=" or env '$env_name'"
         if [ -v "$env_name" ]; then
             val="${!env_name:-}"
             arg_passed="$CONST_ARG_PASSED"
@@ -2917,14 +2919,14 @@ function extract_argument() {
         return 0
     fi
 
-    if ! declare -F "$validator" > /dev/null; then
+    if ! is_function_declared "$validator"; then
         echo_error "Internal error: '$validator' func not declared!"
         return 1
     fi
 
     local prepared
     if ! prepared="$($validator "$val" "$arg_passed")"; then
-        echo_error "Incorrect: $prepared"
+        echo_error "Validation failed from validator '$validator' for argument '$arg_name'${validation_env_msg}"
         return 1
     fi
 
