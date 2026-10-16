@@ -28,3 +28,20 @@ function str_empty() {
 
 	return 1
 }
+
+# shellcheck disable=SC2329
+function str_upper() {
+	local str="${1:-}"
+
+	echo -n "${str^^}"
+
+	return 0
+}
+# shellcheck disable=SC2329
+function str_lower() {
+	local str="${1:-}"
+	
+	echo -n "${str,,}"
+
+	return 0
+}

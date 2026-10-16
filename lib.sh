@@ -378,6 +378,23 @@ function str_empty() {
 	return 1
 }
 
+# shellcheck disable=SC2329
+function str_upper() {
+	local str="${1:-}"
+
+	echo -n "${str^^}"
+
+	return 0
+}
+# shellcheck disable=SC2329
+function str_lower() {
+	local str="${1:-}"
+	
+	echo -n "${str,,}"
+
+	return 0
+}
+
 # End vps-init/src/include/02_base_type_02_str_01_base.sh
 
 # Start vps-init/src/include/02_base_type_02_str_02_escape.sh
