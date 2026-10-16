@@ -13,7 +13,7 @@ function rand_str_n() {
 
 # shellcheck disable=SC2329
 function str_eq() {
-	if [[ "$1" == ""$2 ]]; then
+	if [[ "$1" == "$2" ]]; then
 		return 0
 	fi
 
