@@ -3625,11 +3625,17 @@ function screen_args_help() {
 
 # shellcheck disable=SC2034
 CONST_EXPECT_ACTIONS_DELIMITER="||||"
+# shellcheck disable=SC2034
 CONST_EXPECT_ACTION_INPUT="action_input"
+# shellcheck disable=SC2034
 CONST_EXPECT_ACTION_INPUT_EXIT="action_input_exit"
+# shellcheck disable=SC2034
 CONST_EXPECT_ACTION_GET_EXIT="action_get_exit"
+# shellcheck disable=SC2034
 CONST_EXPECT_GREP_SHOULD_EXIT="_VrAUEE4vkhOP__should_exit_grep_RSUe5masA2o3_"
 
+# shellcheck disable=SC2034
+CONST_EXPECT_PROCESS_KILLED_RET_CODE="143"
 
 function __kill_coprocess() {
     local should_exit_pid="$1"
@@ -3755,7 +3761,7 @@ function run_cmd_with_expect_script() {
             ;;
 
             "$CONST_EXPECT_ACTION_INPUT_EXIT")
-                local len_exp="${#__split_expect_cmd}"
+                local len_exp="${#__split_expect_cmd[@]}"
                 local input_for_ex=""
                 local sleep_for_ex=""
                 case "$len_exp" in
@@ -3832,11 +3838,13 @@ function run_cmd_with_expect_script() {
 
     function __sleep_and_exit_coprocess(){
         sleep 2
-        echo "Exit code corutine $1"
         exit "$1"
     }
 
-    coproc __EXPECT_COPROC { sleep 2; "$cmd" "$@" && __sleep_and_exit_coprocess "$?"; } 2>&1
+    coproc __EXPECT_COPROC {
+        sleep 2; 
+        "$cmd" "$@" && __sleep_and_exit_coprocess "$?"; 
+    } 2>&1
 
     child_pid="${__EXPECT_COPROC_PID}"
 
@@ -3849,14 +3857,12 @@ function run_cmd_with_expect_script() {
 
     local cur_str=""
 
-    #set -x
-
     local read_fd="${__EXPECT_COPROC[0]}"
     local write_fd="${__EXPECT_COPROC[1]}"
 
     while true; do
         local ret_code_read="0"
-        if read -t 60 -N 1 -u "$read_fd" -r __expect_char; then
+        if read -t 60 -N 1 -u "$read_fd" -r __expect_char 2>/dev/null; then
             true
         else
             ret_code_read="$?"
@@ -3883,7 +3889,7 @@ function run_cmd_with_expect_script() {
 
         local has_grep=""
 
-        if ! num_great_eq "$cur_grep_for_input" "$len_grep_for_input"; then
+        if ! num_eq "$len_grep_for_input" "0" && ! num_great_eq "$cur_grep_for_input" "$len_grep_for_input"; then
              has_grep="true"
 
              if echo -n "$str_for_check" | grep -qP "${grep_for_input[$cur_grep_for_input]}"; then
@@ -3896,21 +3902,28 @@ function run_cmd_with_expect_script() {
              fi
         fi
 
-        if ! num_great_eq "$cur_grep_for_exit" "$len_grep_for_exit"; then
-            local next_input="${input_for_exit[$cur_grep_for_exit]}"
-            local next_sleep="${sleep_for_exit[$cur_grep_for_exit]}"
+        if ! num_eq "$len_grep_for_exit" "0" && ! num_great_eq "$cur_grep_for_exit" "$len_grep_for_exit"; then
+            local got_break=""
+            for ii in $(seq "$cur_grep_for_exit" "$((len_grep_for_exit - 1))"); do
+                local next_input="${input_for_exit[$ii]}"
+                local next_sleep="${sleep_for_exit[$ii]}"
 
-            if echo -n "$str_for_check" | grep -qP "${grep_for_exit[$cur_grep_for_exit]}"; then
-                if str_eq "$next_input" "$CONST_EXPECT_GREP_SHOULD_EXIT"; then
-                    next_input=""
+                if echo -n "$str_for_check" | grep -qP "${grep_for_exit[$ii]}"; then
+                    if str_eq "$next_input" "$CONST_EXPECT_GREP_SHOULD_EXIT"; then
+                        next_input=""
+                    fi
+
+                    ((cur_grep_for_exit++)) || true
+                    cur_str=""
+                    __input_to_coprocess "$write_fd" "$next_input" "$next_sleep" "$child_pid"
+                    got_break="true"
+                    break
                 fi
-
-                ((cur_grep_for_exit++)) || true
-                cur_str=""
-                __input_to_coprocess "$write_fd" "$next_input" "$next_sleep" "$child_pid"
+            done
+            has_grep="true"
+            if str_eq "$got_break" "true"; then
                 break
             fi
-            has_grep="true"
         fi
 
         if ! str_eq "$has_grep" "true"; then
@@ -3925,7 +3938,11 @@ function run_cmd_with_expect_script() {
         echo_green "Command '$cmd' ran successfully"
     else
         ret_code="$?"
-        echo_warn "Command '$cmd' exit with exit code '$ret_code'"
+        if num_eq "$ret_code" "$CONST_EXPECT_PROCESS_KILLED_RET_CODE"; then
+            echo_info "Command '$cmd' killed"
+        else
+            echo_warn "Command '$cmd' exit with exit code '$ret_code'"
+        fi
     fi
 
     return "$ret_code"

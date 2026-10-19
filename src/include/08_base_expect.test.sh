@@ -79,6 +79,19 @@ echo \"World\" >&2
     __prepare_script_file_and_run "no_grep" "$content" "__expects_for_no_grep" "0"
 }
 
+function __run_test_no_grep_any_exit_code() {
+    local content="
+echo \"Hello\"
+echo \"World\" >&2
+exit 3
+"
+    local -a __expects_for_no_grep=(
+        "action_get_exit||||Enter some"
+    )
+
+    __prepare_script_file_and_run "no_grep_any_exit_code" "$content" "__expects_for_no_grep" "3"
+}
+
 function __run_test_no_grep_and_input_exit() {
     local content="
 echo \"Hello\"
@@ -136,15 +149,78 @@ read -r answ4
     __prepare_script_file_and_run "multiple_one_grep_and_exit" "$content" "__expects_for_no_grep" "143"
 }
 
+# shellcheck disable=SC2140
+__part_content="
+trap_fun() {
+    echo \"Got trap\"
+    exit 0
+}
+
+trap trap_fun SIGTERM
+
+has_error="\$\{1:-\}"
+
+echo \"Hello\"
+answ1=""
+echo -n \"Enter some: \"
+read answ1
+echo \"First answer is: \"\${answ1}\"\"
+echo \"Do some\" >&2
+answ2=""
+echo -n \"Enter some: \"
+read answ2
+echo \"Second answer is: \"\${answ2}\"\" 
+echo \"Another do\" >&2
+if [ -n \"\$has_error\" ]; then
+    err_answ=""
+    echo -n \"Got Error. Enter some: \"
+    read err_answ
+    echo \"Error answer is: \"\${err_answ}\"\" 
+fi
+echo \"Get third answer\"
+answ3=""
+echo -n \"Enter some: \"
+read answ3
+echo \"Third answer is: \"\${answ3}\"\" 
+answ4=""
+echo -n \"Enter some: \"
+read -r answ4
+"
+
+function __run_test_multiple_one_with_input_exit_no_exit() {
+
+    local -a __expects_for_no_grep=(
+        "action_input||||^Enter some: ||||First answer||||"
+        "action_input||||^Enter some: ||||Second answer||||"
+        "action_input_exit||||^Got Error\\. Enter some: ||||Error entered||||2"
+        "action_input||||^Enter some: ||||Third answer||||1"
+        "action_get_exit||||^Enter some: "
+    )
+
+    __prepare_script_file_and_run "multiple_one_with_input_exit_no_exit" "$__part_content" "__expects_for_no_grep" "143"
+}
+
+function __run_test_multiple_one_with_input_exit_with_exit() {
+
+    local -a __expects_for_no_grep=(
+        "action_input||||^Enter some: ||||First answer||||"
+        "action_input||||^Enter some: ||||Second answer||||"
+        "action_input_exit||||^Got Error\\. Enter some: ||||Error entered||||2"
+        "action_input||||^Enter some: ||||Third answer||||1"
+        "action_get_exit||||^Enter some: "
+    )
+
+    __prepare_script_file_and_run "multiple_one_with_input_exit_with_exit" "$__part_content" "__expects_for_no_grep" "143" "true"
+}
 
 echo_info "Run expected script tests"
 
-# __enable_debug_log "true"
-
-#__run_test_no_grep_any
-#__run_test_no_grep_and_input_exit
+__run_test_no_grep_any
+__run_test_no_grep_any_exit_code
+__run_test_no_grep_and_input_exit
 __run_test_multiple_one_grep_and_exit
-
+__run_test_multiple_one_with_input_exit_no_exit
+__run_test_multiple_one_with_input_exit_with_exit
 
 echo_info "Remove tests scripts:"
 for ff in "${__scripts_file_to_remove[@]}"; do
