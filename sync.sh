@@ -2710,6 +2710,32 @@ function check_is_ipv4() {
     return 1
 }
 
+# shellcheck disable=SC2329
+function check_is_mac_address() {
+    if [[ "$val" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
+        echo -n "$(str_lower "$val")"
+        return 0
+    fi
+
+    if [[ "$val" =~ ^([0-9A-Fa-f]{12})$ ]]; then
+        local -a parts=()
+        
+        for (( i=0; i<${#val}; i+=2 )); do 
+            parts+=("${val:i:2}"); 
+        done
+        
+        # shellcheck disable=SC2155
+        local res="$(join_args_with_separator ":" "${parts[@]}")"
+
+        echo -n "$(str_lower "$res")"
+        
+        return 0
+    fi
+
+    echo_error "invalid MAC address $val"
+    return 1
+}
+
 # End vps-init/src/include/03_base_system_06_net.sh
 
 # Start vps-init/src/include/04_base_phases.sh
@@ -3256,6 +3282,24 @@ function validate_arg_ipv4_optional() {
     local passed="$2"
 
     call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_ipv4" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_mac_address() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_mac_address" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_arg_mac_address_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_mac_address" "$val" "$passed"
     return $?
 }
 
@@ -6205,45 +6249,6 @@ function cmd_virtualbox_init_vm_help() {
 # Start vps-init/src/include/cmd_03_virtualbox_init_vm_itself.sh
 
 COMMANDS_LIST+=("virtualbox_init_vm_itself")
-
-# shellcheck disable=SC2329
-function validate_arg_mac_address() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo -n "Not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty address"
-        return 1 
-    fi
-
-    if [[ "$val" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
-        echo -n "${val,,}"
-        return 0
-    fi
-
-    if [[ "$val" =~ ^([0-9A-Fa-f]{12})$ ]]; then
-        local -a parts=()
-        
-        for (( i=0; i<${#val}; i+=2 )); do 
-            parts+=("${val:i:2}"); 
-        done
-        
-        local res=""
-        IFS=":" res="${parts[*]}" 
-
-        echo -n "${res,,}"	
-        
-        return 0
-    fi
-
-    echo -n "Invalid MAC address $val"
-    return 1
-}
 
 # shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_itself_run() {
