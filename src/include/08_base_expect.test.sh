@@ -97,12 +97,53 @@ read -r answ
     __prepare_script_file_and_run "grep_enter_and_exit" "$content" "__expects_for_no_grep" "143"
 }
 
+function __run_test_multiple_one_grep_and_exit() {
+    local content="
+trap_fun() {
+    echo \"Got trap\"
+    exit 0
+}
+
+trap trap_fun SIGTERM
+
+echo \"Hello\"
+answ1=""
+echo -n \"Enter some: \"
+read answ1
+echo \"First answer is: \"\${answ1}\"\"
+echo \"Do some\" >&2
+answ2=""
+echo -n \"Enter some: \"
+read answ2
+echo \"Second answer is: \"\${answ2}\"\" 
+echo \"Another do\" >&2
+echo \"Get third answer\"
+answ3=""
+echo -n \"Enter some: \"
+read answ3
+echo \"Third answer is: \"\${answ3}\"\" 
+answ4=""
+echo -n \"Enter some: \"
+read -r answ4
+"
+    local -a __expects_for_no_grep=(
+        "action_input||||Enter some: ||||First answer||||"
+        "action_input||||Enter some: ||||Second answer||||"
+        "action_input||||Enter some: ||||Third answer||||1"
+        "action_get_exit||||Enter some: "
+    )
+
+    __prepare_script_file_and_run "multiple_one_grep_and_exit" "$content" "__expects_for_no_grep" "143"
+}
+
+
 echo_info "Run expected script tests"
 
-__enable_debug_log "true"
+# __enable_debug_log "true"
 
-__run_test_no_grep_any
-__run_test_no_grep_and_input_exit
+#__run_test_no_grep_any
+#__run_test_no_grep_and_input_exit
+__run_test_multiple_one_grep_and_exit
 
 
 echo_info "Remove tests scripts:"

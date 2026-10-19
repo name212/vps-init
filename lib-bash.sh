@@ -3630,6 +3630,18 @@ CONST_EXPECT_ACTION_INPUT_EXIT="action_input_exit"
 CONST_EXPECT_ACTION_GET_EXIT="action_get_exit"
 CONST_EXPECT_GREP_SHOULD_EXIT="_VrAUEE4vkhOP__should_exit_grep_RSUe5masA2o3_"
 
+
+function __kill_coprocess() {
+    local should_exit_pid="$1"
+    local echo_err_fun="$2"
+
+    local kill_out=""
+
+    if ! kill_out="$(kill -TERM "${should_exit_pid}" 2>&1)"; then
+        "$echo_err_fun" "Cannot send kill -TERM '$should_exit_pid': $kill_out"
+    fi
+}
+
 function __input_to_coprocess() {
     local fd="$1"
     local next_input="$2"
@@ -3637,17 +3649,18 @@ function __input_to_coprocess() {
     local should_exit_pid="${4:-}"
 
     if ! str_empty "$next_input"; then
+        echo_debug "Echo '$next_input' to fd '$fd'"
         echo "$next_input" >&"$fd"
     fi
 
     if ! str_empty "$next_sleep"; then
+        echo_debug "Got sleep after input '$next_sleep'. Do sleep"
         sleep "$next_sleep"
     fi
 
     if ! str_empty "$should_exit_pid" ; then
-        if ! kill -TERM "$should_exit_pid"; then
-            echo_info "Cannot send kill -TERM '$should_exit_pid'"
-        fi
+        echo_debug "Got exit coprocess pid '$should_exit_pid'. Kill child process"
+        __kill_coprocess "$should_exit_pid" "echo_info"
     fi
 
     echo ""
@@ -3817,7 +3830,13 @@ function run_cmd_with_expect_script() {
 
     local child_pid=""
 
-    coproc __EXPECT_COPROC { sleep 2; "$cmd" "$@" && exit $?; } 2>&1
+    function __sleep_and_exit_coprocess(){
+        sleep 2
+        echo "Exit code corutine $1"
+        exit "$1"
+    }
+
+    coproc __EXPECT_COPROC { sleep 2; "$cmd" "$@" && __sleep_and_exit_coprocess "$?"; } 2>&1
 
     child_pid="${__EXPECT_COPROC_PID}"
 
@@ -3836,10 +3855,18 @@ function run_cmd_with_expect_script() {
     local write_fd="${__EXPECT_COPROC[1]}"
 
     while true; do
-        if ! read -t 60 -N 1 -u "$read_fd" -r __expect_char; then
-            echo_error "Has read error or timeout. Terminate cmd '$cmd'"
-            if ! kill -TERM "$child_pid"; then
-                echo_error "Cannot send kill to '$child_pid'"
+        local ret_code_read="0"
+        if read -t 60 -N 1 -u "$read_fd" -r __expect_char; then
+            true
+        else
+            ret_code_read="$?"
+            if num_eq "$ret_code_read" "1"; then
+                echo_debug "Got read error 1. Probable descriptor has closed or command exit"
+                __kill_coprocess "$child_pid" "echo_debug"
+            else
+                echo ""
+                echo_error "Has read error '$ret_code_read' or timeout. Terminate cmd '$cmd'"
+                __kill_coprocess "$child_pid" "echo_warn"
             fi
             break
         fi
@@ -3863,6 +3890,7 @@ function run_cmd_with_expect_script() {
                 local next_input="${input_for_grep[$cur_grep_for_input]}"
                 local next_sleep="${sleep_for_grep[$cur_grep_for_input]}"
                 ((cur_grep_for_input++)) || true
+                cur_str=""
                 __input_to_coprocess "$write_fd" "$next_input" "$next_sleep"
                 continue
              fi
@@ -3876,8 +3904,9 @@ function run_cmd_with_expect_script() {
                 if str_eq "$next_input" "$CONST_EXPECT_GREP_SHOULD_EXIT"; then
                     next_input=""
                 fi
-                    
+
                 ((cur_grep_for_exit++)) || true
+                cur_str=""
                 __input_to_coprocess "$write_fd" "$next_input" "$next_sleep" "$child_pid"
                 break
             fi
@@ -3885,9 +3914,7 @@ function run_cmd_with_expect_script() {
         fi
 
         if ! str_eq "$has_grep" "true"; then
-            if ! kill -TERM "$child_pid" &> /dev/null; then
-                echo_info "Cannot send kill '$child_pid' after no strings for grep"
-            fi
+            __kill_coprocess "$child_pid" "echo_warn"
             break
         fi
     done
