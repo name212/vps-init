@@ -5,45 +5,6 @@ set -Eeuo pipefail
 COMMANDS_LIST+=("virtualbox_init_vm_itself")
 
 # shellcheck disable=SC2329
-function validate_arg_mac_address() {
-    local val="$1"
-    local passed="$2"
-
-    if [[ "$passed" == "$CONST_ARG_NOT_PASSED" ]]; then
-        echo -n "Not passed"
-        return 1
-    fi
-
-    if [ -z "$val" ]; then
-        echo "Empty address"
-        return 1 
-    fi
-
-    if [[ "$val" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
-        echo -n "${val,,}"
-        return 0
-    fi
-
-    if [[ "$val" =~ ^([0-9A-Fa-f]{12})$ ]]; then
-        local -a parts=()
-        
-        for (( i=0; i<${#val}; i+=2 )); do 
-            parts+=("${val:i:2}"); 
-        done
-        
-        local res=""
-        IFS=":" res="${parts[*]}" 
-
-        echo -n "${res,,}"	
-        
-        return 0
-    fi
-
-    echo -n "Invalid MAC address $val"
-    return 1
-}
-
-# shellcheck disable=SC2329
 function cmd_virtualbox_init_vm_itself_run() {
     if command -v vboxmanage &> /dev/null; then
         echo_error "vboxmanage executable found!"
