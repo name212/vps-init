@@ -141,3 +141,31 @@ function check_file_is_not_empty() {
     echo -n "$real"
     return 0
 }
+
+# shellcheck disable=SC2329
+function get_tmp_file_name() {
+    local prefix="${1:-}"
+    local mktmp_args=()
+
+    local err_pref=""
+
+    if ! str_empty "$prefix"; then
+        err_pref=" for prefix '$prefix'"
+        mktmp_args=("-t")
+        mktmp_args+=("${prefix}.XXXXXXXX")
+    fi
+
+    local res_name=""
+    if ! res_name="$(mktemp "${mktmp_args[@]}")"; then
+        echo_error "Cannot create temp file${err_pref}"
+        return 1
+    fi
+
+    if ! rm "$res_name"; then
+        echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
+        return 1
+    fi
+
+    echo -n "$res_name"
+    return 0
+}
