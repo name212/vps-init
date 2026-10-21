@@ -91,3 +91,24 @@ function is_number_positive_or_zero() {
     is_number_positive "$1" "true"
     return $?
 }
+
+# shellcheck disable=SC2329
+function num_has_delta() {
+	local should_delta="$1"
+	local first="$2"
+	local second="$3"
+
+	if num_less_than "$first" "$second"; then
+		local tmp_swap="$second"
+		second="$first"
+		first="$tmp_swap"
+	fi
+
+	local delta="$(("$first" - "$second"))"
+
+	if num_great_eq "$delta" "$should_delta"; then
+		return 0
+	fi
+
+    return 1
+}

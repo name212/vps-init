@@ -76,7 +76,7 @@ echo \"World\" >&2
         "action_get_exit||||Enter some"
     )
 
-    __prepare_script_file_and_run "no_grep" "$content" "__expects_for_no_grep" "0"
+    __prepare_script_file_and_run "no_grep" "$content" "__expects_for_no_grep" "$CONST_EXPECT_HAS_UNEXPECTED_STRINGS_RET_CODE"
 }
 
 function __run_test_no_grep_any_exit_code() {
@@ -89,7 +89,7 @@ exit 3
         "action_get_exit||||Enter some"
     )
 
-    __prepare_script_file_and_run "no_grep_any_exit_code" "$content" "__expects_for_no_grep" "3"
+    __prepare_script_file_and_run "no_grep_any_exit_code" "$content" "__expects_for_no_grep" "$CONST_EXPECT_HAS_UNEXPECTED_EXIT_RET_CODE"
 }
 
 function __run_test_no_grep_and_input_exit() {
@@ -107,7 +107,7 @@ read -r answ
         "action_get_exit||||Done!"
     )
 
-    __prepare_script_file_and_run "grep_enter_and_exit" "$content" "__expects_for_no_grep" "143"
+    __prepare_script_file_and_run "grep_enter_and_exit" "$content" "__expects_for_no_grep" "0"
 }
 
 function __run_test_multiple_one_grep_and_exit() {
@@ -146,7 +146,7 @@ read -r answ4
         "action_get_exit||||Enter some: "
     )
 
-    __prepare_script_file_and_run "multiple_one_grep_and_exit" "$content" "__expects_for_no_grep" "143"
+    __prepare_script_file_and_run "multiple_one_grep_and_exit" "$content" "__expects_for_no_grep" "0"
 }
 
 # shellcheck disable=SC2140
@@ -197,7 +197,7 @@ function __run_test_multiple_one_with_input_exit_no_exit() {
         "action_get_exit||||^Enter some: "
     )
 
-    __prepare_script_file_and_run "multiple_one_with_input_exit_no_exit" "$__part_content" "__expects_for_no_grep" "143"
+    __prepare_script_file_and_run "multiple_one_with_input_exit_no_exit" "$__part_content" "__expects_for_no_grep" "0"
 }
 
 function __run_test_multiple_one_with_input_exit_with_exit() {
@@ -210,7 +210,136 @@ function __run_test_multiple_one_with_input_exit_with_exit() {
         "action_get_exit||||^Enter some: "
     )
 
-    __prepare_script_file_and_run "multiple_one_with_input_exit_with_exit" "$__part_content" "__expects_for_no_grep" "143" "true"
+    __prepare_script_file_and_run "multiple_one_with_input_exit_with_exit" "$__part_content" "__expects_for_no_grep" "0" "true"
+}
+
+
+function __run_test_no_grep_any() {
+    local content="
+echo \"Hello\"
+echo \"World\" >&2
+"
+    local -a __expects_for_no_grep=(
+        "action_get_exit||||Enter some"
+    )
+
+    __prepare_script_file_and_run "no_grep" "$content" "__expects_for_no_grep" "$CONST_EXPECT_HAS_UNEXPECTED_STRINGS_RET_CODE"
+}
+
+function __run_test_no_grep_and_wait_timeout_exceeded() {
+    local content="
+echo \"Hello\"
+echo \"World\" >&2
+echo -n \"Enter please: \"
+read answ
+"
+    local -a __expects_for_no_grep_timeout_exceeded=(
+        "action_input||||Enter some||||Entered answer||||0||||5"
+        "action_get_exit||||Enter some||||0||||4"
+    )
+
+    __prepare_script_file_and_run "no_grep_and_wait_timeout_exceeded" "$content" "__expects_for_no_grep_timeout_exceeded" "$CONST_EXPECT_READ_WAIT_TIMEOUT_RET_CODE"
+}
+
+function __run_test_grep_and_wait_timeout_not_exceeded() {
+    local content="
+echo \"Hello\"
+echo \"World\" >&2
+sleep 3
+echo -n \"Enter please: \"
+read answ
+echo -n \"Entered answer: \$answ \"
+sleep 2
+echo -n \"Enter some: \"
+read answ
+"
+    local -a __expects_grep_and_wait_timeout_not_exceeded=(
+        "action_input||||Enter please: ||||Entered answer||||0||||10"
+        "action_get_exit||||Enter some: ||||3||||4"
+    )
+
+    __prepare_script_file_and_run "grep_and_wait_timeout_not_exceeded" "$content" "__expects_grep_and_wait_timeout_not_exceeded" "0"
+}
+
+
+function __run_test_no_grep_and_wait_timeout_one_not_exceeded_and_exceeded() {
+    local content="
+echo \"Hello\"
+echo \"World\" >&2
+sleep 3
+echo -n \"Enter please: \"
+read answ1
+echo  \"Answer 1 is: \$answ1\"
+sleep 5
+echo -n \"Enter please: \"
+read answ2
+echo  \"Answer 2 is: \$answ2\"
+echo -n \"Enter some: \"
+read answ
+"
+    local -a __grep_and_wait_timeout_one_not_exceeded_and_exceeded=(
+        "action_input||||Enter please: ||||Entered answer||||0||||10"
+        "action_input||||Enter please: ||||Entered answer another||||0||||3"
+        "action_get_exit||||Enter some: ||||3||||4"
+    )
+
+    __prepare_script_file_and_run "no_grep_and_wait_timeout_exceeded" "$content" "__grep_and_wait_timeout_one_not_exceeded_and_exceeded" "$CONST_EXPECT_READ_WAIT_TIMEOUT_RET_CODE"
+}
+
+function __run_test_grep_all_timeouts_not_exceeded() {
+    local content="
+echo \"Hello\"
+echo \"World\" >&2
+sleep 3
+echo -n \"Enter please: \"
+read answ1
+echo  \"Answer 1 is: \$answ1\"
+sleep 5
+echo -n \"Enter please: \"
+read answ2
+echo  \"Answer 2 is: \$answ2\"
+sleep 2
+echo -n \"Enter please: \"
+read answ3
+echo  \"Answer 3 is: \$answ3\"
+"
+    local -a __grep_all_timeouts_not_exceeded=(
+        "action_input||||Enter please: ||||Entered answer||||0||||8"
+        "action_input||||Enter please: ||||Entered answer another||||0"
+        "action_input_exit||||Enter please: ||||3||||5"
+    )
+
+    __prepare_script_file_and_run "grep_all_timeouts_not_exceeded" "$content" "__grep_all_timeouts_not_exceeded" "0"
+}
+
+function __run_test_no_out_and_wait_timeout_exceeded() {
+    local content="
+read answ
+"
+    local -a __no_out_and_wait_timeout_exceeded=(
+        "action_input||||Enter please: ||||Entered answer||||0||||5"
+        "action_input||||Enter please: ||||Entered answer another||||0||||3"
+        "action_get_exit||||Enter some: ||||3||||4"
+    )
+
+    __prepare_script_file_and_run "no_out_and_wait_timeout_exceeded" "$content" "__no_out_and_wait_timeout_exceeded" "$CONST_EXPECT_READ_WAIT_TIMEOUT_RET_CODE"
+}
+
+
+function __run_test_no_grep_and_wait_timeout_exceeded_forever_out() {
+    local content="
+echo \"Hello\"
+for ii in \$(seq 0 10000000); do
+    echo \"Print iter \$ii\"
+    sleep 0.5
+done
+"
+    local -a __no_grep_and_wait_timeout_exceeded_forever_out=(
+        "action_input||||Enter some||||Entered answer||||0||||10"
+        "action_get_exit||||Enter some||||0||||4"
+    )
+
+    __prepare_script_file_and_run "no_grep_and_wait_timeout_exceeded_forever_out" "$content" "__no_grep_and_wait_timeout_exceeded_forever_out" "$CONST_EXPECT_READ_WAIT_TIMEOUT_RET_CODE"
 }
 
 echo_info "Run expected script tests"
@@ -221,6 +350,13 @@ __run_test_no_grep_and_input_exit
 __run_test_multiple_one_grep_and_exit
 __run_test_multiple_one_with_input_exit_no_exit
 __run_test_multiple_one_with_input_exit_with_exit
+
+__run_test_no_grep_and_wait_timeout_exceeded
+__run_test_grep_and_wait_timeout_not_exceeded
+__run_test_no_grep_and_wait_timeout_one_not_exceeded_and_exceeded
+__run_test_grep_all_timeouts_not_exceeded
+__run_test_no_out_and_wait_timeout_exceeded
+__run_test_no_grep_and_wait_timeout_exceeded_forever_out
 
 echo_info "Remove tests scripts:"
 for ff in "${__scripts_file_to_remove[@]}"; do
