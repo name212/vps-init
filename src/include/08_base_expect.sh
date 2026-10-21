@@ -174,12 +174,6 @@ function run_cmd_with_expect_script() {
                      should_continue="true"
                     __expect_parse_err+=("Incorrect expected string $indx for cmd '$cmd': incorrect sleep for wait '$sleep_for_wait'")
                 fi
-                
-
-                if str_empty "$input_for_ex"; then
-                    should_continue="true"
-                    __expect_parse_err+=("Incorrect expected string $indx for cmd '$cmd': empty input")
-                fi
 
                 if str_eq "$should_continue" "true"; then
                     continue
@@ -409,7 +403,6 @@ function run_cmd_with_expect_script() {
         fi
 
         local has_grep=""
-
         if ! num_eq "$len_grep_for_input" "0" && ! num_great_eq "$cur_grep_for_input" "$len_grep_for_input"; then
              has_grep="true"
 
@@ -422,7 +415,6 @@ function run_cmd_with_expect_script() {
                 continue
              fi
         fi
-
         if ! num_eq "$len_grep_for_exit" "0" && ! num_great_eq "$cur_grep_for_exit" "$len_grep_for_exit"; then
             local got_break=""
             for ii in $(seq "$cur_grep_for_exit" "$((len_grep_for_exit - 1))"); do
@@ -430,11 +422,6 @@ function run_cmd_with_expect_script() {
                 local next_sleep="${sleep_for_exit[$ii]}"
 
                 local cur_wait_for_grep="${sleep_wait_for_exit[$ii]}"
-                if ! str_empty "$cur_wait_for_grep"; then
-                    if num_great_than "$cur_wait_for_grep" "$wait_timeout_for_set"; then
-                        wait_timeout_for_set="$cur_wait_for_grep"
-                    fi
-                fi
 
                 if echo -n "$str_for_check" | grep -qP "${grep_for_exit[$ii]}"; then
                     if str_eq "$next_input" "$CONST_EXPECT_GREP_SHOULD_EXIT"; then
@@ -455,7 +442,6 @@ function run_cmd_with_expect_script() {
                 break
             fi
         fi
-
         if ! str_eq "$has_grep" "true"; then
             __kill_coprocess "$child_pid" "echo_warn"
             break
