@@ -145,6 +145,7 @@ function check_file_is_not_empty() {
 # shellcheck disable=SC2329
 function get_tmp_file_name() {
     local prefix="${1:-}"
+    local keep_file="${2:-false}"
     local mktmp_args=()
 
     local err_pref=""
@@ -161,11 +162,39 @@ function get_tmp_file_name() {
         return 1
     fi
 
-    if ! rm "$res_name"; then
-        echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
-        return 1
+    if ! str_eq "$keep_file" "true"; then 
+        if ! rm "$res_name"; then
+            echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
+            return 1
+        fi
     fi
 
     echo -n "$res_name"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function create_tmp_executable_file() {
+    local prefix="${1:-}"
+
+    local file_path=""
+    if ! file_path="$(get_tmp_file_name "$prefix" "true")"; then
+        return 1
+    fi
+
+    if ! chmod 755 "$file_path"; then
+        rm -f "$file_path" || true
+        
+        local err_msg_pref=""
+        if ! str_empty "$prefix"; then
+            err_msg_pref=" for prefix '$prefix'"
+        fi
+
+        echo_error "Cannot chmod to 755 temp file '$file_path'${err_msg_pref}"
+        return 1
+    fi
+
+    echo -n "$file_path"
+
     return 0
 }

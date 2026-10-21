@@ -22,17 +22,8 @@ function __prepare_script_file_and_run() {
     shift
 
     local script_file=""
-    if ! script_file="$(mktemp -t "${run_test}.test.expect.sh.XXXXXXXX")"; then
-        echo_error "Cannot create script_file for '$run_test'"
-        __PRIVATE_TEST_EXPECT_RES="false"
-
-        return 0
-    fi
-
-    __scripts_file_to_remove+=("$script_file")
-
-    if ! chmod 755 "$script_file"; then
-        echo_error "Cannot chmod script_file for '$run_test'"
+    if ! script_file="$(create_tmp_executable_file "${run_test}.test.expect.sh")"; then
+         echo_error "Cannot create script_file for '$run_test'"
         __PRIVATE_TEST_EXPECT_RES="false"
 
         return 0
@@ -110,6 +101,21 @@ read -r answ
     __prepare_script_file_and_run "grep_enter_and_exit" "$content" "__expects_for_no_grep" "0"
 }
 
+function __run_test_grep_without_input() {
+    local content="
+echo \"Hello\"
+echo -n \"[Some string]>: \"
+read answ
+"
+    local -a __expects_grep_without_input=(
+        "action_input||||Hello||||||||3"
+        "action_get_exit||||\\]>: \$||||0||||10"
+    )
+
+    __prepare_script_file_and_run "grep_without_input" "$content" "__expects_grep_without_input" "0"
+}
+
+
 function __run_test_multiple_one_grep_and_exit() {
     local content="
 trap_fun() {
@@ -159,6 +165,7 @@ trap_fun() {
 trap trap_fun SIGTERM
 
 has_error="\$\{1:-\}"
+output_error_file="\$\{2:-\}"
 
 echo \"Hello\"
 answ1=""
@@ -175,6 +182,9 @@ if [ -n \"\$has_error\" ]; then
     err_answ=""
     echo -n \"Got Error. Enter some: \"
     read err_answ
+    if [ -n \"\$output_error_file\" ]; then
+        echo \"\$err_answ\" > \"\$output_error_file\"
+    fi
     echo \"Error answer is: \"\${err_answ}\"\" 
 fi
 echo \"Get third answer\"
@@ -202,28 +212,37 @@ function __run_test_multiple_one_with_input_exit_no_exit() {
 
 function __run_test_multiple_one_with_input_exit_with_exit() {
 
+    local temp_err_out=""
+    if ! temp_err_out="$(get_tmp_file_name "expect_err_out.txt" "true")"; then
+        echo_error "FAIL: Internal error. Cannot create temp file for multiple_one_with_input_exit_with_exit test"
+        __PRIVATE_TEST_EXPECT_RES="false"
+        return 0
+    fi
+
     local -a __expects_for_no_grep=(
         "action_input||||^Enter some: ||||First answer||||"
         "action_input||||^Enter some: ||||Second answer||||"
-        "action_input_exit||||^Got Error\\. Enter some: ||||Error entered||||2"
+        "action_input_exit||||^Got Error\\. Enter some: ||||Error entered||||5"
         "action_input||||^Enter some: ||||Third answer||||1"
         "action_get_exit||||^Enter some: "
     )
 
-    __prepare_script_file_and_run "multiple_one_with_input_exit_with_exit" "$__part_content" "__expects_for_no_grep" "0" "true"
-}
+    __prepare_script_file_and_run "multiple_one_with_input_exit_with_exit" "$__part_content" "__expects_for_no_grep" "0" "true" "$temp_err_out"
 
+    if check_file_is_not_empty "$temp_err_out" > /dev/null; then
+        if ! grep -q "Error entered" "$temp_err_out"; then
+            echo_error "FAIL: Temp file for multiple_one_with_input_exit_with_exit test '$temp_err_out' not contains valid output 'Error entered'"
+            echo_error "Output file content:"
+            echo_error "'$(cat "$temp_err_out")'"
+            __PRIVATE_TEST_EXPECT_RES="false"
+        fi
+    else
+        echo_error "FAIL: Temp file for multiple_one_with_input_exit_with_exit test '$temp_err_out' empty or not found"
+        __PRIVATE_TEST_EXPECT_RES="false"
+    fi
 
-function __run_test_no_grep_any() {
-    local content="
-echo \"Hello\"
-echo \"World\" >&2
-"
-    local -a __expects_for_no_grep=(
-        "action_get_exit||||Enter some"
-    )
-
-    __prepare_script_file_and_run "no_grep" "$content" "__expects_for_no_grep" "$CONST_EXPECT_HAS_UNEXPECTED_STRINGS_RET_CODE"
+    echo_info "Remove temp file for multiple_one_with_input_exit_with_exit test:"
+    rm -fv "$temp_err_out" || true
 }
 
 function __run_test_no_grep_and_wait_timeout_exceeded() {
@@ -347,6 +366,7 @@ echo_info "Run expected script tests"
 __run_test_no_grep_any
 __run_test_no_grep_any_exit_code
 __run_test_no_grep_and_input_exit
+__run_test_grep_without_input
 __run_test_multiple_one_grep_and_exit
 __run_test_multiple_one_with_input_exit_no_exit
 __run_test_multiple_one_with_input_exit_with_exit

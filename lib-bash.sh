@@ -2166,6 +2166,7 @@ function check_file_is_not_empty() {
 # shellcheck disable=SC2329
 function get_tmp_file_name() {
     local prefix="${1:-}"
+    local keep_file="${2:-false}"
     local mktmp_args=()
 
     local err_pref=""
@@ -2182,12 +2183,40 @@ function get_tmp_file_name() {
         return 1
     fi
 
-    if ! rm "$res_name"; then
-        echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
-        return 1
+    if ! str_eq "$keep_file" "true"; then 
+        if ! rm "$res_name"; then
+            echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
+            return 1
+        fi
     fi
 
     echo -n "$res_name"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function create_tmp_executable_file() {
+    local prefix="${1:-}"
+
+    local file_path=""
+    if ! file_path="$(get_tmp_file_name "$prefix" "true")"; then
+        return 1
+    fi
+
+    if ! chmod 755 "$file_path"; then
+        rm -f "$file_path" || true
+        
+        local err_msg_pref=""
+        if ! str_empty "$prefix"; then
+            err_msg_pref=" for prefix '$prefix'"
+        fi
+
+        echo_error "Cannot chmod to 755 temp file '$file_path'${err_msg_pref}"
+        return 1
+    fi
+
+    echo -n "$file_path"
+
     return 0
 }
 
@@ -3884,12 +3913,6 @@ function run_cmd_with_expect_script() {
                      should_continue="true"
                     __expect_parse_err+=("Incorrect expected string $indx for cmd '$cmd': incorrect sleep for wait '$sleep_for_wait'")
                 fi
-                
-
-                if str_empty "$input_for_ex"; then
-                    should_continue="true"
-                    __expect_parse_err+=("Incorrect expected string $indx for cmd '$cmd': empty input")
-                fi
 
                 if str_eq "$should_continue" "true"; then
                     continue
@@ -4119,7 +4142,6 @@ function run_cmd_with_expect_script() {
         fi
 
         local has_grep=""
-
         if ! num_eq "$len_grep_for_input" "0" && ! num_great_eq "$cur_grep_for_input" "$len_grep_for_input"; then
              has_grep="true"
 
@@ -4132,7 +4154,6 @@ function run_cmd_with_expect_script() {
                 continue
              fi
         fi
-
         if ! num_eq "$len_grep_for_exit" "0" && ! num_great_eq "$cur_grep_for_exit" "$len_grep_for_exit"; then
             local got_break=""
             for ii in $(seq "$cur_grep_for_exit" "$((len_grep_for_exit - 1))"); do
@@ -4140,11 +4161,6 @@ function run_cmd_with_expect_script() {
                 local next_sleep="${sleep_for_exit[$ii]}"
 
                 local cur_wait_for_grep="${sleep_wait_for_exit[$ii]}"
-                if ! str_empty "$cur_wait_for_grep"; then
-                    if num_great_than "$cur_wait_for_grep" "$wait_timeout_for_set"; then
-                        wait_timeout_for_set="$cur_wait_for_grep"
-                    fi
-                fi
 
                 if echo -n "$str_for_check" | grep -qP "${grep_for_exit[$ii]}"; then
                     if str_eq "$next_input" "$CONST_EXPECT_GREP_SHOULD_EXIT"; then
@@ -4165,7 +4181,6 @@ function run_cmd_with_expect_script() {
                 break
             fi
         fi
-
         if ! str_eq "$has_grep" "true"; then
             __kill_coprocess "$child_pid" "echo_warn"
             break
