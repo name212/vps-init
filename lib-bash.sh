@@ -4039,6 +4039,18 @@ function run_cmd_with_expect_script() {
         return 1
     fi
 
+    local __indx_debug="-1"
+    for eg in "${grep_for_input[@]}"; do
+        ((__indx_debug++)) || true
+        echo_debug "Expect for grep '$eg': sleep timeout '${sleep_for_grep[$__indx_debug]}'; wait timeout '${sleep_wait_for_grep[$__indx_debug]}'"
+    done
+
+    __indx_debug="-1"
+    for ee in "${grep_for_exit[@]}"; do
+        ((__indx_debug++)) || true
+        echo_debug "Expect for exit '$ee': sleep timeout '${sleep_for_exit[$__indx_debug]}'; wait timeout '${sleep_wait_for_exit[$__indx_debug]}'"
+    done
+
     local len_grep_for_input="${#grep_for_input[@]}"
     local len_grep_for_exit="${#grep_for_exit[@]}"
 
@@ -4105,9 +4117,7 @@ function run_cmd_with_expect_script() {
                 start_wait="$(get_unix_timestamp)"
             fi
 
-            if str_empty "$cur_wait"; then
-                cur_wait="$wait_timeout_for_set"
-            fi
+            cur_wait="$wait_timeout_for_set"
         fi
 
         local read_timeout="60"
@@ -4165,6 +4175,7 @@ function run_cmd_with_expect_script() {
                 local next_sleep="${sleep_for_grep[$cur_grep_for_input]}"
                 ((cur_grep_for_input++)) || true
                 cur_str=""
+                start_wait=""
                 __input_to_coprocess "$write_fd" "$next_input" "$next_sleep"
                 continue
              fi
@@ -4184,6 +4195,7 @@ function run_cmd_with_expect_script() {
 
                     ((cur_grep_for_exit++)) || true
                     cur_str=""
+                    start_wait=""
                     __input_to_coprocess "$write_fd" "$next_input" "$next_sleep" "$child_pid"
                     got_break="true"
                     wait_timeout_for_set="0"
