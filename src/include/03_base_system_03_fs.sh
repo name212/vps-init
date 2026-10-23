@@ -136,7 +136,7 @@ function sync_file_content_with_diff_ret_code() {
         return 255
     fi
 
-    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
+    if files_has_not_diff "$temp_file" "$dest" "$title" "false"; then
         ret_diff="0"
     else
         ret_diff="$?"
