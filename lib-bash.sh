@@ -2148,6 +2148,48 @@ function sync_file_content() {
 }
 
 # shellcheck disable=SC2329
+function sync_file_content_with_diff_ret_code() { 
+    local content="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local not_ask="${4:-false}"
+
+    if [ -z "$dest" ]; then
+        echo_error "File for sync not passed"
+        return 255
+    fi
+
+    local temp_file=""
+
+    if ! temp_file="$(temp_file_with_content "$content")"; then
+        echo_error "Cannot create temp file for content"
+        return 255
+    fi
+
+    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
+        ret_diff="0"
+    else
+        ret_diff="$?"
+    fi
+
+    if [[ "$ret_diff" == "255" ]]; then
+        echo_error "Internal diff error"
+        return 255
+    fi
+
+    if [[ "$ret_diff" == "0" ]]; then
+        return 0
+    fi
+
+    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
+        echo_error "Cannot sync file '$dest'"
+        return 255
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function check_file_is_not_empty() {
     local val="$1"
 
