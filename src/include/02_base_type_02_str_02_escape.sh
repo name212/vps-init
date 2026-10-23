@@ -21,3 +21,12 @@ function escape_new_line() {
 	__escape_new_line "${1:-}"
 	return 0
 }
+
+# shellcheck disable=SC2329
+function remove_color_commands_from_string() {
+	local str="${1:-}"
+	# shellcheck disable=SC2155
+	local res="$(echo -n "$str" | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]//g")"
+	echo -n "$res"
+	return 0
+}

@@ -419,6 +419,15 @@ function escape_new_line() {
 	return 0
 }
 
+# shellcheck disable=SC2329
+function remove_color_commands_from_string() {
+	local str="${1:-}"
+	# shellcheck disable=SC2155
+	local res="$(echo -n "$str" | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]//g")"
+	echo -n "$res"
+	return 0
+}
+
 # End vps-init/src/include/02_base_type_02_str_02_escape.sh
 
 # Start vps-init/src/include/02_base_type_02_str_03_num.sh
@@ -3771,6 +3780,7 @@ CONST_EXPECT_HAS_UNEXPECTED_STRINGS_RET_CODE="4"
 # shellcheck disable=SC2034
 CONST_EXPECT_HAS_UNEXPECTED_EXIT_RET_CODE="5"
 
+# shellcheck disable=SC2329
 function __kill_coprocess() {
     local should_exit_pid="$1"
     local echo_err_fun="$2"
@@ -3782,6 +3792,7 @@ function __kill_coprocess() {
     fi
 }
 
+# shellcheck disable=SC2329
 function __expect_validate_sleep() {
     local val="$1"
 
@@ -3803,6 +3814,7 @@ function __expect_validate_sleep() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function __input_to_coprocess() {
     local fd="$1"
     local next_input="$2"
@@ -3829,6 +3841,7 @@ function __input_to_coprocess() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function run_cmd_with_expect_script() {
     local cmd="$1"
     local expect_script_arr_name="$2"
@@ -4140,6 +4153,8 @@ function run_cmd_with_expect_script() {
             cur_str=""
             echo ""
         fi
+
+        str_for_check="$(remove_color_commands_from_string "$str_for_check")"
 
         local has_grep=""
         if ! num_eq "$len_grep_for_input" "0" && ! num_great_eq "$cur_grep_for_input" "$len_grep_for_input"; then

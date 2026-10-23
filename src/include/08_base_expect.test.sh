@@ -90,7 +90,7 @@ answ=""
 echo -n \"Enter some: \"
 read answ
 echo \"Answer is: \"\${answ}\"\" >&2
-echo "Done!"
+echo \"Done!\"
 read -r answ
 "
     local -a __expects_for_no_grep=(
@@ -104,12 +104,12 @@ read -r answ
 function __run_test_grep_without_input() {
     local content="
 echo \"Hello\"
-echo -n \"[Some string]>: \"
+echo -en \"\033[1;33m[Some string]>\033[0m \"
 read answ
 "
     local -a __expects_grep_without_input=(
         "action_input||||Hello||||||||3"
-        "action_get_exit||||\\]>: \$||||0||||10"
+        "action_get_exit||||\\]> \$||||0||||10"
     )
 
     __prepare_script_file_and_run "grep_without_input" "$content" "__expects_grep_without_input" "0"

@@ -32,6 +32,7 @@ CONST_EXPECT_HAS_UNEXPECTED_STRINGS_RET_CODE="4"
 # shellcheck disable=SC2034
 CONST_EXPECT_HAS_UNEXPECTED_EXIT_RET_CODE="5"
 
+# shellcheck disable=SC2329
 function __kill_coprocess() {
     local should_exit_pid="$1"
     local echo_err_fun="$2"
@@ -43,6 +44,7 @@ function __kill_coprocess() {
     fi
 }
 
+# shellcheck disable=SC2329
 function __expect_validate_sleep() {
     local val="$1"
 
@@ -64,6 +66,7 @@ function __expect_validate_sleep() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function __input_to_coprocess() {
     local fd="$1"
     local next_input="$2"
@@ -90,6 +93,7 @@ function __input_to_coprocess() {
     return 0
 }
 
+# shellcheck disable=SC2329
 function run_cmd_with_expect_script() {
     local cmd="$1"
     local expect_script_arr_name="$2"
@@ -401,6 +405,8 @@ function run_cmd_with_expect_script() {
             cur_str=""
             echo ""
         fi
+
+        str_for_check="$(remove_color_commands_from_string "$str_for_check")"
 
         local has_grep=""
         if ! num_eq "$len_grep_for_input" "0" && ! num_great_eq "$cur_grep_for_input" "$len_grep_for_input"; then
