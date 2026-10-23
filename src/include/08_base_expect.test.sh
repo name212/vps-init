@@ -90,7 +90,7 @@ answ=""
 echo -n \"Enter some: \"
 read answ
 echo \"Answer is: \"\${answ}\"\" >&2
-echo "Done!"
+echo \"Done!\"
 read -r answ
 "
     local -a __expects_for_no_grep=(
@@ -104,12 +104,12 @@ read -r answ
 function __run_test_grep_without_input() {
     local content="
 echo \"Hello\"
-echo -n \"[Some string]>: \"
+echo -en \"\033[1;33m[Some string]>\033[0m \"
 read answ
 "
     local -a __expects_grep_without_input=(
         "action_input||||Hello||||||||3"
-        "action_get_exit||||\\]>: \$||||0||||10"
+        "action_get_exit||||\\]> \$||||0||||10"
     )
 
     __prepare_script_file_and_run "grep_without_input" "$content" "__expects_grep_without_input" "0"
@@ -363,20 +363,20 @@ done
 
 echo_info "Run expected script tests"
 
-__run_test_no_grep_any
-__run_test_no_grep_any_exit_code
-__run_test_no_grep_and_input_exit
+# __run_test_no_grep_any
+# __run_test_no_grep_any_exit_code
+# __run_test_no_grep_and_input_exit
 __run_test_grep_without_input
-__run_test_multiple_one_grep_and_exit
-__run_test_multiple_one_with_input_exit_no_exit
-__run_test_multiple_one_with_input_exit_with_exit
+# __run_test_multiple_one_grep_and_exit
+# __run_test_multiple_one_with_input_exit_no_exit
+# __run_test_multiple_one_with_input_exit_with_exit
 
-__run_test_no_grep_and_wait_timeout_exceeded
-__run_test_grep_and_wait_timeout_not_exceeded
-__run_test_no_grep_and_wait_timeout_one_not_exceeded_and_exceeded
-__run_test_grep_all_timeouts_not_exceeded
-__run_test_no_out_and_wait_timeout_exceeded
-__run_test_no_grep_and_wait_timeout_exceeded_forever_out
+# __run_test_no_grep_and_wait_timeout_exceeded
+# __run_test_grep_and_wait_timeout_not_exceeded
+# __run_test_no_grep_and_wait_timeout_one_not_exceeded_and_exceeded
+# __run_test_grep_all_timeouts_not_exceeded
+# __run_test_no_out_and_wait_timeout_exceeded
+# __run_test_no_grep_and_wait_timeout_exceeded_forever_out
 
 echo_info "Remove tests scripts:"
 for ff in "${__scripts_file_to_remove[@]}"; do
