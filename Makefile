@@ -100,7 +100,7 @@ tests/run: build/lib
 	fi; \
 	failed_tests=(); \
 	declare -A files_to_remove=(); \
-	for fl in $$(find "$$inc_dir" -name "*.test.sh" -type f | sort -n); do \
+	for fl in $$(find "$$inc_dir" -name "*.test.sh" -type f | sort -V); do \
     	bs=""; \
 		if ! bs="$$(basename "$$fl")"; then \
 			echo_red "Cannot get base name for '$$fl'"; \
