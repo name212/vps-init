@@ -1,8 +1,12 @@
 include $(CURDIR)/makefile-common/include.mk.inc
+include $(CURDIR)/run-tests.mk
+
+export HELP_LIBRARIES_FIRST = true
+export HELP_LIBRARIES_OUT = $(CURDIR)
 
 run-with-cleanup = $(1) && $(2) || (ret=$$?; $(2) && exit $$ret)
 
-LIB_FILE = $(CURDIR)/lib.sh
+LIB_FILE_SH = $(CURDIR)/lib.sh
 SYNC_FILE = $(CURDIR)/sync.sh
 
 REMOTE_TMP_SYNC="/tmp/sync.sh"
@@ -15,7 +19,7 @@ build: export DEST_FILE = $(SYNC_FILE)
 build:
 	@./hack/build.sh
 
-build/lib: export DEST_FILE = $(LIB_FILE)
+build/lib: export DEST_FILE = $(LIB_FILE_SH)
 build/lib: export BUILD_AS_LIB = true
 build/lib:
 	@./hack/build.sh
@@ -74,94 +78,22 @@ deploy/debug: build deploy/no-sudo-password
 
 deploy/debug-sudo-pass: build deploy/with-sudo-password
 
-tests/run: build/lib
-	@function echo_red() { \
-    	echo -e "\033[1;31m$$1\033[0m" >&2; \
-	}; \
-	function echo_green () { \
-    	echo -e "\033[1;32m$$1\033[0m" >&2; \
-	}; \
-	function echo_yellow () { \
-    	echo -e "\033[1;33m$$1\033[0m" >&2; \
-	}; \
-	lb="$(LIB_FILE)"; \
-	if [ ! -s "$$lb" ]; then \
-		echo_red "'$lb' file not found or empty"; \
-		exit 1; \
-	fi; \
-	inc_dir="src/include"; \
-	echo_green "--- Run tests ---"; \
-	if [ -n "$$RUN_ONLY" ]; then \
-		echo_yellow "Will run only '$$RUN_ONLY' test!"; \
-		if [ ! -s "$${inc_dir}/$${RUN_ONLY}" ]; then \
-			echo_red "Not found test file for '$$RUN_ONLY'"; \
-			exit 1; \
-		fi; \
-	fi; \
-	failed_tests=(); \
-	declare -A files_to_remove=(); \
-	for fl in $$(find "$$inc_dir" -name "*.test.sh" -type f | sort -V); do \
-    	bs=""; \
-		if ! bs="$$(basename "$$fl")"; then \
-			echo_red "Cannot get base name for '$$fl'"; \
-			exit 1; \
-		fi; \
-		if [[ "$$RUN_ONLY" != "" && "$$RUN_ONLY" != "$$bs" ]]; then \
-			continue; \
-		fi; \
-		echo_green "Run test '$$fl'"; \
-		tmp_run_fl=""; \
-		if ! tmp_run_fl="$$(mktemp -t "lib-bash-test.XXXXXXXX")"; then \
-			echo_red "Cannot create tempt file for run '$$fl'"; \
-			exit 1; \
-		fi; \
-		files_to_remove["$$fl"]="$$tmp_run_fl"; \
-		if ! chmod 700 "$$tmp_run_fl"; then \
-			echo_red "Cannot chmod 700 '$$tmp_run_fl'"; \
-			exit 1; \
-		fi; \
-    	if ! cat "$$lb" > "$$tmp_run_fl"; then \
-			echo_red "Cannot write lib file '$$lb' to temp tile $$tmp_run_fl"; \
-			exit 1; \
-		fi; \
-		echo "" >> "$$tmp_run_fl"; \
-		echo "# Tests for '$$fl'" >> "$$tmp_run_fl"; \
-		echo "" >> "$$tmp_run_fl"; \
-		if ! cat "$$fl" >> "$$tmp_run_fl"; then \
-			echo_red "Cannot write test file '$$fl' to temp tile $$tmp_run_fl"; \
-			exit 1; \
-		fi; \
-    	if ! bash "$$tmp_run_fl"; then \
-        	echo_red "FAILED '$$fl'"; \
-        	failed_tests+=("$$fl"); \
-    	fi; \
-		rm -f "$tmp_run_fl" || true; \
-	done; \
-	if [ -z "$$KEEP_TEST_SCRIPTS" ]; then \
-		echo_green "Remove temp test script files:"; \
-		for d_tmp_name in "$${!files_to_remove[@]}"; do \
-			d_tmp="$${files_to_remove[$$d_tmp_name]}"; \
-			rm -fv "$$d_tmp"; \
-		done; \
-	else \
-		echo_yellow "Temp test script files was skipped(KEEP_TEST_SCRIPTS passed):"; \
-		for d_tmp_name in "$${!files_to_remove[@]}"; do \
-			d_tmp="$${files_to_remove[$$d_tmp_name]}"; \
-			echo_yellow "  $$d_tmp_name -> $$d_tmp"; \
-		done; \
-	fi; \
-	if [[ "$${#failed_tests[@]}" == "0" ]]; then \
-		echo_green "All tests passed!"; \
-		exit 0; \
-	fi; \
-	echo_red "Tests FAILED:"; \
-	for ftst in "$${failed_tests[@]}"; do \
-		echo_red "  $$ftst"; \
-	done; \
-	exit 1
+##@ lib-bash. Run tests for itself
+
+tests/run: export LIB_FILE = $(LIB_FILE_SH)
+tests/run: export INCLUDE_DIR = src/include
+tests/run: build/lib lib/tests/run ## Run library itself tests
+	@##~ RUN_ONLY=FILENAME       - if passed run only one test for one passed file
+	@##~                           File name should base name with extension, like:
+	@##~                           02_base_type_02_str_08_password.test.sh
+	@##~                           Default: not passed
 
 tests/keep-files/run: export KEEP_TEST_SCRIPTS = true
-tests/keep-files/run: tests/run
+tests/keep-files/run: tests/run ## Run library itself tests with keep result tests files
+	@##~ RUN_ONLY=FILENAME       - if passed run only one test for one passed file
+	@##~                           File name should base name with extension, like:
+	@##~                           02_base_type_02_str_08_password.test.sh
+	@##~                           Default: not passed
 
 repo/upgrade/common: export SUBMODULE_DIR = makefile-common
 repo/upgrade/common: common/git/submodule/upgrade
