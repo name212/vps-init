@@ -120,7 +120,9 @@ function remove_begin_spaces() {
 function trim_parent_dir_for_path_to_out() {
     local pt="$1"
 
-    local res="lib-bash/${pt}"
+    local lib_bash_prefix="lib-bash"
+
+    local res="${lib_bash_prefix}/${pt}"
 
     local parent_dir=""
     if ! parent_dir="$(get_parent_dir)"; then
@@ -128,16 +130,19 @@ function trim_parent_dir_for_path_to_out() {
         return 0
     fi
 
-    # shellcheck disable=SC2155
-    local base_parent="$(basename "$parent_dir")"
+    set -x
 
-    local res="${pt#"$parent_dir"}"
+    local stripped="${pt#"${parent_dir}"}"
 
-    if [[ "$res" != "$pt" ]]; then
-        res="${base_parent}/${res}"
+    if [[ "$stripped" == "$pt" ]]; then
+        res="${base_working}/${pt}"
+    else
+        res="${lib_bash_prefix}${stripped}"
     fi
 
     echo -n "$res"
+
+    set +x
 
     return 0
 }
@@ -257,7 +262,13 @@ function write_lib_files() {
             continue
         fi
 
-        write_file "$fl" "$dest"
+        local path_to_write="$fl"
+
+        if [ -n "$parent_dir" ]; then
+            path_to_write="${parent_dir}/${fl}"
+        fi
+
+        write_file "$path_to_write" "$dest"
     done
 
     if [ -n "$parent_dir" ]; then
