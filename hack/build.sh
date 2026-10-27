@@ -130,8 +130,6 @@ function trim_parent_dir_for_path_to_out() {
         return 0
     fi
 
-    set -x
-
     local stripped="${pt#"${parent_dir}"}"
 
     if [[ "$stripped" == "$pt" ]]; then
@@ -141,8 +139,6 @@ function trim_parent_dir_for_path_to_out() {
     fi
 
     echo -n "$res"
-
-    set +x
 
     return 0
 }
