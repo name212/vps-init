@@ -117,6 +117,32 @@ function remove_begin_spaces() {
     return 0
 }
 
+function trim_parent_dir_for_path_to_out() {
+    local pt="$1"
+
+    local lib_bash_prefix="lib-bash"
+
+    local res="${lib_bash_prefix}/${pt}"
+
+    local parent_dir=""
+    if ! parent_dir="$(get_parent_dir)"; then
+        echo -n "$res"
+        return 0
+    fi
+
+    local stripped="${pt#"${parent_dir}"}"
+
+    if [[ "$stripped" == "$pt" ]]; then
+        res="${base_working}/${pt}"
+    else
+        res="${lib_bash_prefix}${stripped}"
+    fi
+
+    echo -n "$res"
+
+    return 0
+}
+
 function write_file() {
     local fl="$1"
     local dest="$2"
@@ -129,12 +155,15 @@ function write_file() {
     echo_green "Write $fl to $dest"
     content="$(sed -r 's/#!\/usr\/bin\/env (ba)?sh//g' "$fl" | sed 's/set -Eeuo pipefail//g')"
     content="$(remove_begin_spaces "$content")"
+    # shellcheck disable=SC2155
+    local fl_to_out="$(trim_parent_dir_for_path_to_out "$fl")"
+    
     {
-        echo "# Start ${base_working}/${fl}"
+        echo "# Start ${fl_to_out}"
         echo ""
         echo "$content"
         echo ""
-        echo "# End ${base_working}/${fl}"
+        echo "# End ${fl_to_out}"
         echo ""
     } >> "$dest"
 
@@ -229,7 +258,13 @@ function write_lib_files() {
             continue
         fi
 
-        write_file "$fl" "$dest"
+        local path_to_write="$fl"
+
+        if [ -n "$parent_dir" ]; then
+            path_to_write="${parent_dir}/${fl}"
+        fi
+
+        write_file "$path_to_write" "$dest"
     done
 
     if [ -n "$parent_dir" ]; then

@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-# Start vps-init/src/include/00_base_const_fn.sh
+# Start lib-bash/src/include/00_base_const_fn.sh
 
 # shellcheck disable=SC2034
 export CONST_SCRIPT_NAME="$0"
@@ -56,9 +56,9 @@ function get_original_script_name() {
     return 0
 }
 
-# End vps-init/src/include/00_base_const_fn.sh
+# End lib-bash/src/include/00_base_const_fn.sh
 
-# Start vps-init/src/include/01_base_echo.sh
+# Start lib-bash/src/include/01_base_echo.sh
 
 # shellcheck disable=SC2329
 function __is_debug_file_present(){
@@ -285,9 +285,9 @@ function tee_log_command_out() {
     return 0
 }
 
-# End vps-init/src/include/01_base_echo.sh
+# End lib-bash/src/include/01_base_echo.sh
 
-# Start vps-init/src/include/02_base_type_01_bash.sh
+# Start lib-bash/src/include/02_base_type_01_bash.sh
 
 # shellcheck disable=SC2329
 function is_function_declared() {
@@ -347,9 +347,9 @@ function is_array_or_dict_var() {
     return 1
 }
 
-# End vps-init/src/include/02_base_type_01_bash.sh
+# End lib-bash/src/include/02_base_type_01_bash.sh
 
-# Start vps-init/src/include/02_base_type_02_str_01_base.sh
+# Start lib-bash/src/include/02_base_type_02_str_01_base.sh
 
 # shellcheck disable=SC2329
 function rand_str_n() {
@@ -395,9 +395,9 @@ function str_lower() {
 	return 0
 }
 
-# End vps-init/src/include/02_base_type_02_str_01_base.sh
+# End lib-bash/src/include/02_base_type_02_str_01_base.sh
 
-# Start vps-init/src/include/02_base_type_02_str_02_escape.sh
+# Start lib-bash/src/include/02_base_type_02_str_02_escape.sh
 
 # shellcheck disable=SC2329
 function escape_regexp_str() {
@@ -428,9 +428,9 @@ function remove_color_commands_from_string() {
 	return 0
 }
 
-# End vps-init/src/include/02_base_type_02_str_02_escape.sh
+# End lib-bash/src/include/02_base_type_02_str_02_escape.sh
 
-# Start vps-init/src/include/02_base_type_02_str_03_num.sh
+# Start lib-bash/src/include/02_base_type_02_str_03_num.sh
 
 # shellcheck disable=SC2329
 function num_great_than() {
@@ -543,9 +543,9 @@ function num_has_delta() {
     return 1
 }
 
-# End vps-init/src/include/02_base_type_02_str_03_num.sh
+# End lib-bash/src/include/02_base_type_02_str_03_num.sh
 
-# Start vps-init/src/include/02_base_type_02_str_04_trim.sh
+# Start lib-bash/src/include/02_base_type_02_str_04_trim.sh
 
 # shellcheck disable=SC2034
 CONST_STR_TRIM_LEFT="__left__"
@@ -703,9 +703,9 @@ function trim_string_wrapper() {
 	return 0
 }
 
-# End vps-init/src/include/02_base_type_02_str_04_trim.sh
+# End lib-bash/src/include/02_base_type_02_str_04_trim.sh
 
-# Start vps-init/src/include/02_base_type_02_str_05_split.sh
+# Start lib-bash/src/include/02_base_type_02_str_05_split.sh
 
 # shellcheck disable=SC2329
 function split_by() {
@@ -800,9 +800,9 @@ function split_by_new_line() {
 	return 0
 }
 
-# End vps-init/src/include/02_base_type_02_str_05_split.sh
+# End lib-bash/src/include/02_base_type_02_str_05_split.sh
 
-# Start vps-init/src/include/02_base_type_02_str_06_join.sh
+# Start lib-bash/src/include/02_base_type_02_str_06_join.sh
 
 # shellcheck disable=SC2329
 function append_str_with_separator() {
@@ -850,9 +850,9 @@ function join_args_with_separator() {
 	return 0
 }
 
-# End vps-init/src/include/02_base_type_02_str_06_join.sh
+# End lib-bash/src/include/02_base_type_02_str_06_join.sh
 
-# Start vps-init/src/include/02_base_type_02_str_07_diff.sh
+# Start lib-bash/src/include/02_base_type_02_str_07_diff.sh
 
 CONST_OUT_DIFF_OR_HAS_DIFF="true"
 CONST_DIFF_ADD_ARGS=("--color=always")
@@ -984,9 +984,9 @@ function files_has_not_diff() {
     return "$ret_diff"
 }
 
-# End vps-init/src/include/02_base_type_02_str_07_diff.sh
+# End lib-bash/src/include/02_base_type_02_str_07_diff.sh
 
-# Start vps-init/src/include/02_base_type_02_str_08_password.sh
+# Start lib-bash/src/include/02_base_type_02_str_08_password.sh
 
 # shellcheck disable=SC2034
 CONST_PASSWORD_STR_SHOULD_CONTAINS_SPECIAL_SYMBOLS_VAL="__should_contains_spec_symbols__"
@@ -1086,9 +1086,9 @@ function check_valid_password() {
     return 0
 }
 
-# End vps-init/src/include/02_base_type_02_str_08_password.sh
+# End lib-bash/src/include/02_base_type_02_str_08_password.sh
 
-# Start vps-init/src/include/02_base_type_03_base_arrays.sh
+# Start lib-bash/src/include/02_base_type_03_base_arrays.sh
 
 # shellcheck disable=SC2329
 function __get_array_type_str() { 
@@ -1165,9 +1165,9 @@ function __is_array_dict_has_len() {
     return $?
 }
 
-# End vps-init/src/include/02_base_type_03_base_arrays.sh
+# End lib-bash/src/include/02_base_type_03_base_arrays.sh
 
-# Start vps-init/src/include/02_base_type_04_arrays.sh
+# Start lib-bash/src/include/02_base_type_04_arrays.sh
 
 # shellcheck disable=SC2329
 function is_array_has_len() {
@@ -1358,9 +1358,9 @@ function is_args_has_val() {
     return 1
 }
 
-# End vps-init/src/include/02_base_type_04_arrays.sh
+# End lib-bash/src/include/02_base_type_04_arrays.sh
 
-# Start vps-init/src/include/02_base_type_05_dict.sh
+# Start lib-bash/src/include/02_base_type_05_dict.sh
 
 # shellcheck disable=SC2034
 CONST_DICT_DIFF_OUT_ADD_PREFIX="  + "
@@ -1566,9 +1566,9 @@ function dict_print_diff_change_keys_filter() {
     return 0
  }
 
-# End vps-init/src/include/02_base_type_05_dict.sh
+# End lib-bash/src/include/02_base_type_05_dict.sh
 
-# Start vps-init/src/include/02_base_type_06_timestamp.sh
+# Start lib-bash/src/include/02_base_type_06_timestamp.sh
 
 # shellcheck disable=SC2329
 function get_unix_timestamp() { 
@@ -1590,9 +1590,9 @@ function is_timeout_exceeded() {
     return 1
 }
 
-# End vps-init/src/include/02_base_type_06_timestamp.sh
+# End lib-bash/src/include/02_base_type_06_timestamp.sh
 
-# Start vps-init/src/include/03_base_system_01_bash_01_base.sh
+# Start lib-bash/src/include/03_base_system_01_bash_01_base.sh
 
 # shellcheck disable=SC2329
 function trap_all() {
@@ -1718,9 +1718,9 @@ function load_envs_file() {
     return 0
 }
 
-# End vps-init/src/include/03_base_system_01_bash_01_base.sh
+# End lib-bash/src/include/03_base_system_01_bash_01_base.sh
 
-# Start vps-init/src/include/03_base_system_01_bash_02_shebang.sh
+# Start lib-bash/src/include/03_base_system_01_bash_02_shebang.sh
 
 # Use should only sh support only function here
 # because this file can be imported standalone
@@ -1823,9 +1823,9 @@ rerun_script_with_new_shebang() {
     exit "$__ret_code"
 }
 
-# End vps-init/src/include/03_base_system_01_bash_02_shebang.sh
+# End lib-bash/src/include/03_base_system_01_bash_02_shebang.sh
 
-# Start vps-init/src/include/03_base_system_02_input.sh
+# Start lib-bash/src/include/03_base_system_02_input.sh
 
 # shellcheck disable=SC2034
 CONST_NOT_ASK_VAL="__not_ask__"
@@ -2028,9 +2028,9 @@ function ask_user_raw() {
     return 0
 }
 
-# End vps-init/src/include/03_base_system_02_input.sh
+# End lib-bash/src/include/03_base_system_02_input.sh
 
-# Start vps-init/src/include/03_base_system_03_fs.sh
+# Start lib-bash/src/include/03_base_system_03_fs.sh
 
 # shellcheck disable=SC2329
 function delete_file() {
@@ -2271,9 +2271,9 @@ function create_tmp_executable_file() {
     return 0
 }
 
-# End vps-init/src/include/03_base_system_03_fs.sh
+# End lib-bash/src/include/03_base_system_03_fs.sh
 
-# Start vps-init/src/include/03_base_system_04_pkg.sh
+# Start lib-bash/src/include/03_base_system_04_pkg.sh
 
 # shellcheck disable=SC2034
 export SYS_PACKAGES_ENGINE_APT="apt"
@@ -2523,9 +2523,9 @@ function remove_packages() {
     return 0
 }
 
-# End vps-init/src/include/03_base_system_04_pkg.sh
+# End lib-bash/src/include/03_base_system_04_pkg.sh
 
-# Start vps-init/src/include/03_base_system_05_service.sh
+# Start lib-bash/src/include/03_base_system_05_service.sh
 
 # shellcheck disable=SC2034
 CONST_SYS_SERVICE_ENGINE_SYSTEMD="systemctl"
@@ -2787,9 +2787,9 @@ function restart_service_with_revert() {
     return 1
 }
 
-# End vps-init/src/include/03_base_system_05_service.sh
+# End lib-bash/src/include/03_base_system_05_service.sh
 
-# Start vps-init/src/include/03_base_system_06_net.sh
+# Start lib-bash/src/include/03_base_system_06_net.sh
 
 # shellcheck disable=SC2329
 function get_hostname() {
@@ -2861,9 +2861,9 @@ function check_is_mac_address() {
     return 1
 }
 
-# End vps-init/src/include/03_base_system_06_net.sh
+# End lib-bash/src/include/03_base_system_06_net.sh
 
-# Start vps-init/src/include/04_base_phases.sh
+# Start lib-bash/src/include/04_base_phases.sh
 
 # shellcheck disable=SC2034
 declare -A PHASES_WITH_INDEX=()
@@ -3005,9 +3005,9 @@ function run_passed_command() {
     return 0
 }
 
-# End vps-init/src/include/04_base_phases.sh
+# End lib-bash/src/include/04_base_phases.sh
 
-# Start vps-init/src/include/05_base_args.sh
+# Start lib-bash/src/include/05_base_args.sh
 
 # shellcheck disable=SC2034
 CONST_FLAG_SET="true"
@@ -3212,9 +3212,9 @@ function arg_flag_is_set() {
     return 1
 }
 
-# End vps-init/src/include/05_base_args.sh
+# End lib-bash/src/include/05_base_args.sh
 
-# Start vps-init/src/include/06_base_validate_01_base.sh
+# Start lib-bash/src/include/06_base_validate_01_base.sh
 
 CONST_VALIDATE_SHOULD_OPTIONAL="__optional__"
 # shellcheck disable=SC2034
@@ -3257,9 +3257,9 @@ function call_validate_fun() {
     return 0
 }
 
-# End vps-init/src/include/06_base_validate_01_base.sh
+# End lib-bash/src/include/06_base_validate_01_base.sh
 
-# Start vps-init/src/include/06_base_validate_02_str.sh
+# Start lib-bash/src/include/06_base_validate_02_str.sh
 
 # shellcheck disable=SC2329
 function validate_arg_not_empty() {
@@ -3319,9 +3319,9 @@ function validate_arg_password() {
     return $?
 }
 
-# End vps-init/src/include/06_base_validate_02_str.sh
+# End lib-bash/src/include/06_base_validate_02_str.sh
 
-# Start vps-init/src/include/06_base_validate_03_bash.sh
+# Start lib-bash/src/include/06_base_validate_03_bash.sh
 
 # shellcheck disable=SC2329
 function validate_arg_func_declared() {
@@ -3348,9 +3348,9 @@ function validate_arg_func_declared_optional() {
     return 0
 }
 
-# End vps-init/src/include/06_base_validate_03_bash.sh
+# End lib-bash/src/include/06_base_validate_03_bash.sh
 
-# Start vps-init/src/include/06_base_validate_04_fs.sh
+# Start lib-bash/src/include/06_base_validate_04_fs.sh
 
 # shellcheck disable=SC2329
 function validate_arg_not_empty_file() {
@@ -3370,9 +3370,9 @@ function validate_arg_not_empty_file_optional() {
     return $?
 }
 
-# End vps-init/src/include/06_base_validate_04_fs.sh
+# End lib-bash/src/include/06_base_validate_04_fs.sh
 
-# Start vps-init/src/include/06_base_validate_05_net.sh
+# Start lib-bash/src/include/06_base_validate_05_net.sh
 
 # shellcheck disable=SC2329
 function validate_arg_port() {
@@ -3428,9 +3428,9 @@ function validate_arg_mac_address_optional() {
     return $?
 }
 
-# End vps-init/src/include/06_base_validate_05_net.sh
+# End lib-bash/src/include/06_base_validate_05_net.sh
 
-# Start vps-init/src/include/07_base_global_args_01_help.sh
+# Start lib-bash/src/include/07_base_global_args_01_help.sh
 
 declare -a CONST_HELP_AGS=("-h" "--help")
 
@@ -3463,9 +3463,9 @@ function echo_help_args_help() {
       Show this help message."
 }
 
-# End vps-init/src/include/07_base_global_args_01_help.sh
+# End lib-bash/src/include/07_base_global_args_01_help.sh
 
-# Start vps-init/src/include/07_base_global_args_02_config.sh
+# Start lib-bash/src/include/07_base_global_args_02_config.sh
 
 # shellcheck disable=SC2034
 CONST_CONFIG_FILE_ARG="--config"
@@ -3566,9 +3566,9 @@ function config_file_help() {
       Env ${CONST_SKIP_REMOVE_CONFIG_FILE_ENV}=true for set."
 }
 
-# End vps-init/src/include/07_base_global_args_02_config.sh
+# End lib-bash/src/include/07_base_global_args_02_config.sh
 
-# Start vps-init/src/include/07_base_global_args_04_not_ask.sh
+# Start lib-bash/src/include/07_base_global_args_04_not_ask.sh
 
 # shellcheck disable=SC2034
 CONST_NOT_ASK_ARG="--not-ask"
@@ -3595,9 +3595,9 @@ function not_ask_help() {
       Env ${CONST_NOT_ASK_ENV}=true for set."
 }
 
-# End vps-init/src/include/07_base_global_args_04_not_ask.sh
+# End lib-bash/src/include/07_base_global_args_04_not_ask.sh
 
-# Start vps-init/src/include/07_base_global_args_05_log.sh
+# Start lib-bash/src/include/07_base_global_args_05_log.sh
 
 # shellcheck disable=SC2034
 CONST_LOG_ARG_ENABLE_DEBUG="--log-enable-debug"
@@ -3663,9 +3663,9 @@ function log_settings_help() {
       Env ${CONST_LOG_ENV_UNIX_SECONDS}=true for set."
  }
 
-# End vps-init/src/include/07_base_global_args_05_log.sh
+# End lib-bash/src/include/07_base_global_args_05_log.sh
 
-# Start vps-init/src/include/07_base_global_args_06_screen.sh
+# Start lib-bash/src/include/07_base_global_args_06_screen.sh
 
 # shellcheck disable=SC2034
 CONST_SCREEN_ARG_ENABLE="--screen-enable-run-via-screen"
@@ -3788,9 +3788,9 @@ function screen_args_help() {
       Env $CONST_SCREEN_ENV_SESS_NAME for set."
 }
 
-# End vps-init/src/include/07_base_global_args_06_screen.sh
+# End lib-bash/src/include/07_base_global_args_06_screen.sh
 
-# Start vps-init/src/include/08_base_expect.sh
+# Start lib-bash/src/include/08_base_expect.sh
 
 # shellcheck disable=SC2034
 CONST_EXPECT_ACTIONS_DELIMITER="||||"
@@ -4298,9 +4298,9 @@ function run_cmd_with_expect_script() {
     return "$CONST_EXPECT_HAS_UNEXPECTED_EXIT_RET_CODE"
 }
 
-# End vps-init/src/include/08_base_expect.sh
+# End lib-bash/src/include/08_base_expect.sh
 
-# Start vps-init/src/include/08_base_screen.sh
+# Start lib-bash/src/include/08_base_screen.sh
 
 # shellcheck disable=SC2034
 declare -A CONST_PRIVATE_SCREEN_PACKAGES=()
@@ -4507,9 +4507,9 @@ function screen_get_session_log() {
     return 0
 }
 
-# End vps-init/src/include/08_base_screen.sh
+# End lib-bash/src/include/08_base_screen.sh
 
-# Start vps-init/src/include/09_base_run_ask_or_revert.sh
+# Start lib-bash/src/include/09_base_run_ask_or_revert.sh
 
 # shellcheck disable=SC2034
 DEFAULT_LOST_CONNECTION_WAIT_SEC="200"
@@ -4681,9 +4681,9 @@ function do_action_with_with_wait_to_continue() {
     return 0
 }
 
-# End vps-init/src/include/09_base_run_ask_or_revert.sh
+# End lib-bash/src/include/09_base_run_ask_or_revert.sh
 
-# Start vps-init/src/include/11_base_download.sh
+# Start lib-bash/src/include/11_base_download.sh
 
 # shellcheck disable=SC2329
 function download_url(){
@@ -4749,9 +4749,9 @@ function download_script_and_run() {
     return 0
 }
 
-# End vps-init/src/include/11_base_download.sh
+# End lib-bash/src/include/11_base_download.sh
 
-# Start vps-init/src/include/11_base_jq.sh
+# Start lib-bash/src/include/11_base_jq.sh
 
 # shellcheck disable=SC2329
 function jq_get_key_or_empty() { 
@@ -4785,9 +4785,9 @@ function jq_get_key_or_empty() {
     return 1
 }
 
-# End vps-init/src/include/11_base_jq.sh
+# End lib-bash/src/include/11_base_jq.sh
 
-# Start vps-init/src/include/20_base_users_01_fn.sh
+# Start lib-bash/src/include/20_base_users_01_fn.sh
 
 # shellcheck disable=SC2034
 CONST_REMOVE_PASSWORD="true"
@@ -5151,9 +5151,9 @@ function get_loginable_users() {
     return 0
 }
 
-# End vps-init/src/include/20_base_users_01_fn.sh
+# End lib-bash/src/include/20_base_users_01_fn.sh
 
-# Start vps-init/src/include/20_base_users_02_extract_config.sh
+# Start lib-bash/src/include/20_base_users_02_extract_config.sh
 
 # shellcheck disable=SC2329
 function users_extract_configuration() {
@@ -5393,9 +5393,9 @@ function users_configuration_help() {
 "
 }
 
-# End vps-init/src/include/20_base_users_02_extract_config.sh
+# End lib-bash/src/include/20_base_users_02_extract_config.sh
 
-# Start vps-init/src/include/cmd_01_gitlab_register.sh
+# Start lib-bash/src/include/cmd_01_gitlab_register.sh
 
 COMMANDS_LIST+=("gitlab_register_runner")
 
@@ -5503,9 +5503,9 @@ function cmd_gitlab_register_runner_help() {
 "
 }
 
-# End vps-init/src/include/cmd_01_gitlab_register.sh
+# End lib-bash/src/include/cmd_01_gitlab_register.sh
 
-# Start vps-init/src/include/cmd_02_virtualbox_init_vm.sh
+# Start lib-bash/src/include/cmd_02_virtualbox_init_vm.sh
 
 COMMANDS_LIST+=("virtualbox_init_vm")
 
@@ -6550,9 +6550,9 @@ function cmd_virtualbox_init_vm_help() {
 "
 }
 
-# End vps-init/src/include/cmd_02_virtualbox_init_vm.sh
+# End lib-bash/src/include/cmd_02_virtualbox_init_vm.sh
 
-# Start vps-init/src/include/cmd_03_virtualbox_init_vm_itself.sh
+# Start lib-bash/src/include/cmd_03_virtualbox_init_vm_itself.sh
 
 COMMANDS_LIST+=("virtualbox_init_vm_itself")
 
@@ -6852,9 +6852,9 @@ function cmd_virtualbox_init_vm_itself_help() {
 "
 }
 
-# End vps-init/src/include/cmd_03_virtualbox_init_vm_itself.sh
+# End lib-bash/src/include/cmd_03_virtualbox_init_vm_itself.sh
 
-# Start vps-init/src/include/phase_01_upgrade_pkgs.sh
+# Start lib-bash/src/include/phase_01_upgrade_pkgs.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["upgrade_pkgs"]="01"
@@ -6884,9 +6884,9 @@ function phase_upgrade_pkgs_disable_env() {
     echo -n "DISABLE_UPGRADE_ALL"
 }
 
-# End vps-init/src/include/phase_01_upgrade_pkgs.sh
+# End lib-bash/src/include/phase_01_upgrade_pkgs.sh
 
-# Start vps-init/src/include/phase_02_base_pkgs.sh
+# Start lib-bash/src/include/phase_02_base_pkgs.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["base_pkgs"]="02"
@@ -6955,9 +6955,9 @@ function phase_base_pkgs_disable_env() {
     echo -n ""
 }
 
-# End vps-init/src/include/phase_02_base_pkgs.sh
+# End lib-bash/src/include/phase_02_base_pkgs.sh
 
-# Start vps-init/src/include/phase_03_remove_upgrade.sh
+# Start lib-bash/src/include/phase_03_remove_upgrade.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["remove_upgrade"]="03"
@@ -6996,9 +6996,9 @@ function phase_remove_upgrade_disable_env() {
     echo -n "DISABLE_REMOVE_UPGRADE"
 }
 
-# End vps-init/src/include/phase_03_remove_upgrade.sh
+# End lib-bash/src/include/phase_03_remove_upgrade.sh
 
-# Start vps-init/src/include/phase_04_add_users.sh
+# Start lib-bash/src/include/phase_04_add_users.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["users"]="04"
@@ -7123,9 +7123,9 @@ function phase_users_disable_env() {
     echo -n "DISABLE_USERS"
 }
 
-# End vps-init/src/include/phase_04_add_users.sh
+# End lib-bash/src/include/phase_04_add_users.sh
 
-# Start vps-init/src/include/phase_05_change_hostname.sh
+# Start lib-bash/src/include/phase_05_change_hostname.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["hostname"]="05"
@@ -7197,9 +7197,9 @@ function phase_hostname_disable_env() {
     echo -n "DISABLE_HOSTNAME"
 }
 
-# End vps-init/src/include/phase_05_change_hostname.sh
+# End lib-bash/src/include/phase_05_change_hostname.sh
 
-# Start vps-init/src/include/phase_06_sshd.sh
+# Start lib-bash/src/include/phase_06_sshd.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["sshd"]="06"
@@ -7632,9 +7632,9 @@ function phase_sshd_disable_env() {
     echo -n "DISABLE_PREPARE_SSHD"
 }
 
-# End vps-init/src/include/phase_06_sshd.sh
+# End lib-bash/src/include/phase_06_sshd.sh
 
-# Start vps-init/src/include/phase_07_docker.sh
+# Start lib-bash/src/include/phase_07_docker.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["docker"]="07"
@@ -7795,9 +7795,9 @@ function phase_docker_disable_env() {
     echo -n "DISABLE_DOCKER"
 }
 
-# End vps-init/src/include/phase_07_docker.sh
+# End lib-bash/src/include/phase_07_docker.sh
 
-# Start vps-init/src/include/phase_08_install_additional_pkgs.sh
+# Start lib-bash/src/include/phase_08_install_additional_pkgs.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["install_additional_pkgs"]="08"
@@ -7856,9 +7856,9 @@ function phase_install_additional_pkgs_disable_env() {
     echo -n "DISABLE_INSTALL_ADDITIONAL_PACKAGES"
 }
 
-# End vps-init/src/include/phase_08_install_additional_pkgs.sh
+# End lib-bash/src/include/phase_08_install_additional_pkgs.sh
 
-# Start vps-init/src/include/phase_10_atop.sh
+# Start lib-bash/src/include/phase_10_atop.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["atop"]="10"
@@ -7889,9 +7889,9 @@ function phase_atop_disable_env() {
     echo -n "DISABLE_ATOP"
 }
 
-# End vps-init/src/include/phase_10_atop.sh
+# End lib-bash/src/include/phase_10_atop.sh
 
-# Start vps-init/src/include/phase_80_gitlab.sh
+# Start lib-bash/src/include/phase_80_gitlab.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["gitlab"]="80"
@@ -8074,9 +8074,9 @@ function phase_gitlab_disable_env() {
     echo -n "DISABLE_GITLAB"
 }
 
-# End vps-init/src/include/phase_80_gitlab.sh
+# End lib-bash/src/include/phase_80_gitlab.sh
 
-# Start vps-init/src/include/phase_81_gitlab_register.sh
+# Start lib-bash/src/include/phase_81_gitlab_register.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["gitlab_register"]="81"
@@ -8101,9 +8101,9 @@ function phase_gitlab_register_disable_env() {
     echo -n "DISABLE_GITLAB_REGISTER_RUNNER"
 }
 
-# End vps-init/src/include/phase_81_gitlab_register.sh
+# End lib-bash/src/include/phase_81_gitlab_register.sh
 
-# Start vps-init/src/include/phase_82_werf.sh
+# Start lib-bash/src/include/phase_82_werf.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["werf"]="82"
@@ -8142,9 +8142,9 @@ function phase_werf_disable_env() {
     echo -n "DISABLE_WERF"
 }
 
-# End vps-init/src/include/phase_82_werf.sh
+# End lib-bash/src/include/phase_82_werf.sh
 
-# Start vps-init/src/include/phase_98_aliases.sh
+# Start lib-bash/src/include/phase_98_aliases.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["aliases"]="98"
@@ -8178,9 +8178,9 @@ function phase_aliases_disable_env() {
     echo -n "DISABLE_ALIASES"
 }
 
-# End vps-init/src/include/phase_98_aliases.sh
+# End lib-bash/src/include/phase_98_aliases.sh
 
-# Start vps-init/src/include/phase_99_remove_passed_config.sh
+# Start lib-bash/src/include/phase_99_remove_passed_config.sh
 
 # shellcheck disable=SC2034
 PHASES_WITH_INDEX["remove_passed_config"]="99"
@@ -8223,9 +8223,9 @@ function phase_remove_passed_config_disable_env() {
     echo -n "DISABLE_CLEANUP_PASSED_CONFIG"
 }
 
-# End vps-init/src/include/phase_99_remove_passed_config.sh
+# End lib-bash/src/include/phase_99_remove_passed_config.sh
 
-# Start vps-init/src/main.sh
+# Start lib-bash/src/main.sh
 
 # start idempotent run
 {
@@ -8599,5 +8599,5 @@ exit "$main_exit_code"
 # end idempotent run
 }
 
-# End vps-init/src/main.sh
+# End lib-bash/src/main.sh
 
