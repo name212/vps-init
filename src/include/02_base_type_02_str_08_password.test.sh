@@ -74,7 +74,7 @@ __test_run_one_password_check "aaaaaaaaBBBB" "not contains special and number" "
 __test_run_one_password_check "AAAAAAAABBBB1" "not contains special and lower" "$__CONST_PASSWORD_SHOULD_NOT_OK"
 __test_run_one_password_check "112222222222," "not contains lower and upped" "$__CONST_PASSWORD_SHOULD_NOT_OK"
 
-__test_run_one_password_check "Ab1.|,\\/?!;:[*]%\$^@><#&~" "Valid password" "$__CONST_PASSWORD_SHOULD_OK"
+__test_run_one_password_check "Ab1+-=.|,\\/?!;:[*]%\$^@><#&~" "Valid password" "$__CONST_PASSWORD_SHOULD_OK"
 __test_run_one_password_check "Ab1.a6?a\$9,1@" "Valid with min len" "$__CONST_PASSWORD_SHOULD_OK"
 
 

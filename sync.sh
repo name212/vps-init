@@ -1008,7 +1008,7 @@ function check_valid_password_disable_specials() {
 
 # shellcheck disable=SC2329
 function check_valid_password_get_special_symbols() {
-	echo -n '.|,\/?!;]:[*%$^@><#&~'
+	echo -n '+=.|,\/?!;]:[*%$^@><#&~'
     
     return 0
 }
@@ -4787,7 +4787,7 @@ function jq_get_key_or_empty() {
 
 # End vps-init/src/include/11_base_jq.sh
 
-# Start vps-init/src/include/20_base_user_00_fn.sh
+# Start vps-init/src/include/20_base_users_01_fn.sh
 
 # shellcheck disable=SC2034
 CONST_REMOVE_PASSWORD="true"
@@ -5151,9 +5151,9 @@ function get_loginable_users() {
     return 0
 }
 
-# End vps-init/src/include/20_base_user_00_fn.sh
+# End vps-init/src/include/20_base_users_01_fn.sh
 
-# Start vps-init/src/include/20_base_users_01_extract_config.sh
+# Start vps-init/src/include/20_base_users_02_extract_config.sh
 
 # shellcheck disable=SC2329
 function users_extract_configuration() {
@@ -5393,7 +5393,7 @@ function users_configuration_help() {
 "
 }
 
-# End vps-init/src/include/20_base_users_01_extract_config.sh
+# End vps-init/src/include/20_base_users_02_extract_config.sh
 
 # Start vps-init/src/include/cmd_01_gitlab_register.sh
 
@@ -8341,7 +8341,61 @@ function usage() {
     done
 }
 
+# shellcheck disable=SC2329
+function is_sort_is_gnu_sort() {
+    if ! command -v sort > /dev/null; then
+        echo_error "sort is not installed"
+        return 1
+    fi
+
+    local out=""
+    if ! out="$(sort --help)"; then
+        echo_error "Cannot get help for sort for check it is GNU sort"
+        return 1
+    fi
+
+    local gnu_pat="(coreutils) sort invocation"
+
+    if ! echo "$out" | grep -q "$gnu_pat"; then
+        echo_error "Probably sort is not GNU sort."
+        echo_error "Help not contains '$gnu_pat'. Help out:"
+        echo "$out"
+        return 1
+    fi
+
+    return 0
+}
+
+function check_binaries_for_main() {
+    local -a funcs_to_check=(
+        "is_sort_is_gnu_sort"
+    )
+
+    local -a errs=()
+    
+    for fn_c in "${funcs_to_check[@]}"; do
+        if ! "$fn_c"; then
+            errs+=("$fn_c")
+        fi
+    done
+
+    if num_eq "${#errs[@]}" "0"; then
+        return 0
+    fi
+
+    echo_error "Check binaries before run failed for:"
+    for e_fn in "${errs[@]}"; do
+        echo_error "  $e_fn"
+    done
+
+    return 1
+}
+
 function main() {
+    if ! check_binaries_for_main; then
+        return 1
+    fi
+
     if ! parse_and_apply_config_file "$@"; then
         echo_error "Cannot apply config"
         return 1
@@ -8384,7 +8438,7 @@ function main() {
     done
 
     local -a phases_sorted=()
-    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort -n)
+    readarray -t phases_sorted < <(printf '%s\n' "${not_ordered_phases[@]}" | sort -V)
 
     local -a phases=()
     for ps in "${phases_sorted[@]}"; do

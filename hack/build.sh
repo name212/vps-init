@@ -217,7 +217,7 @@ function write_lib_files() {
         fi
     fi
      
-    for fl in $(find "src/include" -regextype posix-egrep -regex "$parent" -type f | sort -n); do
+    for fl in $(find "src/include" -regextype posix-egrep -regex "$parent" -type f | sort -V); do
         bs="$(basename "$fl")"
         if [[ "$bs" == *.test.sh ]]; then
             echo_yellow "Found test file '$fl' Skip"

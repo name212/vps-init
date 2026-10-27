@@ -1008,7 +1008,7 @@ function check_valid_password_disable_specials() {
 
 # shellcheck disable=SC2329
 function check_valid_password_get_special_symbols() {
-	echo -n '.|,\/?!;]:[*%$^@><#&~'
+	echo -n '+=.|,\/?!;]:[*%$^@><#&~'
     
     return 0
 }
@@ -4787,7 +4787,7 @@ function jq_get_key_or_empty() {
 
 # End vps-init/src/include/11_base_jq.sh
 
-# Start vps-init/src/include/20_base_user_00_fn.sh
+# Start vps-init/src/include/20_base_users_01_fn.sh
 
 # shellcheck disable=SC2034
 CONST_REMOVE_PASSWORD="true"
@@ -5151,9 +5151,9 @@ function get_loginable_users() {
     return 0
 }
 
-# End vps-init/src/include/20_base_user_00_fn.sh
+# End vps-init/src/include/20_base_users_01_fn.sh
 
-# Start vps-init/src/include/20_base_users_01_extract_config.sh
+# Start vps-init/src/include/20_base_users_02_extract_config.sh
 
 # shellcheck disable=SC2329
 function users_extract_configuration() {
@@ -5393,7 +5393,7 @@ function users_configuration_help() {
 "
 }
 
-# End vps-init/src/include/20_base_users_01_extract_config.sh
+# End vps-init/src/include/20_base_users_02_extract_config.sh
 
 # Start vps-init/src/include/cmd_01_gitlab_register.sh
 

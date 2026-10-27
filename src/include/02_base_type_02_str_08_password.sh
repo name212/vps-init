@@ -22,7 +22,7 @@ function check_valid_password_disable_specials() {
 
 # shellcheck disable=SC2329
 function check_valid_password_get_special_symbols() {
-	echo -n '.|,\/?!;]:[*%$^@><#&~'
+	echo -n '+=.|,\/?!;]:[*%$^@><#&~'
     
     return 0
 }
