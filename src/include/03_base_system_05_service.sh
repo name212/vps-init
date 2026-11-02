@@ -110,6 +110,37 @@ function systemctl_restart_service() {
 }
 
 # shellcheck disable=SC2329
+function __run_inid_service() {
+    local attempts="10"
+    local sleep_time="2"
+    local continue_err="Command failed: Not found"
+
+    for i in $(seq 1 "$attempts"); do
+        if ! num_eq "$i" "1"; then
+            echo_warn "[${i}/${attempts}] Run 'service $*' failed. Sleep ${sleep_time}s before continue"
+            sleep "$sleep_time"
+        fi
+
+        local out=""
+        local res_code="0"
+        if out="$(service "$@" 2>&1)"; then
+            return 0
+        else
+            res_code="$?"
+        fi
+
+        if [[ "$out" =~ $continue_err ]]; then
+            continue
+        fi
+
+        return "$res_code"
+    done
+
+    echo_error "Run 'service $*' failed after $attempts attempts"
+    return 255
+}
+
+# shellcheck disable=SC2329
 function service_disable_all() {
     local srv="$1"
 
@@ -118,12 +149,12 @@ function service_disable_all() {
         return 1
     fi
 
-    if ! service "$srv" disable; then
+    if ! __run_inid_service "$srv" disable; then
         echo_error "Cannot disable $srv"
         return 1
     fi
 
-    if ! service "$srv" stop; then
+    if ! __run_inid_service "$srv" stop; then
         echo_error "Cannot stop $srv"
         return 1
     fi
@@ -140,12 +171,12 @@ function service_enable_service() {
     fi
 
 
-    if ! service "$srv" enable; then
+    if ! __run_inid_service "$srv" enable; then
         echo_error "Service '$srv' cannot enable"
         return 1
     fi
 
-    if ! service "$srv" restart; then
+    if ! __run_inid_service "$srv" restart; then
         echo_error "Service '$srv' cannot restarted"
         return 1
     fi
@@ -163,7 +194,7 @@ function service_restart_service() {
     fi
 
 
-    if ! service "$srv" restart; then
+    if ! __run_inid_service "$srv" restart; then
         echo_error "Service '$srv' cannot restarted"
         return 1
     fi
