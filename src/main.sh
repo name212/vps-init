@@ -127,7 +127,7 @@ function is_sort_is_gnu_sort() {
         return 1
     fi
 
-    local gnu_pat="(coreutils) sort invocation"
+    local gnu_pat="\\-h,"
 
     if ! echo "$out" | grep -q "$gnu_pat"; then
         echo_error "Probably sort is not GNU sort."
