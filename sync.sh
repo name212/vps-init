@@ -2909,6 +2909,8 @@ function check_is_ipv4() {
 
 # shellcheck disable=SC2329
 function check_is_mac_address() {
+    local val="$1"
+    
     if [[ "$val" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
         echo -n "$(str_lower "$val")"
         return 0
