@@ -32,7 +32,7 @@ function is_dict_has_key() {
     local key="$2"
 
     if ! is_dict_var "$var_name"; then
-        echo_error "Variable '$var_name' is not dict"
+        echo_error "Variable '$var_name' is not dict for is_dict_has_key"
         return 255
     fi
 
@@ -42,6 +42,47 @@ function is_dict_has_key() {
         return 0
     fi
 
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_dict_has_not_val() {
+    local var_name="$1"
+    local val="$2"
+
+    if ! is_dict_var "$var_name"; then
+        echo_error "Variable '$var_name' is not dict for is_dict_has_not_val"
+        return 255
+    fi
+
+    local -n is_dict_has_val_dict="$var_name"
+
+    for kk in "${!is_dict_has_val_dict[@]}"; do
+        local vd="${is_dict_has_val_dict[$kk]}"
+        if str_eq "$vd" "$val"; then
+            echo_error "val '$val' is present for key '$kk' in dict $var_name"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function is_dict_has_val() {
+    local var_name="$1"
+    local val="$2"
+
+    if ! is_dict_var "$var_name"; then
+        echo_error "Variable '$var_name' is not dict for is_dict_has_val"
+        return 255
+    fi
+
+    if ! is_dict_has_not_val "$var_name" "$val" 2>&1; then
+        return 0
+    fi
+
+    echo_error "val '$val' is not present for dict $var_name"
     return 1
 }
 
