@@ -30,6 +30,7 @@ function echo_help_args_help() {
 
     echo -n "
     ${args_list}
-      Show this help message."
+      Show this help message.
+      If passed phase or command will output help only for it."
 }
 
