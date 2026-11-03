@@ -47,8 +47,6 @@ function usage() {
         true
     fi
 
-    set +x
-
     function __print_phase_help() {
         local p="$1"
         
