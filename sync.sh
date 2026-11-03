@@ -3532,7 +3532,8 @@ function echo_help_args_help() {
 
     echo -n "
     ${args_list}
-      Show this help message."
+      Show this help message.
+      If passed phase or command will output help only for it."
 }
 
 # End lib-bash/src/include/07_base_global_args_01_help.sh
@@ -8336,6 +8337,53 @@ function usage() {
         init_msg="$INIT_MSG_HELP"
     fi
 
+    local only_phase_help=""
+    if ! only_phase_help="$(extract_value_argument_no_validate "--__only_phase" "" "$@")"; then
+        true
+    fi
+
+    local only_cmd_help=""
+    if ! only_cmd_help="$(extract_value_argument_no_validate "--__only_cmd" "" "$@")"; then
+        true
+    fi
+
+    function __print_phase_help() {
+        local p="$1"
+        
+        local help_fun="phase_${p}_help"
+        local disable_help_str=""
+        if ! disable_help_str="$(phase_print_disable_help "$p")"; then
+            echo_error "Cannot get disable help string for phase $p"
+            exit 1
+        fi
+
+        if ! is_function_declared "$help_fun"; then
+            echo_error "Help function not found for phase $p"
+            exit 1
+        fi
+
+        echo ""
+        echo -n "  Phase " 
+        echo_yellow "$p"
+        "$help_fun"
+        echo ""
+        echo "    $disable_help_str"
+    }
+
+    function __print_cmd_help() {
+        local cm="$1"
+
+        local cmd_help_fun="cmd_${cm}_help"
+        if ! declare -F "$cmd_help_fun" > /dev/null; then
+            echo_error "Help function not found for command $cm"
+            exit 1
+        fi
+        echo ""
+        echo -n "  Command " 
+        echo_yellow "$cm"
+        "$cmd_help_fun"
+    }
+
     # shellcheck disable=SC2154
     echo "$init_msg"
     echo ""
@@ -8359,6 +8407,21 @@ function usage() {
   $(log_settings_help)
   $(screen_args_help)
 "
+    if ! str_empty "$only_phase_help"; then
+        __print_phase_help "$only_phase_help"
+        return 0
+    fi
+
+    if ! str_empty "$only_cmd_help"; then
+        if [[ "${#COMMANDS_LIST[@]}" == "0" ]]; then
+            echo_yellow "Not any commands found for run."
+            return 0
+        fi
+
+        __print_cmd_help "$only_cmd_help"
+        return 0
+    fi
+
     echo_green "Phases."
     echo_green "If passed 'phase' as first arg and name of phase as second"
     echo_green "  only run only one phase."
@@ -8367,25 +8430,8 @@ function usage() {
     echo_yellow "If you run one phase pass global parameters before 'phase' argument or use envs."
     echo_green  "Phases for run in order:"
 
-    for p in "$@"; do
-        local help_fun="phase_${p}_help"
-        local disable_help_str=""
-        if ! disable_help_str="$(phase_print_disable_help "$p")"; then
-            echo_error "Cannot get disable help string for phase $p"
-            exit 1
-        fi
-
-        if ! is_function_declared "$help_fun"; then
-            echo_error "Help function not found for phase $p"
-            exit 1
-        fi
-
-        echo ""
-        echo -n "  Phase " 
-        echo_yellow "$p"
-        "$help_fun"
-        echo ""
-        echo "    $disable_help_str"
+    for ph in "$@"; do
+        __print_phase_help "$ph"
     done
 
     echo ""
@@ -8400,16 +8446,8 @@ function usage() {
     echo_yellow "If you run cmd pass global parameters before 'cmd' argument or use envs."
     echo_green "Commands available:"
 
-    for cm in "${COMMANDS_LIST[@]}"; do
-        local cmd_help_fun="cmd_${cm}_help"
-        if ! declare -F "$cmd_help_fun" > /dev/null; then
-            echo_error "Help function not found for command $cm"
-            exit 1
-        fi
-        echo ""
-        echo -n "  Command " 
-        echo_yellow "$cm"
-        "$cmd_help_fun"
+    for cm_h in "${COMMANDS_LIST[@]}"; do
+        __print_cmd_help "$cm_h"
     done
 }
 
@@ -8523,9 +8561,10 @@ function main() {
         phases+=("$phase_to_add")
     done
 
+    local help_passed="false"
+
     if is_help_flag_set "$@"; then
-        usage "${phases[@]}"
-        return 0
+        help_passed="true"
     fi
 
     local not_ask=""
@@ -8586,6 +8625,11 @@ function main() {
     fi
 
     if [[ "$got_run_cmd" != "" ]]; then
+        if str_eq "$help_passed" "true"; then
+            usage "--__only_cmd" "$got_run_cmd"
+            return 0
+        fi
+
         if ! run_passed_command "$got_run_cmd" "${args_to_pass[@]}"; then
             return 1
         fi
@@ -8595,7 +8639,12 @@ function main() {
 
     local -a phases_to_run=()
 
-    if [ -z "$got_run_one_phase" ]; then
+    if str_empty "$got_run_one_phase"; then
+        if str_eq "$help_passed" "true"; then
+            usage "${phases[@]}"
+            return 0
+        fi
+
         for pp in "${phases[@]}"; do
             if phase_is_not_disabled "$pp"; then
                 phases_to_run+=("$pp")
@@ -8604,6 +8653,11 @@ function main() {
             fi
         done
     else
+        if str_eq "$help_passed" "true"; then
+            usage "--__only_phase" "$got_run_one_phase"
+            return 0
+        fi
+
         phases_to_run=("$got_run_one_phase")
         if str_eq "$disable_remove_conf_on_phase" "false"; then
             local remove_phase="remove_passed_config"
