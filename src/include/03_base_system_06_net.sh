@@ -28,7 +28,7 @@ function check_is_number_port() {
         return 0
     fi
 
-    echo_error "Port '$port' should be >= 1 and <=  65535"
+    echo_error "Port '$port' should be >= 1 and <= 65535"
     return 1
 }
 
@@ -49,7 +49,7 @@ function check_is_ipv4() {
 # shellcheck disable=SC2329
 function check_is_mac_address() {
     local val="$1"
-    
+
     if [[ "$val" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
         echo -n "$(str_lower "$val")"
         return 0
@@ -70,6 +70,6 @@ function check_is_mac_address() {
         return 0
     fi
 
-    echo_error "invalid MAC address $val"
+    echo_error "Invalid MAC address $val"
     return 1
 }
