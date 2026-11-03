@@ -533,10 +533,76 @@ function _run_dicts_filter_tests() {
     fi
 }
 
+function _run_one_test_has_or_not_val() {
+    local dict_name="$1"
+    local val="$2"
+    local func="$3"
+    local should="$4"
+
+    if "$func" "$dict_name" "$val"; then
+        if str_eq "$should" "$__PRIVATE_DICT_TEST_SHOULD_OK"; then
+            echo_green "PASS: func '$func' for dict '$dict_name' for val '$val' returns ok"
+            return 0
+        fi
+
+        echo_red "FAIL: func '$func' dict for '$dict_name' for val '$val' returns not ok, but should ok"
+        __PRIVATE_TEST_DICTS_RES="false"
+        return 0
+    fi
+
+    if str_eq "$should" "$__PRIVATE_DICT_TEST_NOT_SHOULD_OK"; then
+        echo_green "PASS: func '$func' for dict '$dict_name' for val '$val' returns not ok"
+        return 0
+    fi
+
+    echo_red "FAIL: func '$func' for dict '$dict_name' for val '$val' returns ok, but should not ok"
+    __PRIVATE_TEST_DICTS_RES="false"
+    return 0
+}
+
+function _run_dicts_has_or_not_val() {
+    echo_green "Run 'is_dict_has_not_val' and 'is_dict_has_val' tests"
+
+    # shellcheck disable=SC2034
+    local -A empty_has_val=()
+
+    local -A one_key_has_val=()
+    # shellcheck disable=SC2034
+    one_key_has_val["key"]="val"
+
+    local -A multi_keys_has_val=()
+    multi_keys_has_val["first"]="first val"
+    multi_keys_has_val["second"]="second val"
+    # shellcheck disable=SC2034
+    multi_keys_has_val["third"]="third_val"
+
+    local not_present_val="not present_val"
+
+    _run_one_test_has_or_not_val "empty_has_val" "$not_present_val" "is_dict_has_not_val" "$__PRIVATE_DICT_TEST_SHOULD_OK"
+    _run_one_test_has_or_not_val "empty_has_val" "$not_present_val" "is_dict_has_val" "$__PRIVATE_DICT_TEST_NOT_SHOULD_OK"
+
+    _run_one_test_has_or_not_val "one_key_has_val" "$not_present_val" "is_dict_has_not_val" "$__PRIVATE_DICT_TEST_SHOULD_OK"
+    _run_one_test_has_or_not_val "one_key_has_val" "$not_present_val" "is_dict_has_val" "$__PRIVATE_DICT_TEST_NOT_SHOULD_OK"
+
+    _run_one_test_has_or_not_val "multi_keys_has_val" "$not_present_val" "is_dict_has_not_val" "$__PRIVATE_DICT_TEST_SHOULD_OK"
+    _run_one_test_has_or_not_val "multi_keys_has_val" "$not_present_val" "is_dict_has_val" "$__PRIVATE_DICT_TEST_NOT_SHOULD_OK"
+
+    _run_one_test_has_or_not_val "one_key_has_val" "val" "is_dict_has_not_val" "$__PRIVATE_DICT_TEST_NOT_SHOULD_OK"
+    _run_one_test_has_or_not_val "one_key_has_val" "val" "is_dict_has_val" "$__PRIVATE_DICT_TEST_SHOULD_OK"
+
+    local -a expected_vals=("first val" "second val" "third_val")
+
+    for vv in "${expected_vals[@]}"; do
+        _run_one_test_has_or_not_val "multi_keys_has_val" "$vv" "is_dict_has_not_val" "$__PRIVATE_DICT_TEST_NOT_SHOULD_OK"
+        _run_one_test_has_or_not_val "multi_keys_has_val" "$vv" "is_dict_has_val" "$__PRIVATE_DICT_TEST_SHOULD_OK"
+    done
+}
+
 _run_dicts_len_tests
 _run_dicts_key_tests
 _run_dicts_diff_tests
 _run_dicts_filter_tests
+_run_dicts_has_or_not_val
 
 if [[ "$__PRIVATE_TEST_DICTS_RES" == "true" ]]; then
     echo_info "PASSED: dicts tests"
