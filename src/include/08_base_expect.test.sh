@@ -2,11 +2,15 @@
 
 set -Eeuo pipefail
 
+if str_eq "${BASH_TESTS_SKIP_EXPECT_TESTS:-}" "true"; then
+    echo_warn "Expect test was skipped by set BASH_TESTS_SKIP_EXPECT_TESTS=true env"
+    exit 0
+fi
+
 __PRIVATE_TEST_EXPECT_RES="true"
 __PRIVATE_TEST_EXPECT_TIMEOUT="30"
 
 declare -a __scripts_file_to_remove=()
-
 
 function __prepare_script_file_and_run() {
     local run_test="$1"

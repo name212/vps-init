@@ -45,5 +45,29 @@ jobs:
 
     steps:
       - *checkout_step
+      - name: Get PR labels
+        id: labels
+        uses: joerick/pr-labels-action@0543b277721e852d821c6738d449f2f4dea03d5f #v1.0.9
+      - name: Export envs for skip tests
+        run: |
+          declare -A labels_to_test_envs=()
+          declare -A labels_to_test_names=()
+          
+          labels_to_test_envs["tests/skip/expect"]="BASH_TESTS_SKIP_EXPECT_TESTS"
+          labels_to_test_names["tests/skip/expect"]="expect"
+
+          for label in "${!labels_to_test_envs[@]}"; do
+              env_label="${label////_}"
+              env_label="${env_label^^}"
+              env_label="GITHUB_PR_LABEL_${env_label}"
+              if [[ -v "$env_label" ]]; then
+                if [ -n "${!env_label}" ]; then
+                  target_env_name="${labels_to_test_envs[$label]}"
+                  echo -e "\033[1;33mFound label '$label'. Tests for '${labels_to_test_names[$label]}' will skipped!\033[0m"
+                  echo -e "\033[1;33mSet env '$target_env_name' to 'true'\033[0m"
+                  echo "${target_env_name}=true" >> "$GITHUB_ENV"
+                fi
+              fi
+          done
       - name: Run tests
         run: make tests/run
