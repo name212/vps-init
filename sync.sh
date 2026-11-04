@@ -2935,6 +2935,56 @@ function check_is_mac_address() {
     return 1
 }
 
+# shellcheck disable=SC2329
+function get_net_interfaces_from_kernel() {
+    local dest_arr_name="$1"
+
+    if ! is_array_var "$dest_arr_name"; then
+        echo_error "Destination interfaces array name '$dest_arr_name' is not array"
+        return 1
+    fi
+
+    local net_dev_out=""
+    if ! net_dev_out="$(cat /proc/net/dev)"; then
+        echo_error "Cannot get interfaces from kernel"
+        return 1
+    fi
+
+    local only_interfaces_out=""
+    if ! only_interfaces_out="$(echo "$net_dev_out" | grep -oP " *[a-zA-Z0-9]+:")"; then
+        echo_error "Cannot grep interfaces names"
+        return 1
+    fi
+
+    function __trim_kernel_interfaces() {
+        local iface_name="$1"
+        # shellcheck disable=SC2155
+        local trimmed="$(trim_spaces "$iface_name")"
+        echo -n "$(trim_by_string_right ":" "1" "$trimmed")"
+        return 0
+    }
+
+    local -a __get_ifaces_split=()
+    if ! split_by_new_line "__get_ifaces_split" "$only_interfaces_out" "__trim_kernel_interfaces"; then
+        echo_error "Cannot split interfaces out by new line"
+        return 1
+    fi
+
+    local -n __get_interfaces_dest="$dest_arr_name"
+
+    local indx="0"
+    for iface in "${__get_ifaces_split[@]}"; do
+        if str_empty "$iface"; then
+            continue
+        fi
+
+        __get_interfaces_dest["$indx"]="$iface"
+        ((indx++)) || true
+    done
+
+    return 0
+}
+
 # End lib-bash/src/include/03_base_system_06_net.sh
 
 # Start lib-bash/src/include/04_base_phases.sh
