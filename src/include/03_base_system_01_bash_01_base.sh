@@ -125,3 +125,48 @@ function load_envs_file() {
 
     return 0
 }
+
+# shellcheck disable=SC2329
+function do_retry_func() {
+    local sleep_time="$1"
+    local attempts="$2"
+    local action="$3"
+    local fun_name="$4"
+
+    shift
+    shift
+    shift
+    shift
+
+    if ! is_function_declared "$fun_name"; then
+        echo_error "function '$fun_name' is not declared for do retry"
+        return 255
+    fi
+
+    if ! is_number_positive_or_zero "$sleep_time" > /dev/null; then
+        echo_error "Sleep time '$sleep_time' should be positive or zero for do retry"
+        return 255 
+    fi
+
+    if ! is_number_positive "$attempts" > /dev/null; then
+        echo_error "Attempts '$attempts' should be positive for do retry"
+        return 255 
+    fi
+
+    local last_ret_code="0"
+    for ii in $(seq 1 "$attempts"); do
+        if ! num_eq "$ii" "1"; then
+            echo_warn "[${ii}/${attempts}] $action failed with exit code '$last_ret_code'. Sleep '$sleep_time's before next attempt"
+            sleep "$sleep_time"
+        fi
+
+        if "$fun_name" "$@"; then
+            return 0
+        else
+            last_ret_code="$1"
+        fi
+    done
+
+    echo_error "$action failed after $attempts attempts"
+    return "$last_ret_code"
+}

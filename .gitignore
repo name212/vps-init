@@ -8,3 +8,5 @@ virtualbox/
 .bin/
 .build/
 .release/
+
+*.local.conf.env

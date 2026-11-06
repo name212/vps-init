@@ -107,6 +107,8 @@ function systemctl_restart_service() {
         echo_error "Service '$srv' cannot restarted"
         return 1
     fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329

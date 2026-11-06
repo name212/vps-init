@@ -1759,6 +1759,51 @@ function load_envs_file() {
     return 0
 }
 
+# shellcheck disable=SC2329
+function do_retry_func() {
+    local sleep_time="$1"
+    local attempts="$2"
+    local action="$3"
+    local fun_name="$4"
+
+    shift
+    shift
+    shift
+    shift
+
+    if ! is_function_declared "$fun_name"; then
+        echo_error "function '$fun_name' is not declared for do retry"
+        return 255
+    fi
+
+    if ! is_number_positive_or_zero "$sleep_time" > /dev/null; then
+        echo_error "Sleep time '$sleep_time' should be positive or zero for do retry"
+        return 255 
+    fi
+
+    if ! is_number_positive "$attempts" > /dev/null; then
+        echo_error "Attempts '$attempts' should be positive for do retry"
+        return 255 
+    fi
+
+    local last_ret_code="0"
+    for ii in $(seq 1 "$attempts"); do
+        if ! num_eq "$ii" "1"; then
+            echo_warn "[${ii}/${attempts}] $action failed with exit code '$last_ret_code'. Sleep '$sleep_time's before next attempt"
+            sleep "$sleep_time"
+        fi
+
+        if "$fun_name" "$@"; then
+            return 0
+        else
+            last_ret_code="$1"
+        fi
+    done
+
+    echo_error "$action failed after $attempts attempts"
+    return "$last_ret_code"
+}
+
 # End lib-bash/src/include/03_base_system_01_bash_01_base.sh
 
 # Start lib-bash/src/include/03_base_system_01_bash_02_shebang.sh
@@ -2071,7 +2116,92 @@ function ask_user_raw() {
 
 # End lib-bash/src/include/03_base_system_02_input.sh
 
-# Start lib-bash/src/include/03_base_system_03_fs.sh
+# Start lib-bash/src/include/03_base_system_03_fs_01_validate.sh
+
+# shellcheck disable=SC2034
+CONST_PRIVATE_USERNAME_GROUP_NAME_RE="[a-z][a-z0-9-]{0,30}"
+
+# shellcheck disable=SC2329
+function check_is_permission_oct_valid() {
+    local perm="$1"
+
+    local perm_nums="01234567"
+    local perm_re="^[$perm_nums]{3}[$perm_nums]?\$"
+    if ! [[ "$perm" =~ $perm_re ]]; then
+        echo_error "Permission number '$perm' is incorrect. Should match '$perm_re'"
+        return 1
+    fi
+
+    echo -n "$perm"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function check_is_username_valid() {
+    local name="$1"
+
+    local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}\$"
+    if ! [[ "$name" =~ $name_re ]]; then
+        echo_error "Username or group '$name' is incorrect. Should match '$name_re'"
+        return 1
+    fi
+
+    echo -n "$name"
+    return 0
+}
+
+
+# shellcheck disable=SC2329
+function check_is_chown_str_valid() {
+    local str="$1"
+
+    local num_re="^[0-9]+(:[0-9]+)?\$"
+
+    if [[ "$str" =~ $num_re ]]; then
+        echo -n "$str"
+        return 0
+    fi
+
+    local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}(:${CONST_PRIVATE_USERNAME_GROUP_NAME_RE})?\$"
+
+    local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}\$"
+    if ! [[ "$str" =~ $name_re ]]; then
+        echo_error "Chown string '$str' is incorrect. Should match '$name_re' or '$num_re'"
+        return 1
+    fi
+
+    echo -n "$str"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function check_file_is_not_empty() {
+    local val="$1"
+
+    local real=""
+
+    if ! real="$(realpath "$val")"; then
+        echo_error "Cannot extract real path for '$val'"
+        return 1
+    fi
+
+    if [ ! -f "$real" ]; then
+        echo_error "'$val' is not file!"
+        return 1
+    fi
+
+    if [ ! -s "$real" ]; then
+        echo_error "'$val' is empty file!"
+        return 1
+    fi
+
+    echo -n "$real"
+    return 0
+}
+
+# End lib-bash/src/include/03_base_system_03_fs_01_validate.sh
+
+# Start lib-bash/src/include/03_base_system_03_fs_02_fn.sh
 
 # shellcheck disable=SC2329
 function delete_file() {
@@ -2231,27 +2361,39 @@ function sync_file_content_with_diff_ret_code() {
 }
 
 # shellcheck disable=SC2329
-function check_file_is_not_empty() {
-    local val="$1"
+function set_path_perm_with_owner() {
+    local path="$1"
+    local perm="$2"
+    local owner="${3:-}"
 
-    local real=""
-
-    if ! real="$(realpath "$val")"; then
-        echo_error "Cannot extract real path for '$val'"
+    local full_path=""
+    if ! full_path="$(realpath "$path")"; then
+        echo_error "Cannot get full path for '$path' for set owner and permissions"
         return 1
     fi
 
-    if [ ! -f "$real" ]; then
-        echo_error "'$val' is not file!"
+    if ! check_is_permission_oct_valid "$perm" > /dev/null; then
+        echo_error "Invalid permission mode '$perm' for path '$path'"
         return 1
     fi
 
-    if [ ! -s "$real" ]; then
-        echo_error "'$val' is empty file!"
+    if ! str_empty "$owner"; then
+        if ! check_is_chown_str_valid "$owner" > /dev/null; then
+            echo_error "Invalid owner '$owner' for path '$path'"
+            return 1
+        fi
+
+        if ! chown "$owner" "$full_path"; then
+            echo_error "Cannot chown path '$full_path' to '$owner'"
+            return 1
+        fi
+    fi
+
+    if ! chmod "$perm" "$full_path"; then
+        echo_error "Cannot chmod path '$full_path' to '$perm'"
         return 1
     fi
 
-    echo -n "$real"
     return 0
 }
 
@@ -2259,6 +2401,7 @@ function check_file_is_not_empty() {
 function get_tmp_file_name() {
     local prefix="${1:-}"
     local keep_file="${2:-false}"
+
     local mktmp_args=()
 
     local err_pref=""
@@ -2312,7 +2455,202 @@ function create_tmp_executable_file() {
     return 0
 }
 
-# End lib-bash/src/include/03_base_system_03_fs.sh
+# shellcheck disable=SC2329
+function set_only_user_perm_for_path() {
+    local path_to_set="$1"
+    local user_for_set="$2"
+    local group_for_set="${3:-}"
+
+    if str_empty "$path_to_set"; then
+        echo_error "Path for set path permissions not pass as first arg"
+        return 1
+    fi
+
+    if str_empty "$user_for_set"; then
+        echo_error "User set file permissions for path '$path_to_set' not pass"
+        return 1
+    fi
+
+    if str_empty "$group_for_set"; then
+        group_for_set="$user_for_set"
+    fi
+
+    local full_path=""
+
+    if ! full_path="$(realpath "$path_to_set")"; then
+        echo_error "Cannot extract real path for '$path_to_set'"
+        return 1
+    fi
+
+    local perm=""
+
+    if [ -d "$full_path" ]; then
+        if str_eq "$user_for_set" "$group_for_set"; then
+            perm="700"
+        else
+            perm="770"
+        fi
+    else
+        if str_eq "$user_for_set" "$group_for_set"; then
+            perm="600"
+        else
+            perm="660"
+        fi
+    fi
+
+    if str_empty "$perm"; then
+        echo_error "Internal error: cannot resolve chmod perm for path '$path_to_set'"
+        return 1
+    fi
+
+    local chown_user="${user_for_set}:${group_for_set}"
+
+    if ! set_path_perm_with_owner "$full_path" "$perm" "$chown_user"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function set_only_root_perm_for_path() {
+    local path_to_set="$1"
+
+    set_only_user_perm_for_path "$path_to_set" "root"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function __run_stat_with_format() {
+    local path="$1"
+    local format="$2"
+
+    if str_empty "$path"; then
+        echo_error "Path for run stat is empty"
+        return 1
+    fi
+
+    if str_empty "$format"; then
+        echo_error "Format for run stat is empty for '$path'"
+        return 1
+    fi
+
+    local out=""
+    if ! out="$(stat  --format "%a" "$path")"; then
+        echo_error "Cannot run stat for '$path'"
+        return 1
+    fi
+
+    echo -n "$out"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_path_permission_mode() {
+    local path="$1"
+
+    local perm=""
+    if ! perm="$(__run_stat_with_format "$path" "%a")"; then
+        echo_error "Cannot get permission mode for '$path'"
+        return 1
+    fi
+
+    echo -n "$perm"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_path_owner() {
+    local path="$1"
+
+    local owner=""
+    if ! owner="$(__run_stat_with_format "$path" "%U:%G")"; then
+        echo_debug "Cannot get owner for '$path' in human format. Try get ids"
+        if ! owner="$(__run_stat_with_format "$path" "%u:%g")"; then
+            echo_error "Cannot get owner for path '$path'"
+            return 1
+        fi
+    fi
+
+    echo -n "$owner"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_base_name_for_path() {
+    local path="$1"
+
+    local full=""
+    if ! full="$(realpath "$path")"; then
+        echo_error "Cannot get full path '$path'"
+        return 1
+    fi
+
+    local base=""
+    if ! base="$(basename "$full")"; then
+        echo_error "Cannot get base name for '$path'"
+        return 1
+    fi
+
+    echo -n "$base"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function tmp_backup_file() {
+    local path="$1"
+    local prefix="${2:-}"
+
+    if [ ! -f "$path" ]; then
+        echo_error "Path '$path' is not file for backup"
+        return 1
+    fi
+
+    local base=""
+    if ! base="$(get_base_name_for_path "$path")"; then
+        echo_error "Cannot get base name for '$path' for backup"
+        return 1
+    fi
+
+    local perm=""
+    if ! perm="$(get_path_permission_mode "$path")"; then
+        echo_error "Cannot get permissions for '$path' for backup"
+        return 1
+    fi
+
+    local owner=""
+    if ! owner="$(get_path_owner "$path")"; then
+        echo_error "Cannot get owner for '$path' for backup"
+        return 1
+    fi
+
+    if ! str_empty "$prefix"; then
+        prefix="${prefix}_"
+    fi
+
+    local bkp_path=""
+    if ! bkp_path="$(get_tmp_file_name "${prefix}${base}" "true")"; then
+        echo_error "Cannot get backup file for '$path'"
+        return 1
+    fi
+
+    if ! cp "$path" "$bkp_path"; then
+        echo_error "Cannot cp backup file '$path' to '$bkp_path'"
+        return 1
+    fi
+
+    if ! set_path_perm_with_owner "$bkp_path" "$perm" "$owner"; then
+        rm -f "$bkp_path" || true
+        echo_error "Cannot set perm for backup file '$bkp_path' to '$perm' and owner '$owner'"
+        return 1
+    fi
+
+    echo -n "$bkp_path"
+
+    return 0
+}
+
+# End lib-bash/src/include/03_base_system_03_fs_02_fn.sh
 
 # Start lib-bash/src/include/03_base_system_04_pkg.sh
 
@@ -2673,6 +3011,8 @@ function systemctl_restart_service() {
         echo_error "Service '$srv' cannot restarted"
         return 1
     fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329
