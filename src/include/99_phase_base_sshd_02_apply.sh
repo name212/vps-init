@@ -17,21 +17,17 @@ function sshd_revert_after_apply() {
 
         local -n __sshd_revert_move="$move_dict"
 
-        for src in "${!{__sshd_revert_move[@]}}"; do 
+        for src in "${!__sshd_revert_move[@]}"; do 
             local dest="${__sshd_revert_move[$src]}"
             if str_empty "$src" || str_empty "$dest"; then
                 echo_warn "Source '$src' or dest '$dest' file is empty. Skip revert it"
                 continue
             fi
 
-            echo_warn "Revert (copy) old config from '$src' to '$dest'"
-            if ! cp "$src" "$dest"; then
+            echo_warn "Revert (move) old config from '$src' to '$dest'"
+            if ! mv "$src" "$dest"; then
                 has_error="true"
-                echo_error "Cannot revert '$dest'"
-            else
-                if ! rm -f "$src"; then
-                    echo_warn "Template file '$src' not removed for '$dest', but copied. Continue"
-                fi
+                echo_error "Cannot revert '$dest' from '$src'"
             fi
         done
     fi
@@ -44,7 +40,7 @@ function sshd_revert_after_apply() {
         fi
     done
 
-    if str_eq "$has_error"; then
+    if str_eq "$has_error" "true"; then
         echo_error "^^Some configs cannot reverted. Skip restart sshd"
         return 1
     fi
@@ -148,9 +144,9 @@ function sshd_apply_setting_with_approve() {
 
     if sync_file_content_with_diff_ret_code "$setting" "$conf_file" "Apply sshd setting '$action_name'" "$not_ask"; then
         echo_info "Setting for action '$action_name' in file '$conf_file' in sync"
-        for kk in "${!__sshd_to_move}"; do
-            local rm_f="${__sshd_to_move[$kk]}"
-            echo_info "Remove temp file '$rm_f' for config '$kk' for action '$action_name'"
+        for rm_f in "${!__sshd_to_move[@]}"; do
+            local kk="${__sshd_to_move[$rm_f]}"
+            echo_info "Remove temp backup file '$rm_f' for config '$kk' for action '$action_name'"
             if ! rm -f "$rm_f"; then
                 echo_warn "Temp file '$rm_f' for config '$kk' for action '$action_name' not removed!"
             fi 
@@ -190,12 +186,18 @@ function sshd_apply_setting_with_approve() {
         return 1
     fi
 
+    echo ""
+    echo_warn "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo_warn "Try to restart sshd for action '$action_name'"
     if ! str_empty "$verify_message"; then
         echo_warn "Please check:"
         echo_warn "  $verify_message"
         echo_warn "before approve!"
     fi
+
+    echo ""
+    echo_warn "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo ""
 
     if ! sshd_restart_with_approve "$action_name" "${__sshd_revert_args[@]}"; then
         echo_error "Cannot apply setting for action '$action_name' with file '$conf_file'"
@@ -235,10 +237,10 @@ function sshd_apply_settings_with_check_not_own() {
         return 1
     fi
 
-    local __sshd_settings_for_apply_dict="$settings_dict_name"
+    local -n __sshd_settings_for_apply_dict="$settings_dict_name"
     local setting_to_set_str=""
 
-    for sett_name_a in "${!__sshd_settings_for_apply_dict}"; do
+    for sett_name_a in "${!__sshd_settings_for_apply_dict[@]}"; do
         local cur_sett_str="${sett_name_a} ${__sshd_settings_for_apply_dict[$sett_name_a]}"
         setting_to_set_str="$(append_str_with_new_line "$setting_to_set_str" "$cur_sett_str")"
     done

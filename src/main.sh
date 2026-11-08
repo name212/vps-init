@@ -106,6 +106,7 @@ function usage() {
   $(not_ask_help)
   $(log_settings_help)
   $(screen_args_help)
+  $(tmp_dir_help)
 "
     if ! str_empty "$only_phase_help"; then
         __print_phase_help "$only_phase_help"
@@ -209,6 +210,13 @@ function main() {
     if ! parse_and_apply_config_file "$@"; then
         echo_error "Cannot apply config"
         return 1
+    fi
+
+    if ! is_help_flag_set "$@"; then
+        if ! parse_and_apply_temp_dir_global_args "$@"; then
+            echo_error "Cannot apply tmp dir settings"
+            return 1
+        fi
     fi
 
     if ! is_help_flag_set "$@"; then

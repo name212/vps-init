@@ -2164,7 +2164,6 @@ function check_is_chown_str_valid() {
 
     local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}(:${CONST_PRIVATE_USERNAME_GROUP_NAME_RE})?\$"
 
-    local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}\$"
     if ! [[ "$str" =~ $name_re ]]; then
         echo_error "Chown string '$str' is incorrect. Should match '$name_re' or '$num_re'"
         return 1
@@ -2201,7 +2200,7 @@ function check_file_is_not_empty() {
 
 # End lib-bash/src/include/03_base_system_03_fs_01_validate.sh
 
-# Start lib-bash/src/include/03_base_system_03_fs_02_fn.sh
+# Start lib-bash/src/include/03_base_system_03_fs_02_path.sh
 
 # shellcheck disable=SC2329
 function delete_file() {
@@ -2214,150 +2213,116 @@ function delete_file() {
 }
 
 # shellcheck disable=SC2329
-function temp_file_with_content() {
-    local content="${1:-}"
+function is_path_exists() {
+    local path="$1"
 
-    local content_tmp_file=""
-    if ! content_tmp_file="$(mktemp)"; then
-        echo_error "Cannot create temp file"
-        return 1
-    fi
-
-    if [ -z "$content_tmp_file" ]; then
-        echo_error "Cannot create temp file"
-        return 1
-    fi
-
-    echo -n "$content" > "$content_tmp_file"
-
-    echo -n "$content_tmp_file"
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function replace_file() {
-    local src="$1"
-    local dest="$2"
-    local title="${3-Unknown}"
-    local remove_src="${4:-true}"
-    local not_ask="${5:-false}"
-
-    local ret_diff="0"
-
-    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
-        ret_diff="0"
-    else
-        ret_diff="$?"
-    fi
-
-    if [[ "$ret_diff" == "255" ]]; then
-        echo_error "Internal diff error"
-        return 1
-    fi
-
-    if [[ "$ret_diff" == "0" ]]; then
-        echo_info "No diff. Skip"
+    if [ -e "$path" ]; then
         return 0
-    fi
-    
-    # prevent to break output
-    sleep 1
-
-    if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
-        if [[ "$remove_src" == "true" ]]; then
-            echo_info "$title delete source $src"
-            if ! rm "$src"; then
-                echo_warn "$title source file $src not deleted!"
-            fi
-        fi
-        echo_error "Disallow replace $dest"
-        return 1
-    fi
-
-    if ! cp "$src" "$dest"; then
-        echo_error "$title not replaced. Source $src not deleted"
-        return 1
-    fi
-
-    if [[ "$remove_src" == "true" ]]; then
-        echo_info "$title delete source $src"
-        if ! rm "$src"; then
-            echo_warn "$title source file $src not deleted!"
-            return 0
-        fi
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function sync_file_content() {
-    local content="$1"
-    local dest="$2"
-    local title="${3-Unknown}"
-    local not_ask="${4:-false}"
-
-    if [ -z "$dest" ]; then
-        echo_error "File for sync not passed"
-        return 1
-    fi
-
-    local temp_file=""
-
-    if ! temp_file="$(temp_file_with_content "$content")"; then
-        echo_error "Cannot create temp file for content"
-        return 1
-    fi
-
-    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
-        echo_error "Cannot sync file '$dest'"
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function sync_file_content_with_diff_ret_code() { 
-    local content="$1"
-    local dest="$2"
-    local title="${3-Unknown}"
-    local not_ask="${4:-false}"
-
-    if [ -z "$dest" ]; then
-        echo_error "File for sync not passed"
-        return 255
-    fi
-
-    local temp_file=""
-
-    if ! temp_file="$(temp_file_with_content "$content")"; then
-        echo_error "Cannot create temp file for content"
-        return 255
-    fi
-
-    if files_has_not_diff "$temp_file" "$dest" "$title" "false"; then
-        ret_diff="0"
-    else
-        ret_diff="$?"
-    fi
-
-    if [[ "$ret_diff" == "255" ]]; then
-        echo_error "Internal diff error"
-        return 255
-    fi
-
-    if [[ "$ret_diff" == "0" ]]; then
-        return 0
-    fi
-
-    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
-        echo_error "Cannot sync file '$dest'"
-        return 255
     fi
 
     return 1
+}
+
+# shellcheck disable=SC2329
+function is_file_path_exists() {
+    local path="$1"
+
+    if [ -f "$path" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function is_dir_path_exists() {
+    local path="$1"
+
+    if [ -d "$path" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function get_base_name_for_path() {
+    local path="$1"
+
+    local full=""
+    if ! full="$(realpath "$path")"; then
+        echo_error "Cannot get full path '$path'"
+        return 1
+    fi
+
+    local base=""
+    if ! base="$(basename "$full")"; then
+        echo_error "Cannot get base name for '$path'"
+        return 1
+    fi
+
+    echo -n "$base"
+    return 0
+}
+
+# End lib-bash/src/include/03_base_system_03_fs_02_path.sh
+
+# Start lib-bash/src/include/03_base_system_03_fs_03_perm.sh
+
+# shellcheck disable=SC2329
+function __run_stat_with_format() {
+    local path="$1"
+    local format="$2"
+
+    if str_empty "$path"; then
+        echo_error "Path for run stat is empty"
+        return 1
+    fi
+
+    if str_empty "$format"; then
+        echo_error "Format for run stat is empty for '$path'"
+        return 1
+    fi
+
+    local out=""
+    if ! out="$(stat  --format "$format" "$path")"; then
+        echo_error "Cannot run stat for '$path'"
+        return 1
+    fi
+
+    echo -n "$out"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_path_permission_mode() {
+    local path="$1"
+
+    local perm=""
+    if ! perm="$(__run_stat_with_format "$path" "%a")"; then
+        echo_error "Cannot get permission mode for '$path'"
+        return 1
+    fi
+
+    echo -n "$perm"
+    return 0
+}
+
+# shellcheck disable=SC2329
+function get_path_owner() {
+    local path="$1"
+
+    local owner=""
+    if ! owner="$(__run_stat_with_format "$path" "%U:%G")"; then
+        echo_debug "Cannot get owner for '$path' in human format. Try get ids"
+        if ! owner="$(__run_stat_with_format "$path" "%u:%g")"; then
+            echo_error "Cannot get owner for path '$path'"
+            return 1
+        fi
+    fi
+
+    echo -n "$owner"
+    return 0
 }
 
 # shellcheck disable=SC2329
@@ -2393,64 +2358,6 @@ function set_path_perm_with_owner() {
         echo_error "Cannot chmod path '$full_path' to '$perm'"
         return 1
     fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function get_tmp_file_name() {
-    local prefix="${1:-}"
-    local keep_file="${2:-false}"
-
-    local mktmp_args=()
-
-    local err_pref=""
-
-    if ! str_empty "$prefix"; then
-        err_pref=" for prefix '$prefix'"
-        mktmp_args=("-t")
-        mktmp_args+=("${prefix}.XXXXXXXX")
-    fi
-
-    local res_name=""
-    if ! res_name="$(mktemp "${mktmp_args[@]}")"; then
-        echo_error "Cannot create temp file${err_pref}"
-        return 1
-    fi
-
-    if ! str_eq "$keep_file" "true"; then 
-        if ! rm "$res_name"; then
-            echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
-            return 1
-        fi
-    fi
-
-    echo -n "$res_name"
-    return 0
-}
-
-# shellcheck disable=SC2329
-function create_tmp_executable_file() {
-    local prefix="${1:-}"
-
-    local file_path=""
-    if ! file_path="$(get_tmp_file_name "$prefix" "true")"; then
-        return 1
-    fi
-
-    if ! chmod 755 "$file_path"; then
-        rm -f "$file_path" || true
-        
-        local err_msg_pref=""
-        if ! str_empty "$prefix"; then
-            err_msg_pref=" for prefix '$prefix'"
-        fi
-
-        echo_error "Cannot chmod to 755 temp file '$file_path'${err_msg_pref}"
-        return 1
-    fi
-
-    echo -n "$file_path"
 
     return 0
 }
@@ -2520,79 +2427,147 @@ function set_only_root_perm_for_path() {
     return $?
 }
 
+# End lib-bash/src/include/03_base_system_03_fs_03_perm.sh
+
+# Start lib-bash/src/include/03_base_system_03_fs_04_tmp.sh
+
+# shellcheck disable=SC2034
+CONST_FS_SYNC_TMP_DIR_DEFAULT="/root/tmp-sync"
+
 # shellcheck disable=SC2329
-function __run_stat_with_format() {
+function __create_fs_set_tmp_dir() {
     local path="$1"
-    local format="$2"
 
-    if str_empty "$path"; then
-        echo_error "Path for run stat is empty"
+    if is_path_exists "$path"; then
+        if ! is_dir_path_exists "$path"; then
+            echo_error "Cannot set sync tmp dir '$path'. Path exists and not dir"
+            return 1
+        fi
+        return 0
+    fi
+
+    if ! mkdir -p "$path"; then
+        echo_error "Cannot create sync tmp dir '$path'"
         return 1
     fi
 
-    if str_empty "$format"; then
-        echo_error "Format for run stat is empty for '$path'"
-        return 1
-    fi
-
-    local out=""
-    if ! out="$(stat  --format "%a" "$path")"; then
-        echo_error "Cannot run stat for '$path'"
-        return 1
-    fi
-
-    echo -n "$out"
     return 0
 }
 
 # shellcheck disable=SC2329
-function get_path_permission_mode() {
+function sync_fs_set_tmp_dir() {
     local path="$1"
 
-    local perm=""
-    if ! perm="$(__run_stat_with_format "$path" "%a")"; then
-        echo_error "Cannot get permission mode for '$path'"
+    if str_eq "${__SYNC_FS_TMP_DIR:-}" "$path"; then
+        return 0
+    fi
+
+    if ! __create_fs_set_tmp_dir "$path"; then
         return 1
     fi
 
-    echo -n "$perm"
+    export __SYNC_FS_TMP_DIR="$path"
+
     return 0
 }
 
 # shellcheck disable=SC2329
-function get_path_owner() {
-    local path="$1"
+function __run_mktemp() {
+    if ! str_empty "${__SYNC_FS_TMP_DIR:-}"; then
+        TMPDIR="$__SYNC_FS_TMP_DIR" mktemp "$@"
+        return $?
+    fi
 
-    local owner=""
-    if ! owner="$(__run_stat_with_format "$path" "%U:%G")"; then
-        echo_debug "Cannot get owner for '$path' in human format. Try get ids"
-        if ! owner="$(__run_stat_with_format "$path" "%u:%g")"; then
-            echo_error "Cannot get owner for path '$path'"
+    mktemp "$@"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function get_tmp_file_name() {
+    local prefix="${1:-}"
+    local keep_file="${2:-false}"
+
+    local mktmp_args=()
+
+    local err_pref=""
+
+    if ! str_empty "$prefix"; then
+        err_pref=" for prefix '$prefix'"
+        mktmp_args=("-t")
+        mktmp_args+=("${prefix}.XXXXXXXX")
+    fi
+
+    local res_name=""
+    if ! res_name="$(__run_mktemp "${mktmp_args[@]}")"; then
+        echo_error "Cannot create temp file${err_pref}"
+        return 1
+    fi
+
+    if str_empty "$res_name"; then
+        echo_error "Cannot create temp file${err_pref} got empty file name"
+        return 1
+    fi
+
+    if ! str_eq "$keep_file" "true"; then 
+        if ! rm "$res_name"; then
+            echo_error "Cannot remove temp file '$res_name'${err_pref} for only extract path"
             return 1
         fi
     fi
 
-    echo -n "$owner"
+    echo -n "$res_name"
     return 0
 }
 
 # shellcheck disable=SC2329
-function get_base_name_for_path() {
-    local path="$1"
+function create_tmp_file() {
+    local prefix="${1:-}"
 
-    local full=""
-    if ! full="$(realpath "$path")"; then
-        echo_error "Cannot get full path '$path'"
+    get_tmp_file_name "$prefix" "true"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function temp_file_with_content() {
+    local content="${1:-}"
+    local prefix="${2:-}"
+
+    local content_tmp_file=""
+    if ! content_tmp_file="$(create_tmp_file "$prefix")"; then
+        echo_error "Cannot create temp file for create content"
         return 1
     fi
 
-    local base=""
-    if ! base="$(basename "$full")"; then
-        echo_error "Cannot get base name for '$path'"
+    echo -n "$content" > "$content_tmp_file"
+
+    echo -n "$content_tmp_file"
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function create_tmp_executable_file() {
+    local prefix="${1:-}"
+
+    local file_path=""
+    if ! file_path="$(create_tmp_file "$prefix")"; then
         return 1
     fi
 
-    echo -n "$base"
+    if ! chmod 755 "$file_path"; then
+        rm -f "$file_path" || true
+        
+        local err_msg_pref=""
+        if ! str_empty "$prefix"; then
+            err_msg_pref=" for prefix '$prefix'"
+        fi
+
+        echo_error "Cannot chmod to 755 temp file '$file_path'${err_msg_pref}"
+        return 1
+    fi
+
+    echo -n "$file_path"
+
     return 0
 }
 
@@ -2629,7 +2604,7 @@ function tmp_backup_file() {
     fi
 
     local bkp_path=""
-    if ! bkp_path="$(get_tmp_file_name "${prefix}${base}" "true")"; then
+    if ! bkp_path="$(create_tmp_file "${prefix}${base}")"; then
         echo_error "Cannot get backup file for '$path'"
         return 1
     fi
@@ -2650,7 +2625,174 @@ function tmp_backup_file() {
     return 0
 }
 
-# End lib-bash/src/include/03_base_system_03_fs_02_fn.sh
+# End lib-bash/src/include/03_base_system_03_fs_04_tmp.sh
+
+# Start lib-bash/src/include/03_base_system_03_fs_05_sync.sh
+
+# shellcheck disable=SC2329
+function replace_file() {
+    local src="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local remove_src="${4:-true}"
+    local not_ask="${5:-false}"
+
+    function __replace_file_remove_src() {
+        local __src="${1:-}"
+        local __remove_src="${2:-}"
+        local __title="${3:-}"
+
+        if ! str_eq "$__remove_src" "true"; then
+            return 0
+        fi
+
+        echo_info "'$__title' delete source '$__src'"
+
+        if ! rm -f "$__src"; then
+            echo_warn "'$__title' source file '$__src' not deleted!"
+            return 0
+        fi
+
+        return 0
+    }
+
+    local ret_diff="0"
+
+    if files_has_not_diff "$src" "$dest" "$title" "$CONST_OUT_DIFF_OR_HAS_DIFF"; then
+        ret_diff="0"
+    else
+        ret_diff="$?"
+    fi
+
+    if num_eq "$ret_diff" "255"; then
+        echo_error "Internal diff error. Source file '$src' not deleted"
+        return 1
+    fi
+
+    if num_eq "$ret_diff" "0"; then
+        echo_info "No diff."
+        __replace_file_remove_src "$src" "$remove_src" "$title"
+        return 0
+    fi
+    
+    # prevent to break output
+    sleep 1
+
+    if ! ask_user "$title You can replace $dest with $src ?" "$not_ask"; then
+        echo_error "Disallow replace $dest"
+        __replace_file_remove_src "$src" "$remove_src" "$title"
+        return 1
+    fi
+
+    local perm=""
+    local owner=""
+
+    if is_file_path_exists "$dest"; then
+         if ! perm="$(get_path_permission_mode "$dest")"; then
+            echo_error "Cannot get dest '$dest' permissions for '$title'"
+            return 1
+        fi
+
+        if ! owner="$(get_path_owner "$dest")"; then
+            echo_error "Cannot get dest '$dest' owner for '$title'"
+            return 1
+        fi
+    fi
+
+    if ! cp "$src" "$dest"; then
+        echo_error "'$title' not replaced. Source '$src' not deleted"
+        return 1
+    fi
+
+    if ! str_empty "$perm"; then
+        echo "'$title' dest file exists. Change permissions to '$perm' and owner to '$owner'"
+        if ! set_path_perm_with_owner "$dest" "$perm" "$owner"; then
+            echo_error "'$title' replaced, but cannot set owner and permissions for dest '$dest'. Source '$src' not deleted"
+            return 1
+        fi
+    fi
+
+    __replace_file_remove_src "$src" "$remove_src" "$title"
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function sync_file_content() {
+    local content="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local not_ask="${4:-false}"
+
+    if str_empty "$dest"; then
+        echo_error "File for sync not passed"
+        return 1
+    fi
+
+    local temp_file=""
+
+    if ! temp_file="$(temp_file_with_content "$content")"; then
+        echo_error "Cannot create temp file for content"
+        return 1
+    fi
+
+    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
+        echo_error "Cannot sync file '$dest'"
+        return 1
+    fi
+
+    return 0
+}
+
+# shellcheck disable=SC2329
+function sync_file_content_with_diff_ret_code() { 
+    local content="$1"
+    local dest="$2"
+    local title="${3-Unknown}"
+    local not_ask="${4:-false}"
+
+    if [ -z "$dest" ]; then
+        echo_error "File for sync not passed for '$title'"
+        return 255
+    fi
+
+    local temp_file=""
+
+    if ! temp_file="$(temp_file_with_content "$content")"; then
+        echo_error "Cannot create temp file for content for '$title'"
+        return 255
+    fi
+
+    if files_has_not_diff "$temp_file" "$dest" "$title" "false"; then
+        ret_diff="0"
+    else
+        ret_diff="$?"
+    fi
+
+    if num_eq "$ret_diff" "255"; then
+        echo_error "Internal diff error"
+        if ! rm -f "$temp_file"; then
+            echo_error "Cannot remove temp file for sync '$temp_file' for '$title'"
+        fi
+        return 255
+    fi
+
+    if num_eq "$ret_diff" "0"; then
+        if ! rm -f "$temp_file"; then
+            echo_warn "Cannot remove temp file for sync '$temp_file' for '$title'"
+        fi
+        return 0
+    fi
+
+    if ! replace_file "$temp_file" "$dest" "$title" "true" "$not_ask"; then
+        echo_error "Cannot sync file '$dest' for '$title'"
+        return 255
+    fi
+
+    return 1
+}
+
+# End lib-bash/src/include/03_base_system_03_fs_05_sync.sh
 
 # Start lib-bash/src/include/03_base_system_04_pkg.sh
 
@@ -2954,6 +3096,17 @@ function _get_sys_service_engine_fun() {
 }
 
 # shellcheck disable=SC2329
+function systemctl_is_active() {
+    local svc="$1"
+
+    if systemctl is-active "$svc" > /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function systemctl_disable_all() {
     local srv="$1"
 
@@ -2962,7 +3115,7 @@ function systemctl_disable_all() {
         return 1
     fi
 
-    if ! systemctl is-active "$srv"; then
+    if ! systemctl_is_active "$srv"; then
         return 0
     fi
 
@@ -3894,6 +4047,28 @@ function validate_arg_mac_address_optional() {
 
 # End lib-bash/src/include/06_base_validate_05_net.sh
 
+# Start lib-bash/src/include/06_base_validate_06_user.sh
+
+# shellcheck disable=SC2329
+function validate_username() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_PASSED" "check_is_username_valid" "$val" "$passed"
+    return $?
+}
+
+# shellcheck disable=SC2329
+function validate_username_optional() {
+    local val="$1"
+    local passed="$2"
+
+    call_validate_fun "$CONST_VALIDATE_SHOULD_OPTIONAL" "check_is_username_valid" "$val" "$passed"
+    return $?
+}
+
+# End lib-bash/src/include/06_base_validate_06_user.sh
+
 # Start lib-bash/src/include/07_base_global_args_01_help.sh
 
 declare -a CONST_HELP_AGS=("-h" "--help")
@@ -4024,7 +4199,7 @@ function config_file_help() {
     ${CONST_CONFIG_FILE_ARG} PATH
       Path to config with envs to settings.
       Should be .env format
-      Env $CONST_CONFIG_FILE_ENV sor set.
+      Env $CONST_CONFIG_FILE_ENV for set.
     ${CONST_SKIP_REMOVE_CONFIG_FILE_ARG}
       Disable 'remove_passed_config' phase
       if run only one phase
@@ -4254,6 +4429,51 @@ function screen_args_help() {
 }
 
 # End lib-bash/src/include/07_base_global_args_06_screen.sh
+
+# Start lib-bash/src/include/07_base_global_args_07_tmp_dir.sh
+
+# shellcheck disable=SC2034
+CONST_TMPDIR_ARG="--tmp-dir"
+# shellcheck disable=SC2034
+CONST_TMPDIR_ENV="SYNC_FS_TMP_DIR"
+
+# shellcheck disable=SC2329
+function parse_and_apply_temp_dir_global_args() {
+    if is_help_flag_set "$@"; then
+        return 0
+    fi
+
+    local tmpdir=""
+
+    if ! tmpdir="$(extract_value_argument_no_validate "$CONST_TMPDIR_ARG" "$CONST_TMPDIR_ENV" "$@")"; then
+        echo_error "Passed tmp dir is incorrect"
+        return 1
+    fi
+
+    if str_empty "$tmpdir"; then
+        tmpdir="$CONST_FS_SYNC_TMP_DIR_DEFAULT"
+    fi
+
+    if ! sync_fs_set_tmp_dir "$tmpdir"; then
+        echo_error "Cannot create temp dir '$tmpdir'"
+        return 1
+    fi
+
+    echo_info "Tmp dir is $tmpdir"
+    return 0    
+}
+
+# shellcheck disable=SC2329
+function tmp_dir_help() {
+    echo -e "
+    ${CONST_COLOR_GREEN}Temp files options:${CONST_COLOR_NO}
+    ${CONST_TMPDIR_ARG} PATH
+      Path to save temp files and directories.
+      Optional. Default $CONST_FS_SYNC_TMP_DIR_DEFAULT
+      Env $CONST_TMPDIR_ENV for set."
+}
+
+# End lib-bash/src/include/07_base_global_args_07_tmp_dir.sh
 
 # Start lib-bash/src/include/08_base_expect.sh
 
@@ -4972,6 +5192,28 @@ function screen_get_session_log() {
     return 0
 }
 
+# shellcheck disable=SC2329
+function screen_ask_user_no_screen_run() {
+    local action_name="$1"
+    local not_ask="${2:-false}"
+
+    if str_eq "${SYNC_SCREEN_REPLACED:-}" "$CONST_SCREEN_REPLACED_VAL"; then
+        return 0
+    fi
+
+    echo_warn "Start '$action_name'"
+    echo_warn "This action can lost ssh connection and sync started without screen."
+    echo_warn "If connection lost, sync can exit immediately and revert will not start"
+    echo_warn "You can LOST access to host!"
+
+    if ! ask_user "Do you continue?"; then
+        echo_error "Disallow continue without screen" "$not_ask"
+        return 1
+    fi
+
+    return 0
+}
+
 # End lib-bash/src/include/08_base_screen.sh
 
 # Start lib-bash/src/include/09_base_run_ask_or_revert.sh
@@ -5177,9 +5419,13 @@ function download_script_and_run() {
     fi
 
     # shellcheck disable=SC2155
-    local script_path="$(mktemp)"
+    local script_path=
+    if ! script_path="$(create_tmp_executable_file)"; then
+        echo_error "Cannot create temp file for download '$url'"
+        return 1
+    fi
 
-    echo_info "Download script $url to ${script_path}..."
+    echo_info "Download script '$url' to '${script_path}'..."
 
     download_url "$url" "$script_path"
 
@@ -5352,8 +5598,8 @@ function add_user() {
     local not_ask="${3-false}"
     local password="${4-}"
 
-    if [ -z "$name" ]; then
-        echo_error "User name is empty"
+    if ! check_is_username_valid "$name" > /dev/null; then
+        echo_error "User '$name' is incorrect"
         return 1
     fi
 
@@ -5370,10 +5616,10 @@ function add_user() {
         user_exists="false"
     fi
 
-    if [[ "$user_exists" == "true" ]]; then
-        if ! ask_user "User $name exists. Update password?" "$not_ask"; then
+    if str_eq "$user_exists" "true"; then
+        if ! ask_user "User '$name' exists. Update password?" "$not_ask"; then
             echo_warn "Skip update password for $name"
-            echo_info "User ${name} updated!"
+            echo_info "User '${name}' updated!"
             return 0
         fi
     fi
@@ -5441,22 +5687,26 @@ function add_user_to_sudoers() {
     local sudoers_path="/etc/sudoers"
 
     if grep -q "$sudoers_str" "$sudoers_path"; then
-        echo_info "User $name already add to $sudoers_path"
+        echo_info "User '$name' already add to $sudoers_path"
         return 0
     fi
 
     # shellcheck disable=SC2155
-    local tmp_file="$(mktemp)"
-
-    if ! cp "$sudoers_path" "$tmp_file"; then
-        delete_file "$tmp_file" || true
-        echo_error "Cannot copy $sudoers_path to $tmp_file for check for user $name"
+    local tmp_file=""
+    if ! tmp_file="$(create_tmp_file "sudo_$name")"; then
+        echo_error "Cannot create temp file for sudoers for user '$name'"
         return 1
     fi
 
-    if [ ! -s  "$tmp_file" ]; then
+    if ! cp "$sudoers_path" "$tmp_file"; then
         delete_file "$tmp_file" || true
-        echo_error "$tmp_file is empty after copy sudoers for user $name"
+        echo_error "Cannot copy $sudoers_path to '$tmp_file' for check for user $name"
+        return 1
+    fi
+
+    if [ ! -s "$tmp_file" ]; then
+        delete_file "$tmp_file" || true
+        echo_error "'$tmp_file' is empty after copy sudoers for user $name"
         return 1
     fi
 
@@ -5469,7 +5719,7 @@ function add_user_to_sudoers() {
     } >> "$tmp_file"
 
     if ! visudo -q -c -f "$tmp_file"; then
-        echo_error "$tmp_file  sudoers for user $name is invalid. Tmp file not deleted"
+        echo_error "'$tmp_file'  sudoers for user '$name' is invalid. Tmp file not deleted"
         return 1
     fi
 
@@ -5522,23 +5772,21 @@ function add_pubkey_for_user() {
         return 1
     fi
 
-    if ! chmod 700 "$ssh_dir"; then
-        echo_error "cannot chmod $ssh_dir dir for $name"
-        return 1
-    fi
-
-    if ! chown "${name}:${name}" "$ssh_dir"; then
-        echo_error "cannot chown $ssh_dir dir for $name"
+    if ! set_only_user_perm_for_path "$ssh_dir" "$name"; then
+        echo_error "Cannot set permissions only for user for ssh dir '$ssh_dir' for user ${name}"
         return 1
     fi
 
     local auth_keys_file="${ssh_dir}/authorized_keys"
 
     # shellcheck disable=SC2155
-    local tmp_file="$(mktemp)"
+    local tmp_file=""
+    if ! tmp_file="$(create_tmp_file "auth_key")"; then
+        echo_error "Cannot create temp file for auth keys for user '$name'"
+        return 1
+    fi
 
     if [ -f "$auth_keys_file" ]; then
-
         if grep -q "$ssh_key" "$auth_keys_file"; then
             delete_file "$tmp_file" || true
             echo_green "SSH key '$ssh_key' already present in '$auth_keys_file'. Content:"
@@ -5548,7 +5796,7 @@ function add_pubkey_for_user() {
 
         if ! cp "$auth_keys_file" "$tmp_file"; then
             delete_file "$tmp_file" || true
-            echo_error "cannot copy $auth_keys_file to $tmp_file for add key for $name"
+            echo_error "cannot copy '$auth_keys_file' to '$tmp_file' for add key for '$name'"
             return 1
         fi
         echo "" >> "$tmp_file"
@@ -5563,13 +5811,8 @@ function add_pubkey_for_user() {
         return 1
     fi
 
-    if ! chmod 600 "$auth_keys_file"; then
-        echo_error "cannot chmod $auth_keys_file file for $name"
-        return 1
-    fi
-
-    if ! chown "${name}:${name}" "$auth_keys_file"; then
-        echo_error "cannot chown $auth_keys_file file for $name"
+    if ! set_only_user_perm_for_path "$auth_keys_file" "$name"; then
+        echo_error "Cannot set permissions only for user for auth keys file '$auth_keys_file' for user ${name}"
         return 1
     fi
 
@@ -5868,35 +6111,20 @@ CONST_BASE_SSHD_CONFIG="/etc/ssh/sshd_config.d"
 CONST_SSHD_FILE_CONF_PREFIX="99_z_"
 
 # shellcheck disable=SC2034
-declare -A _SSH_RESTART_FUNC=()
+CONST_SSHD_PRIVATE_SYSTEMD_SERVICE="ssh.service"
+
 # shellcheck disable=SC2034
-_SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
+declare -A _SSH_SERVICE_NAME=()
 # shellcheck disable=SC2034
-_SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd_initd_restart"
+_SSH_SERVICE_NAME["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"
+# shellcheck disable=SC2034
+_SSH_SERVICE_NAME["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd"
 
 # shellcheck disable=SC2329
 function sshd_get_conf_path() {
     local name="$1"
 
     echo -n "${CONST_BASE_SSHD_CONFIG}/${CONST_SSHD_FILE_CONF_PREFIX}${name}.conf" 
-}
-
-# shellcheck disable=SC2329
-function sshd_systemd_restart() {
-    if ! systemctl restart ssh.service; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function sshd_initd_restart() {
-    if ! service sshd restart; then
-        return 1
-    fi
-
-    return 0
 }
 
 # shellcheck disable=SC2329
@@ -5983,20 +6211,17 @@ function sshd_restart() {
         return 1
     fi
 
-    local restart_fun=""
-    if [[ -v _SSH_RESTART_FUNC["$service_engine"] ]]; then
-        restart_fun="${_SSH_RESTART_FUNC["$service_engine"]}"
+    local svc_name=""
+    if [[ -v _SSH_SERVICE_NAME["$service_engine"] ]]; then
+        svc_name="${_SSH_SERVICE_NAME["$service_engine"]}"
     else
-        echo_error "Restart sshd func not found for service engine '$service_engine'"
+        echo_error "Restart sshd service name not found for service engine '$service_engine'"
         return 1
     fi
 
-    if ! is_function_declared "$restart_fun"; then
-        echo_error "Internal error: '$restart_fun' func not declared!"
-        return 1
-    fi
-
-    if ! "$restart_fun"; then
+    # no revert
+    if ! restart_service_with_revert "$svc_name"; then
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
@@ -6009,7 +6234,7 @@ function sshd_remove_settings_from_not_own_config() {
     local dest_sett_file_dict="$2"
     local not_ask="${3:-false}"
 
-    if is_dict_var "$settings_dict_name"; then
+    if ! is_dict_var "$settings_dict_name"; then
         echo_error "Setting dict name '$settings_dict_name' is not dict for sshd_remove_setting_from_not_own_config"
         return 1
     fi
@@ -6031,7 +6256,7 @@ function sshd_remove_settings_from_not_own_config() {
         fi
         
         local conf_file=""
-        if ! conf_file="$(basename "$conf_file")"; then
+        if ! conf_file="$(basename "$conf_path")"; then
             echo_error "Cannot get base name for ssd conf file '$conf_path'"
             return 1
         fi
@@ -6087,6 +6312,7 @@ function sshd_remove_settings_from_not_own_config() {
     if str_eq "$failed" "true"; then
         echo_error "Fail remove sshd setting '$sett_name'. Revert files"
         for src in "${!sett_present_in[@]}"; do
+            echo_warn "Revert '$dest' from '$src'"
             local dest="${sett_present_in[$src]}"
             if ! mv "$src" "$dest"; then
                 echo_error "Cannot revert '$dest' from '$src'"
@@ -6143,21 +6369,17 @@ function sshd_revert_after_apply() {
 
         local -n __sshd_revert_move="$move_dict"
 
-        for src in "${!{__sshd_revert_move[@]}}"; do 
+        for src in "${!__sshd_revert_move[@]}"; do 
             local dest="${__sshd_revert_move[$src]}"
             if str_empty "$src" || str_empty "$dest"; then
                 echo_warn "Source '$src' or dest '$dest' file is empty. Skip revert it"
                 continue
             fi
 
-            echo_warn "Revert (copy) old config from '$src' to '$dest'"
-            if ! cp "$src" "$dest"; then
+            echo_warn "Revert (move) old config from '$src' to '$dest'"
+            if ! mv "$src" "$dest"; then
                 has_error="true"
-                echo_error "Cannot revert '$dest'"
-            else
-                if ! rm -f "$src"; then
-                    echo_warn "Template file '$src' not removed for '$dest', but copied. Continue"
-                fi
+                echo_error "Cannot revert '$dest' from '$src'"
             fi
         done
     fi
@@ -6170,7 +6392,7 @@ function sshd_revert_after_apply() {
         fi
     done
 
-    if str_eq "$has_error"; then
+    if str_eq "$has_error" "true"; then
         echo_error "^^Some configs cannot reverted. Skip restart sshd"
         return 1
     fi
@@ -6274,9 +6496,9 @@ function sshd_apply_setting_with_approve() {
 
     if sync_file_content_with_diff_ret_code "$setting" "$conf_file" "Apply sshd setting '$action_name'" "$not_ask"; then
         echo_info "Setting for action '$action_name' in file '$conf_file' in sync"
-        for kk in "${!__sshd_to_move}"; do
-            local rm_f="${__sshd_to_move[$kk]}"
-            echo_info "Remove temp file '$rm_f' for config '$kk' for action '$action_name'"
+        for rm_f in "${!__sshd_to_move[@]}"; do
+            local kk="${__sshd_to_move[$rm_f]}"
+            echo_info "Remove temp backup file '$rm_f' for config '$kk' for action '$action_name'"
             if ! rm -f "$rm_f"; then
                 echo_warn "Temp file '$rm_f' for config '$kk' for action '$action_name' not removed!"
             fi 
@@ -6316,12 +6538,18 @@ function sshd_apply_setting_with_approve() {
         return 1
     fi
 
+    echo ""
+    echo_warn "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo_warn "Try to restart sshd for action '$action_name'"
     if ! str_empty "$verify_message"; then
         echo_warn "Please check:"
         echo_warn "  $verify_message"
         echo_warn "before approve!"
     fi
+
+    echo ""
+    echo_warn "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo ""
 
     if ! sshd_restart_with_approve "$action_name" "${__sshd_revert_args[@]}"; then
         echo_error "Cannot apply setting for action '$action_name' with file '$conf_file'"
@@ -6361,10 +6589,10 @@ function sshd_apply_settings_with_check_not_own() {
         return 1
     fi
 
-    local __sshd_settings_for_apply_dict="$settings_dict_name"
+    local -n __sshd_settings_for_apply_dict="$settings_dict_name"
     local setting_to_set_str=""
 
-    for sett_name_a in "${!__sshd_settings_for_apply_dict}"; do
+    for sett_name_a in "${!__sshd_settings_for_apply_dict[@]}"; do
         local cur_sett_str="${sett_name_a} ${__sshd_settings_for_apply_dict[$sett_name_a]}"
         setting_to_set_str="$(append_str_with_new_line "$setting_to_set_str" "$cur_sett_str")"
     done
@@ -6399,6 +6627,8 @@ function sshd_apply_settings_with_check_not_own() {
 
 # shellcheck disable=SC2329
 function sshd_fix_privilege_separation() {
+    local not_ask="${1:-false}"
+
     local run_dir="/run/sshd"
 
     if ! mkdir -p "$run_dir"; then 
@@ -6411,7 +6641,7 @@ function sshd_fix_privilege_separation() {
         return 1
     fi
 
-    local tmpfiles_dir="/etc/tmpfiles.d/"
+    local tmpfiles_dir="/etc/tmpfiles.d"
 
     if ! mkdir -p "$tmpfiles_dir"; then 
         echo_error "Cannot create $tmpfiles_dir dir"
@@ -6420,9 +6650,21 @@ function sshd_fix_privilege_separation() {
 
     local tempfiles_conf_file="${tmpfiles_dir}/sshd.conf"
 
-    echo "d /run/sshd 0755 root root" > "$tempfiles_conf_file"
+    local tempfiles_conf_content="d /run/sshd 0755 root root${CONST_NEW_LINE}"
 
-    echo_info "Restart sshd after fix privilege separation..."
+    local ret_code_sync="0"
+    if sync_file_content_with_diff_ret_code "$tempfiles_conf_content" "$tempfiles_conf_file" "sshd template files conf" "$not_ask"; then
+        echo_debug "sshd template files conf '$tempfiles_conf_file' in sync"
+        return 0
+    else
+        ret_code_sync="$?"
+        if num_eq "$ret_code_sync" "255"; then
+            echo_error "Cannot sync shd template files conf '$tempfiles_conf_file'"
+            return 1
+        fi
+    fi
+
+    echo_warn "Restart sshd after fix privilege separation..."
 
     # first arg nothing to move or remove
     if ! sshd_restart_with_approve "Fix privilege separation"; then
@@ -6442,17 +6684,20 @@ function sshd_fix_privilege_separation() {
 
 # shellcheck disable=SC2329
 function sshd_disable_systemd_socket() {
-    echo_info "Enable sshd service..."
-    if ! systemctl enable --now ssh.service; then
-        echo_error "Cannot enable ssh.service"
-        return 1
-    fi
+    local not_ask="${1:-false}"
 
-    echo_info "SSHD service enabled! Restart..."
+    if ! systemctl_is_active "$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"; then
+        echo_info "Enable sshd service..."
+        if ! systemctl_enable_service "$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"; then
+            echo_error "Cannot enable $CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"
+            return 1
+        fi
 
-    if ! sshd_restart; then
-        echo_error "!!! SSHD was not restarted !!!"
-        return 1
+        echo_info "SSHD service enabled! Restart..."
+
+        if ! sshd_restart; then
+            return 1
+        fi
     fi
 
     if ! disable_and_stop_services "ssh.socket"; then
@@ -6461,7 +6706,7 @@ function sshd_disable_systemd_socket() {
     fi
 
     echo_info "Create missing privilege separation directory..."
-    if ! sshd_fix_privilege_separation; then
+    if ! sshd_fix_privilege_separation "$not_ask"; then
         return 1 
     fi
 
@@ -6484,14 +6729,14 @@ function sshd_apply_port() {
     fi
 
     if ! check_is_number_port "$port" > /dev/null; then
-        echo_error "Invalid sshd port number"
+        echo_error "Invalid sshd port number '$port'"
         return 1
     fi
 
     local -A __sshd_port_dict=()
     __sshd_port_dict["Port"]="$port"
 
-    if ! sshd_apply_settings_with_check_not_own "Apply sshd port" "ssh USER#HOST -p $port" "__sshd_port_dict" "port" "$not_ask"; then
+    if ! sshd_apply_settings_with_check_not_own "Apply sshd port" "ssh USER@HOST -p $port" "__sshd_port_dict" "port" "$not_ask"; then
         echo_error "Cannot apply sshd port '$port' setting"
         return 1
     fi
@@ -6505,7 +6750,7 @@ function sshd_add_bind_address() {
     local port="${2:-}"
     local not_ask="${3-no}"
 
-    if [ -z "$listen_address" ]; then
+    if str_empty "$listen_address"; then
         return 0    
     fi
 
@@ -7890,15 +8135,14 @@ function cmd_virtualbox_init_vm_itself_run() {
     echo_info "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
 
     # shellcheck disable=SC2155
-    local config_tmp="$(mktemp)"
-
-    if ! chmod 600 "$config_tmp"; then
-        echo_error "Cannot chmod temp file for config"
+    local config_tmp=
+    if ! config_tmp="$(create_tmp_file "netplan")"; then
+        echo_error "Cannot create temp file for netplan config"
         return 1
     fi
 
-    if ! chown "root:root" "$config_tmp"; then
-        echo_error "Cannot chown temp file for config"
+    if ! set_only_root_perm_for_path "$config_tmp"; then
+        echo_error "Cannot set only root permissions netplan config file '$config_tmp'"
         return 1
     fi
 
@@ -8428,7 +8672,9 @@ function phase_sshd_run() {
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_info "Prepare sshd..."
+    if ! screen_ask_user_no_screen_run "Prepare sshd"; then
+        return 1
+    fi
 
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
@@ -8480,7 +8726,7 @@ function phase_sshd_run() {
 function phase_sshd_help() {
     echo -n "
     Change sshd port remove pass auth and root login.
-    
+
     Options:
       $CONST_SSHD_PORT_ARG PORT_NUM
          Replace to new port.
@@ -9200,6 +9446,7 @@ function usage() {
   $(not_ask_help)
   $(log_settings_help)
   $(screen_args_help)
+  $(tmp_dir_help)
 "
     if ! str_empty "$only_phase_help"; then
         __print_phase_help "$only_phase_help"
@@ -9303,6 +9550,13 @@ function main() {
     if ! parse_and_apply_config_file "$@"; then
         echo_error "Cannot apply config"
         return 1
+    fi
+
+    if ! is_help_flag_set "$@"; then
+        if ! parse_and_apply_temp_dir_global_args "$@"; then
+            echo_error "Cannot apply tmp dir settings"
+            return 1
+        fi
     fi
 
     if ! is_help_flag_set "$@"; then

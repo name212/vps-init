@@ -14,14 +14,14 @@ function sshd_apply_port() {
     fi
 
     if ! check_is_number_port "$port" > /dev/null; then
-        echo_error "Invalid sshd port number"
+        echo_error "Invalid sshd port number '$port'"
         return 1
     fi
 
     local -A __sshd_port_dict=()
     __sshd_port_dict["Port"]="$port"
 
-    if ! sshd_apply_settings_with_check_not_own "Apply sshd port" "ssh USER#HOST -p $port" "__sshd_port_dict" "port" "$not_ask"; then
+    if ! sshd_apply_settings_with_check_not_own "Apply sshd port" "ssh USER@HOST -p $port" "__sshd_port_dict" "port" "$not_ask"; then
         echo_error "Cannot apply sshd port '$port' setting"
         return 1
     fi
@@ -35,7 +35,7 @@ function sshd_add_bind_address() {
     local port="${2:-}"
     local not_ask="${3-no}"
 
-    if [ -z "$listen_address" ]; then
+    if str_empty "$listen_address"; then
         return 0    
     fi
 

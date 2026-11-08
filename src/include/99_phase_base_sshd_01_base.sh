@@ -8,35 +8,20 @@ CONST_BASE_SSHD_CONFIG="/etc/ssh/sshd_config.d"
 CONST_SSHD_FILE_CONF_PREFIX="99_z_"
 
 # shellcheck disable=SC2034
-declare -A _SSH_RESTART_FUNC=()
+CONST_SSHD_PRIVATE_SYSTEMD_SERVICE="ssh.service"
+
 # shellcheck disable=SC2034
-_SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="sshd_systemd_restart"
+declare -A _SSH_SERVICE_NAME=()
 # shellcheck disable=SC2034
-_SSH_RESTART_FUNC["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd_initd_restart"
+_SSH_SERVICE_NAME["$CONST_SYS_SERVICE_ENGINE_SYSTEMD"]="$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"
+# shellcheck disable=SC2034
+_SSH_SERVICE_NAME["$CONST_SYS_SERVICE_ENGINE_INITD"]="sshd"
 
 # shellcheck disable=SC2329
 function sshd_get_conf_path() {
     local name="$1"
 
     echo -n "${CONST_BASE_SSHD_CONFIG}/${CONST_SSHD_FILE_CONF_PREFIX}${name}.conf" 
-}
-
-# shellcheck disable=SC2329
-function sshd_systemd_restart() {
-    if ! systemctl restart ssh.service; then
-        return 1
-    fi
-
-    return 0
-}
-
-# shellcheck disable=SC2329
-function sshd_initd_restart() {
-    if ! service sshd restart; then
-        return 1
-    fi
-
-    return 0
 }
 
 # shellcheck disable=SC2329
@@ -123,20 +108,17 @@ function sshd_restart() {
         return 1
     fi
 
-    local restart_fun=""
-    if [[ -v _SSH_RESTART_FUNC["$service_engine"] ]]; then
-        restart_fun="${_SSH_RESTART_FUNC["$service_engine"]}"
+    local svc_name=""
+    if [[ -v _SSH_SERVICE_NAME["$service_engine"] ]]; then
+        svc_name="${_SSH_SERVICE_NAME["$service_engine"]}"
     else
-        echo_error "Restart sshd func not found for service engine '$service_engine'"
+        echo_error "Restart sshd service name not found for service engine '$service_engine'"
         return 1
     fi
 
-    if ! is_function_declared "$restart_fun"; then
-        echo_error "Internal error: '$restart_fun' func not declared!"
-        return 1
-    fi
-
-    if ! "$restart_fun"; then
+    # no revert
+    if ! restart_service_with_revert "$svc_name"; then
+        echo_error "!!! SSHD was not restarted !!!"
         return 1
     fi
 
@@ -149,7 +131,7 @@ function sshd_remove_settings_from_not_own_config() {
     local dest_sett_file_dict="$2"
     local not_ask="${3:-false}"
 
-    if is_dict_var "$settings_dict_name"; then
+    if ! is_dict_var "$settings_dict_name"; then
         echo_error "Setting dict name '$settings_dict_name' is not dict for sshd_remove_setting_from_not_own_config"
         return 1
     fi
@@ -171,7 +153,7 @@ function sshd_remove_settings_from_not_own_config() {
         fi
         
         local conf_file=""
-        if ! conf_file="$(basename "$conf_file")"; then
+        if ! conf_file="$(basename "$conf_path")"; then
             echo_error "Cannot get base name for ssd conf file '$conf_path'"
             return 1
         fi
@@ -227,6 +209,7 @@ function sshd_remove_settings_from_not_own_config() {
     if str_eq "$failed" "true"; then
         echo_error "Fail remove sshd setting '$sett_name'. Revert files"
         for src in "${!sett_present_in[@]}"; do
+            echo_warn "Revert '$dest' from '$src'"
             local dest="${sett_present_in[$src]}"
             if ! mv "$src" "$dest"; then
                 echo_error "Cannot revert '$dest' from '$src'"

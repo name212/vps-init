@@ -29,7 +29,9 @@ function phase_sshd_run() {
     local not_ask=""
     not_ask="$(parse_not_ask "$@")"
 
-    echo_info "Prepare sshd..."
+    if ! screen_ask_user_no_screen_run "Prepare sshd"; then
+        return 1
+    fi
 
     local service_engine=""
     if ! service_engine="$(get_sys_service_engine)"; then
@@ -81,7 +83,7 @@ function phase_sshd_run() {
 function phase_sshd_help() {
     echo -n "
     Change sshd port remove pass auth and root login.
-    
+
     Options:
       $CONST_SSHD_PORT_ARG PORT_NUM
          Replace to new port.

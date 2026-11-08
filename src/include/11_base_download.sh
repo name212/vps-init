@@ -29,9 +29,13 @@ function download_script_and_run() {
     fi
 
     # shellcheck disable=SC2155
-    local script_path="$(mktemp)"
+    local script_path=
+    if ! script_path="$(create_tmp_executable_file)"; then
+        echo_error "Cannot create temp file for download '$url'"
+        return 1
+    fi
 
-    echo_info "Download script $url to ${script_path}..."
+    echo_info "Download script '$url' to '${script_path}'..."
 
     download_url "$url" "$script_path"
 

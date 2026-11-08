@@ -48,7 +48,6 @@ function check_is_chown_str_valid() {
 
     local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}(:${CONST_PRIVATE_USERNAME_GROUP_NAME_RE})?\$"
 
-    local name_re="^${CONST_PRIVATE_USERNAME_GROUP_NAME_RE}\$"
     if ! [[ "$str" =~ $name_re ]]; then
         echo_error "Chown string '$str' is incorrect. Should match '$name_re' or '$num_re'"
         return 1
