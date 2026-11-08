@@ -63,7 +63,7 @@ function sshd_fix_privilege_separation() {
 function sshd_disable_systemd_socket() {
     local not_ask="${1:-false}"
 
-    if ! systemctl_is_active "$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"; then
+    if ! systemctl_is_enabled "$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"; then
         echo_info "Enable sshd service..."
         if ! systemctl_enable_service "$CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"; then
             echo_error "Cannot enable $CONST_SSHD_PRIVATE_SYSTEMD_SERVICE"

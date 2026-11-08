@@ -61,6 +61,17 @@ function systemctl_is_active() {
 }
 
 # shellcheck disable=SC2329
+function systemctl_is_enabled() {
+    local svc="$1"
+
+    if systemctl is-enabled "$svc" > /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function systemctl_disable_all() {
     local srv="$1"
 
