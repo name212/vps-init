@@ -39,6 +39,7 @@ function tmp_dir_help() {
     ${CONST_COLOR_GREEN}Temp files options:${CONST_COLOR_NO}
     ${CONST_TMPDIR_ARG} PATH
       Path to save temp files and directories.
+      If not exists, will create.
       Optional. Default $CONST_FS_SYNC_TMP_DIR_DEFAULT
       Env $CONST_TMPDIR_ENV for set."
 }
