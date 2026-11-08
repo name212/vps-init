@@ -13,7 +13,7 @@ function gitlab_prepare_runner_service() {
 
     local exec_str=""
 
-    if systemctl is-active "$service_name"; then
+    if systemctl_is_active "$service_name"; then
         if ! exec_str="$(systemctl show "$service_name" --no-pager -p ExecStart)"; then
             echo_error "Cannot get exec string for gitlab service"
             return 1
@@ -22,7 +22,7 @@ function gitlab_prepare_runner_service() {
         echo_info "gitlab service not active!"
     fi
 
-    if [ -z "$exec_str" ]; then
+    if str_empty "$exec_str"; then
         echo_error "exec string for gitlab service is empty"
         return 1
     fi
@@ -45,7 +45,7 @@ function gitlab_prepare_runner_service() {
 
     echo_info "Start reinstall gitlab service..."
 
-    if ! sudo systemctl stop "$service_name"; then
+    if ! systemctl stop "$service_name"; then
         echo_error "Cannot stop gitlab runner service!"
         return 1
     fi

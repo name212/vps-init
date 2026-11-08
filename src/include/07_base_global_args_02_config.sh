@@ -94,7 +94,7 @@ function config_file_help() {
     ${CONST_CONFIG_FILE_ARG} PATH
       Path to config with envs to settings.
       Should be .env format
-      Env $CONST_CONFIG_FILE_ENV sor set.
+      Env $CONST_CONFIG_FILE_ENV for set.
     ${CONST_SKIP_REMOVE_CONFIG_FILE_ARG}
       Disable 'remove_passed_config' phase
       if run only one phase

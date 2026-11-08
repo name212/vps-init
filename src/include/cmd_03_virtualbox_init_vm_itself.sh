@@ -138,15 +138,14 @@ function cmd_virtualbox_init_vm_itself_run() {
     echo_info "Got NAT mac: $nat_mac Static mac $static_mac IP $ip_static Gateway $gateway"
 
     # shellcheck disable=SC2155
-    local config_tmp="$(mktemp)"
-
-    if ! chmod 600 "$config_tmp"; then
-        echo_error "Cannot chmod temp file for config"
+    local config_tmp=
+    if ! config_tmp="$(create_tmp_file "netplan")"; then
+        echo_error "Cannot create temp file for netplan config"
         return 1
     fi
 
-    if ! chown "root:root" "$config_tmp"; then
-        echo_error "Cannot chown temp file for config"
+    if ! set_only_root_perm_for_path "$config_tmp"; then
+        echo_error "Cannot set only root permissions netplan config file '$config_tmp'"
         return 1
     fi
 

@@ -206,3 +206,25 @@ function screen_get_session_log() {
     echo -n "$SYNC_SCREEN_SESS_LOG_FILE"
     return 0
 }
+
+# shellcheck disable=SC2329
+function screen_ask_user_no_screen_run() {
+    local action_name="$1"
+    local not_ask="${2:-false}"
+
+    if str_eq "${SYNC_SCREEN_REPLACED:-}" "$CONST_SCREEN_REPLACED_VAL"; then
+        return 0
+    fi
+
+    echo_warn "Start '$action_name'"
+    echo_warn "This action can lost ssh connection and sync started without screen."
+    echo_warn "If connection lost, sync can exit immediately and revert will not start"
+    echo_warn "You can LOST access to host!"
+
+    if ! ask_user "Do you continue?"; then
+        echo_error "Disallow continue without screen" "$not_ask"
+        return 1
+    fi
+
+    return 0
+}

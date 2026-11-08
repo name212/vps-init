@@ -50,6 +50,28 @@ function _get_sys_service_engine_fun() {
 }
 
 # shellcheck disable=SC2329
+function systemctl_is_active() {
+    local svc="$1"
+
+    if systemctl is-active "$svc" > /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
+function systemctl_is_enabled() {
+    local svc="$1"
+
+    if systemctl is-enabled "$svc" > /dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# shellcheck disable=SC2329
 function systemctl_disable_all() {
     local srv="$1"
 
@@ -58,7 +80,7 @@ function systemctl_disable_all() {
         return 1
     fi
 
-    if ! systemctl is-active "$srv"; then
+    if ! systemctl_is_active "$srv"; then
         return 0
     fi
 
@@ -107,6 +129,8 @@ function systemctl_restart_service() {
         echo_error "Service '$srv' cannot restarted"
         return 1
     fi
+
+    return 0
 }
 
 # shellcheck disable=SC2329

@@ -100,8 +100,8 @@ function add_user() {
     local not_ask="${3-false}"
     local password="${4-}"
 
-    if [ -z "$name" ]; then
-        echo_error "User name is empty"
+    if ! check_is_username_valid "$name" > /dev/null; then
+        echo_error "User '$name' is incorrect"
         return 1
     fi
 
@@ -118,10 +118,10 @@ function add_user() {
         user_exists="false"
     fi
 
-    if [[ "$user_exists" == "true" ]]; then
-        if ! ask_user "User $name exists. Update password?" "$not_ask"; then
+    if str_eq "$user_exists" "true"; then
+        if ! ask_user "User '$name' exists. Update password?" "$not_ask"; then
             echo_warn "Skip update password for $name"
-            echo_info "User ${name} updated!"
+            echo_info "User '${name}' updated!"
             return 0
         fi
     fi
@@ -189,22 +189,26 @@ function add_user_to_sudoers() {
     local sudoers_path="/etc/sudoers"
 
     if grep -q "$sudoers_str" "$sudoers_path"; then
-        echo_info "User $name already add to $sudoers_path"
+        echo_info "User '$name' already add to $sudoers_path"
         return 0
     fi
 
     # shellcheck disable=SC2155
-    local tmp_file="$(mktemp)"
-
-    if ! cp "$sudoers_path" "$tmp_file"; then
-        delete_file "$tmp_file" || true
-        echo_error "Cannot copy $sudoers_path to $tmp_file for check for user $name"
+    local tmp_file=""
+    if ! tmp_file="$(create_tmp_file "sudo_$name")"; then
+        echo_error "Cannot create temp file for sudoers for user '$name'"
         return 1
     fi
 
-    if [ ! -s  "$tmp_file" ]; then
+    if ! cp "$sudoers_path" "$tmp_file"; then
         delete_file "$tmp_file" || true
-        echo_error "$tmp_file is empty after copy sudoers for user $name"
+        echo_error "Cannot copy $sudoers_path to '$tmp_file' for check for user $name"
+        return 1
+    fi
+
+    if [ ! -s "$tmp_file" ]; then
+        delete_file "$tmp_file" || true
+        echo_error "'$tmp_file' is empty after copy sudoers for user $name"
         return 1
     fi
 
@@ -217,7 +221,7 @@ function add_user_to_sudoers() {
     } >> "$tmp_file"
 
     if ! visudo -q -c -f "$tmp_file"; then
-        echo_error "$tmp_file  sudoers for user $name is invalid. Tmp file not deleted"
+        echo_error "'$tmp_file'  sudoers for user '$name' is invalid. Tmp file not deleted"
         return 1
     fi
 
@@ -270,23 +274,21 @@ function add_pubkey_for_user() {
         return 1
     fi
 
-    if ! chmod 700 "$ssh_dir"; then
-        echo_error "cannot chmod $ssh_dir dir for $name"
-        return 1
-    fi
-
-    if ! chown "${name}:${name}" "$ssh_dir"; then
-        echo_error "cannot chown $ssh_dir dir for $name"
+    if ! set_only_user_perm_for_path "$ssh_dir" "$name"; then
+        echo_error "Cannot set permissions only for user for ssh dir '$ssh_dir' for user ${name}"
         return 1
     fi
 
     local auth_keys_file="${ssh_dir}/authorized_keys"
 
     # shellcheck disable=SC2155
-    local tmp_file="$(mktemp)"
+    local tmp_file=""
+    if ! tmp_file="$(create_tmp_file "auth_key")"; then
+        echo_error "Cannot create temp file for auth keys for user '$name'"
+        return 1
+    fi
 
     if [ -f "$auth_keys_file" ]; then
-
         if grep -q "$ssh_key" "$auth_keys_file"; then
             delete_file "$tmp_file" || true
             echo_green "SSH key '$ssh_key' already present in '$auth_keys_file'. Content:"
@@ -296,7 +298,7 @@ function add_pubkey_for_user() {
 
         if ! cp "$auth_keys_file" "$tmp_file"; then
             delete_file "$tmp_file" || true
-            echo_error "cannot copy $auth_keys_file to $tmp_file for add key for $name"
+            echo_error "cannot copy '$auth_keys_file' to '$tmp_file' for add key for '$name'"
             return 1
         fi
         echo "" >> "$tmp_file"
@@ -311,13 +313,8 @@ function add_pubkey_for_user() {
         return 1
     fi
 
-    if ! chmod 600 "$auth_keys_file"; then
-        echo_error "cannot chmod $auth_keys_file file for $name"
-        return 1
-    fi
-
-    if ! chown "${name}:${name}" "$auth_keys_file"; then
-        echo_error "cannot chown $auth_keys_file file for $name"
+    if ! set_only_user_perm_for_path "$auth_keys_file" "$name"; then
+        echo_error "Cannot set permissions only for user for auth keys file '$auth_keys_file' for user ${name}"
         return 1
     fi
 
