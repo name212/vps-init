@@ -6862,12 +6862,12 @@ function cmd_gitlab_register_runner_run() {
 
     local runner_config=""
 
-    if ! runner_config="$(extract_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+    if ! runner_config="$(extract_value_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "validate_arg_not_empty_file_optional" "$@")"; then
         echo_error "Gitlab runner config"
         return 1
     fi
 
-    if [ -n "$runner_config" ]; then
+    if ! str_empty "$runner_config"; then
         echo_info "Load runner config $runner_config"
         # shellcheck disable=SC1090
         set -a && source "$runner_config" && set +a
@@ -9017,7 +9017,7 @@ function gitlab_prepare_runner_service() {
 
     local exec_str=""
 
-    if systemctl is-active "$service_name"; then
+    if systemctl_is_active "$service_name"; then
         if ! exec_str="$(systemctl show "$service_name" --no-pager -p ExecStart)"; then
             echo_error "Cannot get exec string for gitlab service"
             return 1
@@ -9026,7 +9026,7 @@ function gitlab_prepare_runner_service() {
         echo_info "gitlab service not active!"
     fi
 
-    if [ -z "$exec_str" ]; then
+    if str_empty "$exec_str"; then
         echo_error "exec string for gitlab service is empty"
         return 1
     fi
@@ -9049,7 +9049,7 @@ function gitlab_prepare_runner_service() {
 
     echo_info "Start reinstall gitlab service..."
 
-    if ! sudo systemctl stop "$service_name"; then
+    if ! systemctl stop "$service_name"; then
         echo_error "Cannot stop gitlab runner service!"
         return 1
     fi

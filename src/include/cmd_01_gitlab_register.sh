@@ -22,12 +22,12 @@ function cmd_gitlab_register_runner_run() {
 
     local runner_config=""
 
-    if ! runner_config="$(extract_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "$CONST_NOT_FLAG" "validate_arg_not_empty_file" "$@")"; then
+    if ! runner_config="$(extract_value_argument "--gitlab-runner-config" "GITLAB_RUNNER_CONFIG" "validate_arg_not_empty_file_optional" "$@")"; then
         echo_error "Gitlab runner config"
         return 1
     fi
 
-    if [ -n "$runner_config" ]; then
+    if ! str_empty "$runner_config"; then
         echo_info "Load runner config $runner_config"
         # shellcheck disable=SC1090
         set -a && source "$runner_config" && set +a
