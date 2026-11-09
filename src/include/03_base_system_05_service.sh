@@ -266,7 +266,7 @@ function restart_service_with_revert() {
 
 
     if [ -n "$revert_func" ]; then
-        if is_function_declared "$revert_func"; then
+        if ! is_function_declared "$revert_func"; then
             echo_error "Function to revert restart service '$revert_func' is not declared."
             return 255
         fi
