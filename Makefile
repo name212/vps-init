@@ -45,8 +45,7 @@ tests/keep-files/run: tests/run ## Run library itself tests with keep result tes
 	@##~                           02_base_type_02_str_08_password.test.sh
 	@##~                           Default: not passed
 
-repo/upgrade/common: export SUBMODULE_DIR = makefile-common
-repo/upgrade/common: common/git/submodule/upgrade
+repo/upgrade/common: makefile-common/upgrade/module
 
 ##@ lib-bash. Deploy sync.sh and/or config to host
 
